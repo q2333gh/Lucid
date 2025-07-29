@@ -239,3 +239,90 @@ meson setup build_cross --cross-file cross/wasi.ini
 # 使用纯 WASM32 配置
 meson setup build_wasm32 --cross-file cross/wasm32.ini
 ```
+
+# struct explain:
+
+让我简要说明 Meson 的文件组织结构：
+```bash
+find . -name "*.md" -o -name "*.txt" -o -name "*.build" -o -name "*.ini" -o -name "*.sh" | grep -v build_ | sort
+```
+```bash
+ls -la build_minimal/ build_full/ | head -20
+```
+## 📁 Meson 文件组织结构简述
+
+### **🎯 核心配置文件（必需）**
+```
+meson.build         # 主构建脚本（相当于 Makefile）
+meson_options.txt   # 构建选项定义（minimal=true/false 等）
+```
+
+### **🔧 辅助工具**
+```
+build.sh           # 便捷脚本（封装 meson 命令）
+cross/              # 交叉编译配置目录
+├── wasi.ini       # WASI 目标配置
+└── wasm32.ini     # 纯 WASM32 配置
+```
+
+### **📚 文档文件（可选）**
+```
+README.md          # 主要使用说明
+README_MESON.md    # 详细 Meson 指南
+MESON_RESULTS.md   # 迁移成果总结
+```
+
+### **🏗️ 构建输出目录（自动生成）**
+```
+build_minimal/     # 最小化构建输出
+├── add_minimal.wasm    # 生成的 WASM 文件
+├── add_minimal.wat     # WAT 文本格式
+├── build.ninja         # Ninja 构建文件
+└── meson-logs/         # 构建日志
+
+build_full/        # 完整 WASI 构建输出  
+├── add.wasm            # 生成的 WASM 文件
+├── add.wat             # WAT 文本格式
+└── ...
+```
+
+### **🤔 为什么这么多文件？**
+
+**核心原因**：现代构建系统的 **关注点分离**
+
+| 文件 | 作用 | 类比 |
+|------|------|------|
+| `meson.build` | 构建逻辑 | 就像 Makefile |
+| `meson_options.txt` | 用户配置 | 就像命令行参数 |
+| `build.sh` | 用户界面 | 就像图形界面 |
+| `cross/*.ini` | 平台配置 | 就像编译器设置 |
+| `build_*/` | 输出隔离 | 就像 Debug/Release 目录 |
+
+### **💡 实际上核心只需要 2 个文件**
+
+如果你只要最简单的，核心就是：
+```
+meson.build         # 构建逻辑
+add.c              # 源代码
+```
+
+其他都是为了：
+- **用户友好性**：`build.sh` 简化命令
+- **配置灵活性**：`meson_options.txt` 提供选项
+- **多平台支持**：`cross/*.ini` 交叉编译
+- **输出隔离**：`build_*/` 避免污染源码目录
+
+### **🎯 对比手动操作**
+
+**手动操作**：1 个命令，1 个输出文件
+```bash
+clang ... add.c -o add.wasm
+```
+
+**Meson**：结构化管理，支持复杂项目
+- 配置与逻辑分离
+- 多目标并行构建  
+- 自动依赖管理
+- 测试集成
+
+所以文件多是为了 **可维护性** 和 **扩展性**，核心逻辑其实还是那 2 条编译命令！

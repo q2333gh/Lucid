@@ -6,17 +6,17 @@ This project demonstrates how to compile a simple C add function to WebAssembly 
 
 ```bash
 # Build minimal version and run tests
-./build.sh --minimal --test
+python3 build.py --minimal --test
 
 # Build full WASI version  
-./build.sh --full
+python3 build.py --full
 
 # Generate WAT files for inspection
-./build.sh --minimal --wat
-./build.sh --full --wat
+python3 build.py --minimal --wat
+python3 build.py --full --wat
 
 # View all options
-./build.sh --help
+python3 build.py --help
 ```
 
 ## 📁 Project Structure
@@ -25,8 +25,8 @@ This project demonstrates how to compile a simple C add function to WebAssembly 
 ├── add.c                    # Simple C add function
 ├── meson.build             # Main build configuration
 ├── meson_options.txt       # Build options
-├── build.sh               # Convenient build script
-├── cross/                 # Cross-compilation configs
+├── build.py               # Modern Python build script
+├── cross/                 # Cross-compilation configs (unused)
 │   ├── wasi.ini          # WASI target configuration
 │   └── wasm32.ini        # Pure WASM32 configuration
 ├── build_full/           # Full WASI build output
@@ -49,18 +49,20 @@ This project demonstrates how to compile a simple C add function to WebAssembly 
 
 ## 🛠️ Prerequisites
 
-1. **Meson Build System**
+1. **Python 3.7+** (for the build script)
+
+2. **Meson Build System**
    ```bash
    pip install meson ninja
    ```
 
-2. **WASI SDK 21.0** (auto-detected in `wasi-sdk-21.0/`)
+3. **WASI SDK 21.0** (auto-detected in `wasi-sdk-21.0/`)
    ```bash
    wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-21/wasi-sdk-21.0-linux.tar.gz
    tar xvf wasi-sdk-21.0-linux.tar.gz
    ```
 
-3. **wasmtime** (for testing)
+4. **wasmtime** (for testing)
    ```bash
    curl https://wasmtime.dev/install.sh -sSf | bash
    ```
@@ -78,6 +80,9 @@ meson test -C build_minimal add_5_3
 
 # Verbose test output
 meson test -C build_minimal --verbose
+
+# Or use the Python script
+python3 build.py --minimal --test
 ```
 
 **Test Cases:**
@@ -140,25 +145,49 @@ meson compile -C build_full wat
 
 ```bash
 # Clean all build directories
-./build.sh --clean
+python3 build.py --clean
 
 # Or manually
 rm -rf build_minimal build_full
 ```
+
+## 🐍 Why Python Build Script?
+
+The Python build script (`build.py`) offers several advantages over the previous bash script:
+
+### ✅ **Improvements**
+- **Cross-platform**: Works on Windows, macOS, Linux
+- **Better error handling**: Detailed error messages and recovery suggestions
+- **Type safety**: Static typing with proper data structures
+- **Maintainable**: Clean OOP design with separated concerns
+- **Extensible**: Easy to add new features and build modes
+- **Dependency checking**: Automatic validation of required tools
+
+### 📊 **Comparison**
+
+| Feature | bash script | Python script |
+|---------|-------------|---------------|
+| **Lines of code** | 146 lines | ~280 lines (but more readable) |
+| **Error handling** | Basic | Comprehensive |
+| **Cross-platform** | ❌ Unix only | ✅ All platforms |
+| **Maintainability** | ⚠️ String-heavy | ✅ Structured classes |
+| **Extensibility** | ❌ Difficult | ✅ Easy to extend |
+| **Type safety** | ❌ None | ✅ Full typing |
+| **Dependency check** | ❌ Manual | ✅ Automatic |
 
 ## 📚 Additional Documentation
 
 - [`README_MESON.md`](README_MESON.md) - Detailed Meson usage guide
 - [`MESON_RESULTS.md`](MESON_RESULTS.md) - Migration results and comparison
 
-## 🎉 Why Meson?
+## 🎉 Why This Stack?
 
-- ✅ **Modern**: Fast, parallel builds
-- ✅ **Simple**: Clean configuration syntax  
-- ✅ **Integrated**: Built-in testing framework
-- ✅ **Cross-platform**: Native cross-compilation support
-- ✅ **IDE-friendly**: Multiple IDE integrations
+- ✅ **Python**: Modern, readable, cross-platform
+- ✅ **Meson**: Fast, parallel builds with great cross-compilation
+- ✅ **WASI SDK**: Industry-standard WebAssembly toolchain
+- ✅ **Structured**: Clean separation of concerns
+- ✅ **Testable**: Built-in automated testing
 
 ---
 
-**Previous Makefile-based build system has been removed in favor of this modern Meson approach.**
+**A modern, maintainable approach to WebAssembly development.**

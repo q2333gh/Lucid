@@ -7,7 +7,7 @@ cross-platform support, and more readable code.
 
 Usage:
     python build.py --minimal --test
-    python build.py --full --wat
+    python build.py --full_wasi --wat
     python build.py --clean
 """
 
@@ -320,7 +320,7 @@ app = typer.Typer(
 @app.command()
 def build_command(
     minimal: bool = typer.Option(False, "--minimal", "-m", help="Build minimal WASM without WASI runtime"),
-    full: bool = typer.Option(False, "--full", "-f", help="Build full WASI version"),
+    full_wasi: bool = typer.Option(False, "--full_wasi", "-f", help="Build full WASI version"),
     clean: bool = typer.Option(False, "--clean", "-c", help="Clean build directories"),
     test: bool = typer.Option(False, "--test", "-t", help="Run tests after building"),
     wat: bool = typer.Option(False, "--wat", "-w", help="Generate WAT file after building"),
@@ -332,7 +332,7 @@ def build_command(
     Examples:
     
     • [bold cyan]python build.py --minimal --test[/bold cyan]         # Build minimal version and run tests
-    • [bold cyan]python build.py --full --wat[/bold cyan]             # Build full version and generate WAT  
+    • [bold cyan]python build.py --full_wasi --wat[/bold cyan]             # Build full version and generate WAT  
     • [bold cyan]python build.py --clean[/bold cyan]                  # Clean all build directories
     • [bold cyan]python build.py --minimal --test --wat --verbose[/bold cyan]  # Build with detailed logs
     """
@@ -348,8 +348,8 @@ def build_command(
     builder.check_dependencies()
     
     # Determine build mode
-    if minimal and full:
-        console.print("❌ Cannot specify both --minimal and --full", style="red")
+    if minimal and full_wasi:
+        console.print("❌ Cannot specify both --minimal and --full_wasi", style="red")
         raise typer.Exit(1)
     elif minimal:
         mode = BuildMode.MINIMAL
@@ -367,4 +367,7 @@ def build_command(
         raise typer.Exit(1)
 
 if __name__ == "__main__":
+    # Handle -h as help alias
+    if len(sys.argv) > 1 and sys.argv[1] == "-h":
+        sys.argv[1] = "--help"
     app()

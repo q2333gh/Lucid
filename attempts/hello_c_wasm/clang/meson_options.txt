@@ -1,0 +1,11 @@
+option('minimal',
+  type: 'boolean',
+  value: false,
+  description: 'Build minimal WASM without WASI runtime (smaller size)'
+)
+
+option('wasi_sdk_path',
+  type: 'string',
+  value: '',
+  description: 'Path to WASI SDK installation (auto-detected if empty)'
+)

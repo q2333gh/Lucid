@@ -1,177 +1,164 @@
-# WASI Add Function with Clang
+# WASM Add Function - Meson Build System
 
-This project demonstrates how to compile a C add function to WebAssembly using Clang with WASI (WebAssembly System Interface) target.
+This project demonstrates how to compile a simple C add function to WebAssembly using **Meson build system** with WASI SDK.
 
-## What is WASI?
-
-WASI (WebAssembly System Interface) is a standard interface that allows WebAssembly modules to interact with the host system, including:
-- File system access
-- Network access
-- Console I/O (stdout, stderr)
-- Environment variables
-- And more
-
-## Files
-
-- `add.c` - C source code with add function and stdout output
-- `add_pure.c` - Pure C function without main() or I/O operations
-- `Makefile` - Build configuration for Clang WASI compilation
-- `Makefile_pure` - Build configuration for pure function
-- `run.sh` - Convenient script to compile and test
-- `test_pure.sh` - Test script for pure WASM function
-- `README.md` - This file
-
-## Two Approaches
-
-### 1. Traditional WASI Approach (add.c)
-This approach includes a main() function and uses WASI for command-line arguments and console output:
-- Has a main() function that processes command-line arguments
-- Uses printf() for output
-- Runs like a traditional command-line program
-- File size: ~40KB
-
-### 2. Pure Function Approach (add_pure.c)
-This approach creates a pure function that can be directly invoked:
-- No main() function needed
-- No I/O operations (printf, etc.)
-- Direct function invocation using `wasmtime --invoke`
-- Smaller binary size (~24KB)
-- Better for embedding in other applications
-- Clean separation of logic and I/O
-
-## Quick Start
-
-### Traditional WASI Approach
-The easiest way to run the traditional version:
+## 🚀 Quick Start
 
 ```bash
-./run.sh
+# Build minimal version and run tests
+./build.sh --minimal --test
+
+# Build full WASI version  
+./build.sh --full
+
+# Generate WAT files for inspection
+./build.sh --minimal --wat
+./build.sh --full --wat
+
+# View all options
+./build.sh --help
 ```
 
-### Pure Function Approach
-To test the pure function version:
+## 📁 Project Structure
+
+```
+├── add.c                    # Simple C add function
+├── meson.build             # Main build configuration
+├── meson_options.txt       # Build options
+├── build.sh               # Convenient build script
+├── cross/                 # Cross-compilation configs
+│   ├── wasi.ini          # WASI target configuration
+│   └── wasm32.ini        # Pure WASM32 configuration
+├── build_full/           # Full WASI build output
+└── build_minimal/        # Minimal build output
+```
+
+## 🎯 Two Build Modes
+
+### 1. Minimal Mode (`--minimal`)
+- **Size**: ~186 bytes
+- **WAT Lines**: ~10 lines
+- **Features**: Pure function, no WASI runtime
+- **Use Case**: Embedding in other applications
+
+### 2. Full WASI Mode (`--full`)
+- **Size**: ~22KB  
+- **WAT Lines**: ~7,000 lines
+- **Features**: Complete WASI runtime, all system calls
+- **Use Case**: Standalone applications
+
+## 🛠️ Prerequisites
+
+1. **Meson Build System**
+   ```bash
+   pip install meson ninja
+   ```
+
+2. **WASI SDK 21.0** (auto-detected in `wasi-sdk-21.0/`)
+   ```bash
+   wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-21/wasi-sdk-21.0-linux.tar.gz
+   tar xvf wasi-sdk-21.0-linux.tar.gz
+   ```
+
+3. **wasmtime** (for testing)
+   ```bash
+   curl https://wasmtime.dev/install.sh -sSf | bash
+   ```
+
+## 🧪 Testing
+
+Automated tests are built into the Meson system:
 
 ```bash
-# Build the pure version
-make -f Makefile_pure
+# Run all tests for minimal build
+meson test -C build_minimal
 
-# Test it
-./test_pure.sh
+# Run specific test
+meson test -C build_minimal add_5_3
 
-# Or call directly
-wasmtime --invoke add add_pure.wasm 5 3
+# Verbose test output
+meson test -C build_minimal --verbose
 ```
 
-## Prerequisites
+**Test Cases:**
+- `add(5, 3) = 8` ✅
+- `add(10, 20) = 30` ✅  
+- `add(100, 200) = 300` ✅
+- `add(-5, 8) = 3` ✅
 
-The project automatically downloads and sets up:
-- WASI SDK 21.0 (Clang with WASI support)
-- wasmtime runtime
+## 📊 Size Comparison
 
-## Building
+| Build Mode | File Size | WAT Lines | Description |
+|------------|-----------|-----------|-------------|
+| **Minimal** | 186 bytes | 10 lines | Pure function only |
+| **Full WASI** | 22KB | 7,022 lines | Complete runtime |
 
-Compile the C code to WebAssembly:
+**Minimal WAT Output:**
+```wat
+(module
+  (type (;0;) (func (param i32 i32) (result i32)))
+  (func $add (type 0) (param i32 i32) (result i32)
+    local.get 1
+    local.get 0
+    i32.add)
+  (memory (;0;) 2)
+  (global $__stack_pointer (mut i32) (i32.const 66560))
+  (export "memory" (memory 0))
+  (export "add" (func $add)))
+```
+
+## ⚙️ Manual Meson Usage
+
+### Build Minimal Version
 ```bash
-make
+meson setup build_minimal -Dminimal=true
+meson compile -C build_minimal
+meson test -C build_minimal
 ```
 
-This will generate:
-- `add.wasm` - WebAssembly binary with WASI support
-
-## Testing
-
-### Option 1: Using the run script (Recommended)
+### Build Full WASI Version  
 ```bash
-./run.sh
+meson setup build_full -Dminimal=false
+meson compile -C build_full
+meson test -C build_full
 ```
 
-### Option 2: Manual testing
+### Generate WAT Files
 ```bash
-# Set up environment
-export PATH="$(pwd)/wasi-sdk-21.0/bin:$HOME/.wasmtime/bin:$PATH"
-
-# Test with different numbers
-wasmtime add.wasm 5 3
-wasmtime add.wasm 10 20
-wasmtime add.wasm 100 200
+meson compile -C build_minimal wat
+meson compile -C build_full wat
 ```
 
-## Example Output
+## 🔧 Configuration Options
 
-When you run `wasmtime add.wasm 5 3`, you should see:
-```
-WASI: Adding 5 + 3 = 8
-Result: 8
-```
+- `minimal` (boolean, default: false)
+  - Build minimal WASM without WASI runtime
+- `wasi_sdk_path` (string, default: auto-detect)
+  - Custom WASI SDK installation path
 
-## How it works
-
-1. **Clang with WASI target**: Uses `--target=wasm32-wasi` to compile for WASI
-2. **stdout support**: WASI provides access to standard output
-3. **Command line arguments**: WASI allows passing arguments to the program
-4. **Runtime execution**: wasmtime provides the WASI runtime environment
-
-## Key Features
-
-- **stdout Output**: The function reports calculations to stdout
-- **Command Line Arguments**: Accepts two numbers as arguments
-- **Error Handling**: Shows usage instructions if wrong number of arguments
-- **Cross-platform**: Runs on any system with wasmtime
-
-## Differences from Emscripten
-
-| Feature | Emscripten | Clang + WASI |
-|---------|------------|--------------|
-| Target | Browser/Node.js | Standalone runtime |
-| I/O | JavaScript APIs | WASI system calls |
-| Runtime | Emscripten runtime | wasmtime/wasmer |
-| Use case | Web applications | Server-side, CLI tools |
-| stdout | JavaScript console.log | Native stdout |
-
-## Clean up
-
-To remove generated files:
-```bash
-make clean
-```
-
-## Notes
-
-- WASI provides a more standard POSIX-like interface
-- Better for server-side and CLI applications
-- Can run in any WASI-compatible runtime (wasmtime, wasmer, etc.)
-- No JavaScript glue code needed
-- Direct access to system I/O
-
-## Using Pure WASM Functions from Other Languages
-
-The pure function approach allows easy integration with other programming languages. We provide an example in Python:
+## 🧹 Cleanup
 
 ```bash
-# Run the Python example
-python3 example_usage.py
+# Clean all build directories
+./build.sh --clean
+
+# Or manually
+rm -rf build_minimal build_full
 ```
 
-This demonstrates:
-- Calling WASM functions from Python using subprocess
-- Language-agnostic interface
-- Sandboxed execution
-- High performance computation
+## 📚 Additional Documentation
 
-You can adapt this pattern for other languages like JavaScript, Rust, Go, etc.
+- [`README_MESON.md`](README_MESON.md) - Detailed Meson usage guide
+- [`MESON_RESULTS.md`](MESON_RESULTS.md) - Migration results and comparison
 
-## Summary
+## 🎉 Why Meson?
 
-**Use Traditional WASI approach when:**
-- You need a standalone command-line tool
-- You want console I/O and argument processing
-- You're building a complete application
+- ✅ **Modern**: Fast, parallel builds
+- ✅ **Simple**: Clean configuration syntax  
+- ✅ **Integrated**: Built-in testing framework
+- ✅ **Cross-platform**: Native cross-compilation support
+- ✅ **IDE-friendly**: Multiple IDE integrations
 
-**Use Pure Function approach when:**
-- You want to embed functions in other applications
-- You need language-agnostic interfaces
-- You want smaller binary sizes
-- You prefer clean separation of logic and I/O
-- You're building reusable computational modules
+---
 
-Both approaches are fully supported by wasmtime and provide excellent performance and portability.
+**Previous Makefile-based build system has been removed in favor of this modern Meson approach.**

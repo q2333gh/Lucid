@@ -63,14 +63,14 @@ class WasmBuilder:
         self.configs = {
             BuildMode.MINIMAL: BuildConfig(
                 mode=BuildMode.MINIMAL,
-                build_dir=self.project_root / "build_minimal",
+                build_dir=self.project_root / "build" / "minimal",
                 wasm_file="add_minimal.wasm",
                 wat_file="add_minimal.wat",
                 meson_options=["-Dminimal=true"]
             ),
             BuildMode.FULL: BuildConfig(
                 mode=BuildMode.FULL,
-                build_dir=self.project_root / "build_full",
+                build_dir=self.project_root / "build" / "full",
                 wasm_file="add.wasm",
                 wat_file="add.wat",
                 meson_options=["-Dminimal=false"]
@@ -221,19 +221,12 @@ class WasmBuilder:
         """Clean all build directories"""
         self.print_status("Cleaning build directories...")
         
-        dirs_to_clean = ["build_minimal", "build_full"]
-        cleaned = []
-        
-        for dir_name in dirs_to_clean:
-            dir_path = self.project_root / dir_name
-            if dir_path.exists():
-                shutil.rmtree(dir_path)
-                cleaned.append(dir_name)
-        
-        if cleaned:
-            self.print_success(f"Cleaned: {', '.join(cleaned)}")
+        build_dir = self.project_root / "build"
+        if build_dir.exists():
+            shutil.rmtree(build_dir)
+            self.print_success("Cleaned: build/ directory")
         else:
-            self.print_warning("No build directories to clean")
+            self.print_warning("No build directory to clean")
     
     def setup_build(self, config: BuildConfig) -> None:
         """Setup meson build directory"""

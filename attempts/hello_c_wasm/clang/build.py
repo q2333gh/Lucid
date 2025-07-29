@@ -11,44 +11,48 @@ Usage:
     python build.py --clean
 """
 
-import argparse
-import subprocess
 import sys
 import os
 import shutil
 from pathlib import Path
 from typing import Optional, List
-from dataclasses import dataclass
 from enum import Enum
+
+# Modern libraries for better UX and maintainability
+import typer
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
+from pydantic import BaseModel, field_validator
+from invoke import Context
 
 class BuildMode(Enum):
     MINIMAL = "minimal"
     FULL = "full"
 
-class Color:
-    """ANSI color codes for terminal output"""
-    RED = '\033[0;31m'
-    GREEN = '\033[0;32m'
-    BLUE = '\033[0;34m'
-    YELLOW = '\033[1;33m'
-    BOLD = '\033[1m'
-    RESET = '\033[0m'
-    
-    @classmethod
-    def colorize(cls, text: str, color: str) -> str:
-        """Add color to text if stdout is a terminal"""
-        if sys.stdout.isatty():
-            return f"{color}{text}{cls.RESET}"
-        return text
+# Initialize Rich console for beautiful output
+console = Console()
 
-@dataclass
-class BuildConfig:
-    """Build configuration settings"""
+class BuildConfig(BaseModel):
+    """Build configuration settings with validation"""
     mode: BuildMode
     build_dir: Path
     wasm_file: str
     wat_file: str
     meson_options: List[str]
+    
+    @field_validator('build_dir')
+    def validate_build_dir(cls, v):
+        """Ensure build_dir is a resolved Path object"""
+        return Path(v).resolve()
+    
+    @field_validator('wasm_file', 'wat_file')
+    def validate_filenames(cls, v):
+        """Ensure filenames have proper extensions"""
+        if not v:
+            raise ValueError("Filename cannot be empty")
+        return v
 
 class WasmBuilder:
     """Main builder class for WASM projects"""
@@ -72,75 +76,105 @@ class WasmBuilder:
             )
         }
     
-    def print_status(self, message: str, color: str = Color.BLUE) -> None:
+    def print_status(self, message: str, color: str = "blue") -> None:
         """Print colored status message"""
-        print(Color.colorize(f"🚀 {message}", color))
+        console.print(f"🚀 {message}", style=color)
     
     def print_success(self, message: str) -> None:
         """Print success message"""
-        print(Color.colorize(f"✅ {message}", Color.GREEN))
+        console.print(f"✅ {message}", style="green")
     
     def print_error(self, message: str) -> None:
         """Print error message"""
-        print(Color.colorize(f"❌ {message}", Color.RED), file=sys.stderr)
+        # Rich console doesn't support file parameter, so we print to stderr differently
+        import sys
+        stderr_console = Console(file=sys.stderr)
+        stderr_console.print(f"❌ {message}", style="red")
     
     def print_warning(self, message: str) -> None:
         """Print warning message"""
-        print(Color.colorize(f"⚠️  {message}", Color.YELLOW))
+        console.print(f"⚠️  {message}", style="yellow")
     
-    def run_command(self, cmd: List[str], cwd: Optional[Path] = None, 
-                   capture_output: bool = False) -> subprocess.CompletedProcess:
-        """Run a command with proper error handling"""
+    def run_command(self, cmd: str, cwd: Optional[Path] = None) -> None:
+        """Run a command with proper error handling using Invoke"""
         try:
-            result = subprocess.run(
-                cmd, 
-                cwd=cwd, 
-                check=True, 
-                capture_output=capture_output,
-                text=True
-            )
-            return result
-        except subprocess.CalledProcessError as e:
-            self.print_error(f"Command failed: {' '.join(cmd)}")
-            if e.stdout:
-                print(e.stdout)
-            if e.stderr:
-                print(e.stderr, file=sys.stderr)
-            sys.exit(1)
-        except FileNotFoundError:
-            self.print_error(f"Command not found: {cmd[0]}")
-            self.print_warning("Please ensure all required tools are installed")
+            with console.status(f"[bold blue]Running: {cmd}"):
+                # Use Context to handle cwd properly
+                ctx = Context()
+                if cwd:
+                    with ctx.cd(str(cwd)):
+                        result = ctx.run(cmd, warn=True, hide=True)
+                else:
+                    result = ctx.run(cmd, warn=True, hide=True)
+                
+                if result.failed:
+                    self.print_error(f"Command failed: {cmd}")
+                    if result.stdout:
+                        console.print(result.stdout)
+                    if result.stderr:
+                        console.print(result.stderr, style="red")
+                    sys.exit(1)
+        except Exception as e:
+            self.print_error(f"Failed to execute command: {cmd}")
+            self.print_error(f"Error: {e}")
             sys.exit(1)
     
     def check_dependencies(self) -> None:
-        """Check if required tools are available"""
+        """Check if required tools are available with Rich output"""
         required_tools = ["meson", "ninja"]
         optional_tools = ["wasmtime", "wasm2wat"]
+        
+        # Create a table for dependency status
+        table = Table(title="Dependency Check")
+        table.add_column("Tool", style="cyan")
+        table.add_column("Status", style="magenta")
+        table.add_column("Type", style="green")
         
         missing_required = []
         missing_optional = []
         
         for tool in required_tools:
-            if not shutil.which(tool):
+            if shutil.which(tool):
+                table.add_row(tool, "✅ Found", "Required")
+            else:
+                table.add_row(tool, "❌ Missing", "Required")
                 missing_required.append(tool)
         
         for tool in optional_tools:
-            if not shutil.which(tool):
+            if shutil.which(tool):
+                table.add_row(tool, "✅ Found", "Optional")
+            else:
+                table.add_row(tool, "⚠️ Missing", "Optional")
                 missing_optional.append(tool)
         
+        console.print(table)
+        
         if missing_required:
-            self.print_error(f"Missing required tools: {', '.join(missing_required)}")
-            print("\nInstall them with:")
-            print("  pip install meson ninja")
+            panel = Panel(
+                "Missing required tools: " + ", ".join(missing_required) + "\n\n" +
+                "Install them with:\n" +
+                "  pip install meson ninja",
+                title="❌ Missing Dependencies",
+                border_style="red"
+            )
+            console.print(panel)
             sys.exit(1)
         
         if missing_optional:
-            self.print_warning(f"Missing optional tools: {', '.join(missing_optional)}")
-            print("Some features may not work. Install with:")
+            install_commands = []
             if "wasmtime" in missing_optional:
-                print("  curl https://wasmtime.dev/install.sh -sSf | bash")
+                install_commands.append("curl https://wasmtime.dev/install.sh -sSf | bash")
             if "wasm2wat" in missing_optional:
-                print("  # Install wabt tools for wasm2wat")
+                install_commands.append("# Install wabt tools for wasm2wat")
+            
+            panel = Panel(
+                "Missing optional tools: " + ", ".join(missing_optional) + "\n\n" +
+                "Some features may not work. Install with:\n" +
+                "\n".join(install_commands),
+                title="⚠️ Optional Dependencies",
+                border_style="yellow"
+            )
+            console.print(panel)
     
     def clean_build_dirs(self) -> None:
         """Clean all build directories"""
@@ -164,17 +198,17 @@ class WasmBuilder:
         """Setup meson build directory"""
         if config.build_dir.exists():
             self.print_status(f"Reconfiguring existing build: {config.build_dir.name}")
-            cmd = ["meson", "configure", str(config.build_dir)] + config.meson_options
+            cmd = f"meson configure {config.build_dir} {' '.join(config.meson_options)}"
         else:
             self.print_status(f"Setting up new build: {config.build_dir.name}")
-            cmd = ["meson", "setup", str(config.build_dir)] + config.meson_options
+            cmd = f"meson setup {config.build_dir} {' '.join(config.meson_options)}"
         
         self.run_command(cmd)
     
     def compile_project(self, config: BuildConfig) -> None:
         """Compile the project"""
         self.print_status("Building...")
-        cmd = ["meson", "compile", "-C", str(config.build_dir)]
+        cmd = f"meson compile -C {config.build_dir}"
         self.run_command(cmd)
         
         wasm_path = config.build_dir / config.wasm_file
@@ -192,14 +226,14 @@ class WasmBuilder:
     def run_tests(self, config: BuildConfig) -> None:
         """Run meson tests"""
         self.print_status("Running tests...")
-        cmd = ["meson", "test", "-C", str(config.build_dir), "--verbose"]
+        cmd = f"meson test -C {config.build_dir} --verbose"
         self.run_command(cmd)
         self.print_success("All tests passed!")
     
     def generate_wat(self, config: BuildConfig) -> None:
         """Generate WAT file"""
         self.print_status("Generating WAT file...")
-        cmd = ["meson", "compile", "-C", str(config.build_dir), "wat"]
+        cmd = f"meson compile -C {config.build_dir} wat"
         self.run_command(cmd)
         
         wat_path = config.build_dir / config.wat_file
@@ -214,76 +248,64 @@ class WasmBuilder:
         """Main build function"""
         config = self.configs[mode]
         
-        self.print_status(f"Building {mode.value} version...", Color.BOLD)
+        self.print_status(f"Building {mode.value} version...", "bold")
         
-        # Setup and compile
-        self.setup_build(config)
-        self.compile_project(config)
-        
-        # Optional steps
-        if test:
-            self.run_tests(config)
-        
-        if wat:
-            self.generate_wat(config)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            # Setup and compile
+            task = progress.add_task("Setting up build...", total=None)
+            self.setup_build(config)
+            
+            progress.update(task, description="Compiling...")
+            self.compile_project(config)
+            
+            # Optional steps
+            if test:
+                progress.update(task, description="Running tests...")
+                self.run_tests(config)
+            
+            if wat:
+                progress.update(task, description="Generating WAT...")
+                self.generate_wat(config)
+            
+            progress.update(task, description="Complete!", completed=True)
         
         self.print_success("Build complete! 🎉")
 
-def create_parser() -> argparse.ArgumentParser:
-    """Create command line argument parser"""
-    parser = argparse.ArgumentParser(
-        description="WASM Add Function - Modern Build System",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  %(prog)s --minimal --test     # Build minimal version and run tests
-  %(prog)s --full --wat         # Build full version and generate WAT
-  %(prog)s --clean              # Clean all build directories
-  %(prog)s --minimal --test --wat  # Build, test, and generate WAT
-        """
-    )
-    
-    # Build mode (mutually exclusive)
-    mode_group = parser.add_mutually_exclusive_group()
-    mode_group.add_argument(
-        "-m", "--minimal", 
-        action="store_true",
-        help="Build minimal WASM without WASI runtime"
-    )
-    mode_group.add_argument(
-        "-f", "--full",
-        action="store_true", 
-        help="Build full WASI version (default)"
-    )
-    
-    # Actions
-    parser.add_argument(
-        "-c", "--clean",
-        action="store_true",
-        help="Clean build directories"
-    )
-    parser.add_argument(
-        "-t", "--test",
-        action="store_true",
-        help="Run tests after building"
-    )
-    parser.add_argument(
-        "-w", "--wat",
-        action="store_true",
-        help="Generate WAT file after building"
-    )
-    
-    return parser
+# Initialize Typer app
+app = typer.Typer(
+    name="build",
+    help="WASM Add Function - Modern Build System",
+    add_completion=False,
+    rich_markup_mode="rich"
+)
 
-def main():
-    """Main entry point"""
-    parser = create_parser()
-    args = parser.parse_args()
+@app.command()
+def build_command(
+    minimal: bool = typer.Option(False, "--minimal", "-m", help="Build minimal WASM without WASI runtime"),
+    full: bool = typer.Option(False, "--full", "-f", help="Build full WASI version"),
+    clean: bool = typer.Option(False, "--clean", "-c", help="Clean build directories"),
+    test: bool = typer.Option(False, "--test", "-t", help="Run tests after building"),
+    wat: bool = typer.Option(False, "--wat", "-w", help="Generate WAT file after building"),
+):
+    """
+    Build WASM add function with various options.
+    
+    Examples:
+    
+    • [bold cyan]python build.py --minimal --test[/bold cyan]     # Build minimal version and run tests
+    • [bold cyan]python build.py --full --wat[/bold cyan]         # Build full version and generate WAT  
+    • [bold cyan]python build.py --clean[/bold cyan]              # Clean all build directories
+    • [bold cyan]python build.py --minimal --test --wat[/bold cyan]  # Build, test, and generate WAT
+    """
     
     builder = WasmBuilder()
     
     # Handle clean operation
-    if args.clean:
+    if clean:
         builder.clean_build_dirs()
         return
     
@@ -291,20 +313,23 @@ def main():
     builder.check_dependencies()
     
     # Determine build mode
-    if args.minimal:
+    if minimal and full:
+        console.print("❌ Cannot specify both --minimal and --full", style="red")
+        raise typer.Exit(1)
+    elif minimal:
         mode = BuildMode.MINIMAL
     else:
         mode = BuildMode.FULL  # Default to full
     
     # Build the project
     try:
-        builder.build(mode, test=args.test, wat=args.wat)
+        builder.build(mode, test=test, wat=wat)
     except KeyboardInterrupt:
         builder.print_error("Build interrupted by user")
-        sys.exit(1)
+        raise typer.Exit(1)
     except Exception as e:
         builder.print_error(f"Unexpected error: {e}")
-        sys.exit(1)
+        raise typer.Exit(1)
 
 if __name__ == "__main__":
-    main()
+    app()

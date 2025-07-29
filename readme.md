@@ -1,2 +1,1 @@
-Lucid : an internet computer canister development kit for C language ;designed to be clear, concise, and understandable.
-
+Lucid : Internet Computer Canister development kit for C, focused on clarity, simplicity, and ease of understanding.

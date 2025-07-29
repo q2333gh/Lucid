@@ -57,8 +57,9 @@ class BuildConfig(BaseModel):
 class WasmBuilder:
     """Main builder class for WASM projects"""
     
-    def __init__(self):
+    def __init__(self, verbose: bool = False):
         self.project_root = Path.cwd()
+        self.verbose = verbose
         self.configs = {
             BuildMode.MINIMAL: BuildConfig(
                 mode=BuildMode.MINIMAL,
@@ -95,25 +96,65 @@ class WasmBuilder:
         """Print warning message"""
         console.print(f"⚠️  {message}", style="yellow")
     
+    def print_command_header(self, cmd: str, cwd: Optional[Path] = None) -> None:
+        """Print a nicely formatted command header for verbose mode"""
+        console.print()  # Empty line for spacing
+        
+        # Truncate long commands for display
+        display_cmd = cmd if len(cmd) <= 50 else cmd[:47] + "..."
+        
+        console.print("┌" + "─" * 60 + "┐", style="dim blue")
+        console.print(f"│ [bold blue]Command:[/bold blue] {display_cmd:<47} │", style="dim blue")
+        if len(cmd) > 50:
+            console.print(f"│ [dim]Full: {cmd}[/dim]", style="dim blue")
+        if cwd:
+            console.print(f"│ [dim]Directory: {str(cwd)}[/dim]", style="dim blue")
+        console.print("└" + "─" * 60 + "┘", style="dim blue")
+    
+    def print_command_footer(self, success: bool = True) -> None:
+        """Print command completion status"""
+        if success:
+            console.print("[dim green]✓ Command completed successfully[/dim green]")
+        console.print()  # Empty line for spacing
+    
     def run_command(self, cmd: str, cwd: Optional[Path] = None) -> None:
         """Run a command with proper error handling using Invoke"""
         try:
-            with console.status(f"[bold blue]Running: {cmd}"):
-                # Use Context to handle cwd properly
+            if self.verbose:
+                # Show formatted command header
+                self.print_command_header(cmd, cwd)
+                
+                # Run with visible output in verbose mode
                 ctx = Context()
                 if cwd:
                     with ctx.cd(str(cwd)):
-                        result = ctx.run(cmd, warn=True, hide=True)
+                        result = ctx.run(cmd, warn=True, hide=False)
                 else:
-                    result = ctx.run(cmd, warn=True, hide=True)
+                    result = ctx.run(cmd, warn=True, hide=False)
                 
                 if result.failed:
-                    self.print_error(f"Command failed: {cmd}")
-                    if result.stdout:
-                        console.print(result.stdout)
-                    if result.stderr:
-                        console.print(result.stderr, style="red")
+                    self.print_command_footer(success=False)
+                    self.print_error(f"Command failed with exit code {result.exited}: {cmd}")
                     sys.exit(1)
+                else:
+                    self.print_command_footer(success=True)
+            else:
+                # Original behavior with hidden output and spinner
+                with console.status(f"[bold blue]Running: {cmd}"):
+                    ctx = Context()
+                    if cwd:
+                        with ctx.cd(str(cwd)):
+                            result = ctx.run(cmd, warn=True, hide=True)
+                    else:
+                        result = ctx.run(cmd, warn=True, hide=True)
+                    
+                    if result.failed:
+                        self.print_error(f"Command failed: {cmd}")
+                        if result.stdout:
+                            console.print(result.stdout)
+                        if result.stderr:
+                            console.print(result.stderr, style="red")
+                        sys.exit(1)
         except Exception as e:
             self.print_error(f"Failed to execute command: {cmd}")
             self.print_error(f"Error: {e}")
@@ -290,19 +331,20 @@ def build_command(
     clean: bool = typer.Option(False, "--clean", "-c", help="Clean build directories"),
     test: bool = typer.Option(False, "--test", "-t", help="Run tests after building"),
     wat: bool = typer.Option(False, "--wat", "-w", help="Generate WAT file after building"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed build logs and commands"),
 ):
     """
     Build WASM add function with various options.
     
     Examples:
     
-    • [bold cyan]python build.py --minimal --test[/bold cyan]     # Build minimal version and run tests
-    • [bold cyan]python build.py --full --wat[/bold cyan]         # Build full version and generate WAT  
-    • [bold cyan]python build.py --clean[/bold cyan]              # Clean all build directories
-    • [bold cyan]python build.py --minimal --test --wat[/bold cyan]  # Build, test, and generate WAT
+    • [bold cyan]python build.py --minimal --test[/bold cyan]         # Build minimal version and run tests
+    • [bold cyan]python build.py --full --wat[/bold cyan]             # Build full version and generate WAT  
+    • [bold cyan]python build.py --clean[/bold cyan]                  # Clean all build directories
+    • [bold cyan]python build.py --minimal --test --wat --verbose[/bold cyan]  # Build with detailed logs
     """
     
-    builder = WasmBuilder()
+    builder = WasmBuilder(verbose=verbose)
     
     # Handle clean operation
     if clean:

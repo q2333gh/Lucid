@@ -1,5 +1,5 @@
 p_doc
-attempts/hello_c_wasm/clang/wasi-sdk-*/
+attempts/hello_c_wasm/clang/lib/wasi-sdk-*/
 attempts/hello_c_wasm/emcc/emsdk/
 *.wasm
 

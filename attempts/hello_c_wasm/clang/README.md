@@ -44,6 +44,9 @@ uv run python build.py --minimal --test
 # Build, test, and generate WAT file
 uv run python build.py --full --test --wat
 
+# Build with detailed logs (shows actual compiler commands)
+uv run python build.py --minimal --verbose
+
 # Clean build directories
 uv run python build.py --clean
 ```
@@ -54,6 +57,7 @@ uv run python build.py --clean
 # The build.sh script is a convenient wrapper
 ./build.sh --help
 ./build.sh --minimal --test
+./build.sh --verbose --full --wat
 ./build.sh --clean
 ```
 
@@ -61,13 +65,26 @@ uv run python build.py --clean
 
 ```
 .
-├── build.py           # Modern Python build script
-├── build.sh           # Shell wrapper for uv
-├── pyproject.toml     # Python project configuration
-├── requirements.txt   # Legacy requirements file
-├── meson.build        # Meson build configuration
-├── add.c              # C source code
-└── README.md          # This file
+├── meson.build               # 顶层构建文件
+├── meson_options.txt         # 构建选项定义
+├── include/                  # 公共头文件 (对外接口)
+│   └── lucid_wasm/           # 以项目命名的命名空间
+│       └── api.h
+├── src/                      # 源代码（实现）
+│   ├── add.c                 # 主要源文件
+│   └── cross/                # 交叉编译配置
+│       ├── wasi.ini
+│       └── wasm32.ini
+├── lib/                      # 第三方库和SDK
+│   └── wasi-sdk-21.0/        # WASI SDK
+├── tests/                    # 测试代码
+│   └── test_add.c            # 测试文件
+├── build.py                  # Modern Python build script
+├── build.sh                  # Shell wrapper for uv
+├── pyproject.toml            # Python project configuration
+├── README.md                 # This file
+├── README_MESON.md           # Detailed Meson guide
+└── build/                    # Meson 的构建输出目录（自动生成）
 ```
 
 ## Dependencies

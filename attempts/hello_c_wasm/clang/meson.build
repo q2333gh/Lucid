@@ -13,7 +13,7 @@ wasi_sdk_path = get_option('wasi_sdk_path')
 
 # Auto-detect WASI SDK path if not provided
 if wasi_sdk_path == ''
-  wasi_sdk_path = meson.current_source_dir() / 'wasi-sdk-21.0'
+  wasi_sdk_path = meson.current_source_dir() / 'lib' / 'wasi-sdk-21.0'
 endif
 
 # Set up compiler
@@ -27,11 +27,14 @@ endif
 # Override the C compiler to use WASI clang
 cc = find_program(wasi_clang)
 
+# Include directories
+inc_dir = include_directories('include')
+
 # Source files
-add_sources = files('add.c')
+add_sources = files('src/add.c')
 
 # Common compiler arguments
-common_args = []
+common_args = ['-I' + meson.current_source_dir() / 'include']
 
 # Target-specific configuration
 if build_minimal

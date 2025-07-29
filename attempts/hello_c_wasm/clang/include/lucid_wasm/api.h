@@ -1,9 +1,5 @@
-#ifndef LUCID_WASM_API_H
-#define LUCID_WASM_API_H
+#pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * Add two integers
@@ -12,9 +8,3 @@ extern "C" {
  * @return Sum of a and b
  */
 int add(int a, int b);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // LUCID_WASM_API_H

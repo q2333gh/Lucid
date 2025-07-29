@@ -1,1 +1,61 @@
 p_doc
+attempts/hello_c_wasm/clang/wasi-sdk-*/
+attempts/hello_c_wasm/emcc/emsdk/
+*.wasm
+
+# Build artifacts and temporary files
+*.o
+*.out
+*.tmp
+*.log
+*.a
+*.so
+*.dylib
+*.dll
+
+# WebAssembly related files
+*.wat
+*.wast
+*.js.map
+
+# Archive files (SDKs, toolchains)
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.zip
+*.tgz
+*.rar
+*.7z
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+
+# Language specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime and cache directories
+.cache/
+.npm/
+.yarn/

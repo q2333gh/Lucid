@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASM Add Function Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WASM Add Function Test</h1>
+        <p>Enter two numbers to add using the C function compiled to WebAssembly:</p>
+        
+        <div>
+            <input type="number" id="num1" placeholder="First number" value="5">
+            <input type="number" id="num2" placeholder="Second number" value="3">
+            <button onclick="calculate()">Add Numbers</button>
+        </div>
+        
+        <div id="result">Result will appear here...</div>
+    </div>
+
+    <script>
+        let wasmModule = null;
+
+        // Load and initialize the WASM module
+        function loadWasm() {
+            try {
+                // Module is already available as an object, not a function
+                wasmModule = Module;
+                console.log('WASM module loaded successfully');
+                document.getElementById('result').textContent = 'WASM module loaded! Enter numbers and click Add.';
+            } catch (error) {
+                console.error('Error loading WASM module:', error);
+                document.getElementById('result').textContent = 'Error loading WASM module: ' + error.message;
+            }
+        }
+
+        // Calculate function using WASM
+        function calculate() {
+            if (!wasmModule) {
+                document.getElementById('result').textContent = 'WASM module not loaded yet...';
+                return;
+            }
+
+            const num1 = parseInt(document.getElementById('num1').value);
+            const num2 = parseInt(document.getElementById('num2').value);
+
+            if (isNaN(num1) || isNaN(num2)) {
+                document.getElementById('result').textContent = 'Please enter valid numbers';
+                return;
+            }
+
+            try {
+                // Call the WASM function
+                const result = wasmModule.ccall('add_exported', 'number', ['number', 'number'], [num1, num2]);
+                document.getElementById('result').textContent = `${num1} + ${num2} = ${result}`;
+            } catch (error) {
+                console.error('Error calling WASM function:', error);
+                document.getElementById('result').textContent = 'Error calculating result: ' + error.message;
+            }
+        }
+
+        // Wait for the Module to be ready
+        function waitForModule() {
+            if (typeof Module !== 'undefined' && Module.ccall) {
+                loadWasm();
+            } else {
+                setTimeout(waitForModule, 100);
+            }
+        }
+
+        // Start waiting for the module when page loads
+        window.onload = waitForModule;
+    </script>
+    
+    <!-- Load the compiled WASM module -->
+    <script src="add.js"></script>
+</body>
+</html>

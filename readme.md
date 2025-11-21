@@ -5,7 +5,7 @@
 # Lucid : Internet Computer Canister development kit for C, focused on clarity, simplicity, and ease of understanding.
 
 
-A pure C language SDK for developing Internet Computer (IC) canisters. This SDK provides a lightweight, with minimal dependencies and fast compilation.
+A pure C language SDK for developing Internet Computer (IC) canisters. This SDK provides a lightweight, with minimal dependencies and fast compilation. 
 
 ## Features
 

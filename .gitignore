@@ -1,0 +1,79 @@
+# project specific files
+## my temporary docs
+attempts/
+t_doc
+
+##libs
+attempts/hello_c_wasm/clang/lib/wasi-sdk-*/
+attempts/hello_c_wasm/emcc/emsdk/
+## build artifacts and runtime artifacts 
+.dfx/
+build/
+*.wasm
+## compile commands for IDEs
+compile_commands.json
+## tests
+src/c_canister_dev_kit/cdk-c-ic-syscall/examples/test/pocket-ic
+pocket-ic
+
+####
+## Other common ignores
+.env
+
+# Build artifacts and temporary files
+*.o
+*.out
+*.tmp
+*.log
+*.a
+*.so
+*.dylib
+*.dll
+
+# WebAssembly related files
+*.wat
+*.wast
+*.js.map
+
+# Archive files (SDKs, toolchains)
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.zip
+*.tgz
+*.rar
+*.7z
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+
+# Language specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime and cache directories
+.cache/
+.npm/
+.yarn/
+####

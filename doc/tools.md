@@ -1,0 +1,23 @@
+# Build Tools
+
+## Required Tools
+
+- **WASI SDK**: Compiler toolchain for WebAssembly
+- **Python 3**: Build script execution
+- **wasm-opt** (optional): WASM optimization
+
+## Build Scripts
+
+- `scripts/build.py`: Main build script
+- `scripts/build_utils/`: Build utilities module
+  - `config.py`: Configuration management
+  - `utils.py`: Utility functions
+  - `verification.py`: WASM verification
+
+## Dependency Tools
+
+- **wasi2ic**: Converts WASI WASM to IC-compatible WASM
+- **libic_wasi_polyfill**: WASI→IC system call conversion layer
+
+Both are automatically built if not found.
+

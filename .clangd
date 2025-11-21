@@ -1,0 +1,14 @@
+CompileFlags:
+  Add:
+    # SDK include root path
+    - -I./cdk-c/include
+    # SDK source files path (optional, for indexing convenience)
+    - -I./cdk-c/src
+
+# clangd index related settings
+Index:
+  Background: Fast
+
+Diagnostics:
+  UnusedIncludes: None
+

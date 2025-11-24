@@ -1,5 +1,4 @@
 {
-  "mesonbuild.configureOnOpen": false,
   "C_Cpp.default.compileCommands": "${workspaceFolder}/cdk-c/compile_commands.json",
   "clangd.arguments": [
     "--compile-commands-dir=${workspaceFolder}/cdk-c"

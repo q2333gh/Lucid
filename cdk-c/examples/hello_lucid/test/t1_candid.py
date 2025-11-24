@@ -176,15 +176,17 @@ def main():
     assert response == "hello world from cdk-c", f"Expected 'hello world from cdk-c', got: {response}"
     print("✓ greet_no_arg test passed")
     
-    print("\n=== All tests completed ===")
-    print("\nBenefits of using create_and_install_canister_with_candid:")
-    print("1. Automatic canister setup - creates canister, adds cycles, installs code")
-    print("2. Candid interface registration - DID file is parsed and stored")
-    print("3. Simplified workflow - single method call instead of multiple steps")
-    print("4. Canister object - provides canister_id and Candid interface reference")
-    print("\nNote: For method calls, we use pic.query_call() and decode responses")
-    print("      based on the DID file definition. The canister object's methods")
-    print("      may have method name formatting issues, so direct query_call is used.")
+    print("""\n=== All tests completed ===
+
+Benefits of using create_and_install_canister_with_candid:
+1. Automatic canister setup - creates canister, adds cycles, installs code
+2. Candid interface registration - DID file is parsed and stored
+3. Simplified workflow - single method call instead of multiple steps
+4. Canister object - provides canister_id and Candid interface reference
+
+Note: For method calls, we use pic.query_call() and decode responses
+      based on the DID file definition. The canister object's methods
+      may have method name formatting issues, so direct query_call is used.""")
 
 
 if __name__ == "__main__":

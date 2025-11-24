@@ -4,11 +4,12 @@ CompileFlags:
     - -I./cdk-c/include
     # SDK source files path (optional, for indexing convenience)
     - -I./cdk-c/src
+    - -Wall
+    - -Wextra
 
 # clangd index related settings
 Index:
-  Background: Fast
+  Background: Build
 
 Diagnostics:
   UnusedIncludes: None
-

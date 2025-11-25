@@ -7,12 +7,15 @@
 #include "ic_candid.h"
 #include "ic_principal.h"
 
+// Tiny helper to keep buffer initialization consistent across tests.
 static ic_buffer_t make_buffer(void) {
     ic_buffer_t buf;
     cr_expect_eq(ic_buffer_init(&buf), IC_OK);
     return buf;
 }
 
+// Unsigned LEB128 should round-trip a representative range, including max
+// values.
 Test(ic_candid, leb128_round_trip_values) {
     const uint64_t values[] = {0ULL,   1ULL,      127ULL,
                                128ULL, 624485ULL, UINT64_MAX};
@@ -42,6 +45,7 @@ Test(ic_candid, leb128_round_trip_values) {
     ic_buffer_free(&invalid);
 }
 
+// Signed LEB128 needs to decode negatives and detect truncated payloads.
 Test(ic_candid, sleb128_decodes_negative_numbers_and_errors_on_truncation) {
     const uint8_t encoded_negative[] = {0xC0, 0xBB, 0x78};  // -123456
     size_t offset = 0;
@@ -61,6 +65,7 @@ Test(ic_candid, sleb128_decodes_negative_numbers_and_errors_on_truncation) {
                  IC_ERR_INVALID_ARG);
 }
 
+// Text serialization must capture both payload and type tag round-tripping.
 Test(ic_candid, serialize_and_deserialize_text) {
     ic_buffer_t buf = make_buffer();
     const char* message = "hello lucid";
@@ -89,6 +94,7 @@ Test(ic_candid, serialize_and_deserialize_text) {
                  IC_ERR_INVALID_ARG);
 }
 
+// Integer helpers should cover both nat (unsigned) and int (signed) paths.
 Test(ic_candid, serialize_and_deserialize_nat_and_int) {
     ic_buffer_t buf = make_buffer();
     const uint64_t nat_value = 9007199254740991ULL;
@@ -118,6 +124,7 @@ Test(ic_candid, serialize_and_deserialize_nat_and_int) {
     ic_buffer_free(&buf);
 }
 
+// Binary blobs and principals exercise the more complex structured encoders.
 Test(ic_candid, serialize_and_deserialize_blob_and_principal) {
     ic_buffer_t buf = make_buffer();
     const uint8_t blob[] = {0xDE, 0xAD, 0xBE, 0xEF, 0x42};
@@ -160,6 +167,7 @@ Test(ic_candid, serialize_and_deserialize_blob_and_principal) {
     ic_buffer_free(&buf);
 }
 
+// Quick sanity check: magic header detection rejects short/invalid payloads.
 Test(ic_candid, candid_magic_header_detection) {
     const uint8_t valid[] = {'D', 'I', 'D', 'L', 0x00};
     const uint8_t invalid[] = {'D', 'I', 'D'};

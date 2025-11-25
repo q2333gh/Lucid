@@ -4,8 +4,8 @@
 
 #include "ic_principal.h"
 
-Test(ic_principal, from_bytes_and_equality)
-{
+// Happy-path: bytes → principals → equality comparison stays stable.
+Test(ic_principal, from_bytes_and_equality) {
     ic_principal_t left = {0};
     ic_principal_t right = {0};
     const uint8_t raw[] = {0xAB, 0xCD, 0xEF, 0x01};
@@ -20,19 +20,25 @@ Test(ic_principal, from_bytes_and_equality)
     cr_expect_not(ic_principal_equal(&left, &right));
 }
 
-Test(ic_principal, from_bytes_validates_input)
-{
+// Constructors must reject null pointers, zero-length data, and oversized
+// blobs.
+Test(ic_principal, from_bytes_validates_input) {
     ic_principal_t principal = {0};
     uint8_t oversized[IC_PRINCIPAL_MAX_LEN + 1] = {0};
 
-    cr_expect_eq(ic_principal_from_bytes(&principal, NULL, 1), IC_ERR_INVALID_ARG);
-    cr_expect_eq(ic_principal_from_bytes(NULL, oversized, 1), IC_ERR_INVALID_ARG);
-    cr_expect_eq(ic_principal_from_bytes(&principal, oversized, 0), IC_ERR_INVALID_ARG);
-    cr_expect_eq(ic_principal_from_bytes(&principal, oversized, sizeof(oversized)), IC_ERR_INVALID_ARG);
+    cr_expect_eq(ic_principal_from_bytes(&principal, NULL, 1),
+                 IC_ERR_INVALID_ARG);
+    cr_expect_eq(ic_principal_from_bytes(NULL, oversized, 1),
+                 IC_ERR_INVALID_ARG);
+    cr_expect_eq(ic_principal_from_bytes(&principal, oversized, 0),
+                 IC_ERR_INVALID_ARG);
+    cr_expect_eq(
+        ic_principal_from_bytes(&principal, oversized, sizeof(oversized)),
+        IC_ERR_INVALID_ARG);
 }
 
-Test(ic_principal, to_text_encodes_expected_base32_prefix)
-{
+// Encoding should yield the stable, expected base32 output for known fixtures.
+Test(ic_principal, to_text_encodes_expected_base32_prefix) {
     ic_principal_t principal = {0};
     const uint8_t raw[] = {0xAB, 0xCD, 0x01};
     cr_expect_eq(ic_principal_from_bytes(&principal, raw, sizeof(raw)), IC_OK);
@@ -43,8 +49,8 @@ Test(ic_principal, to_text_encodes_expected_base32_prefix)
     cr_expect_str_eq(text, "vpzuae");
 }
 
-Test(ic_principal, to_text_checks_buffer_and_input)
-{
+// Text conversion must fail fast when buffers are too small or inputs invalid.
+Test(ic_principal, to_text_checks_buffer_and_input) {
     ic_principal_t principal = {0};
     const uint8_t raw[] = {0x01};
     cr_expect_eq(ic_principal_from_bytes(&principal, raw, sizeof(raw)), IC_OK);
@@ -56,4 +62,3 @@ Test(ic_principal, to_text_checks_buffer_and_input)
     char buf[8] = {0};
     cr_expect_eq(ic_principal_to_text(&invalid, buf, sizeof(buf)), -1);
 }
-

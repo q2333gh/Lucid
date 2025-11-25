@@ -26,7 +26,12 @@ cmake --build test/build
 ```
 
 - This generates the `ic_cdk_tests` executable in `test/build`.
-- The `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON` flag also writes `test/build/compile_commands.json`; symlink it to the repo root (`ln -sf "$PWD/test/build/compile_commands.json" ../compile_commands.json`) so clangd treats the Criterion tests as native builds.
+- After configuration, run:
+  ```bash
+  ln -sf "$PWD/test/build/compile_commands.json" "$PWD/compile_commands.json"
+  ln -sf "$PWD/compile_commands.json" ../compile_commands.json   # optional root alias
+  ```
+  This keeps `cdk-c/compile_commands.json` (and optionally the repo-root alias) pointing at the host build so clangd/VS Code treat the Criterion tests as native builds.
 - After source changes, rerun `cmake --build test/build` for incremental builds.
 
 ## 3. Running Tests

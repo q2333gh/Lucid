@@ -5,8 +5,8 @@
 
 #include "ic_buffer.h"
 
-Test(ic_buffer, init_reserve_and_free)
-{
+// Basic lifecycle should allocate on demand and cleanly release memory.
+Test(ic_buffer, init_reserve_and_free) {
     ic_buffer_t buf;
     cr_expect_eq(ic_buffer_init(&buf), IC_OK);
     cr_expect_null(buf.data);
@@ -23,8 +23,8 @@ Test(ic_buffer, init_reserve_and_free)
     cr_expect_eq(buf.size, 0);
 }
 
-Test(ic_buffer, append_and_clear_preserve_capacity)
-{
+// Clearing should reset size without shrinking the underlying allocation.
+Test(ic_buffer, append_and_clear_preserve_capacity) {
     ic_buffer_t buf;
     cr_expect_eq(ic_buffer_init(&buf), IC_OK);
 
@@ -36,7 +36,8 @@ Test(ic_buffer, append_and_clear_preserve_capacity)
     const uint8_t payload_b[] = {5, 6, 7};
     cr_expect_eq(ic_buffer_append(&buf, payload_b, sizeof(payload_b)), IC_OK);
     cr_expect_eq(buf.size, sizeof(payload_a) + sizeof(payload_b));
-    cr_expect_eq(memcmp(buf.data + sizeof(payload_a), payload_b, sizeof(payload_b)), 0);
+    cr_expect_eq(
+        memcmp(buf.data + sizeof(payload_a), payload_b, sizeof(payload_b)), 0);
 
     size_t previous_capacity = buf.capacity;
     ic_buffer_clear(&buf);
@@ -47,8 +48,8 @@ Test(ic_buffer, append_and_clear_preserve_capacity)
     ic_buffer_free(&buf);
 }
 
-Test(ic_buffer, append_byte_is_consistent)
-{
+// Byte-wise append helper must behave exactly like the bulk append logic.
+Test(ic_buffer, append_byte_is_consistent) {
     ic_buffer_t buf;
     cr_expect_eq(ic_buffer_init(&buf), IC_OK);
 
@@ -61,8 +62,8 @@ Test(ic_buffer, append_byte_is_consistent)
     ic_buffer_free(&buf);
 }
 
-Test(ic_buffer, invalid_arguments_are_rejected)
-{
+// API must defend against null inputs to avoid crashes in host code.
+Test(ic_buffer, invalid_arguments_are_rejected) {
     ic_buffer_t buf;
     cr_expect_eq(ic_buffer_init(&buf), IC_OK);
 
@@ -74,8 +75,9 @@ Test(ic_buffer, invalid_arguments_are_rejected)
     ic_buffer_free(&buf);
 }
 
-Test(ic_buffer, detects_size_overflow_before_allocating)
-{
+// Guard against size_t overflow so reserve/append never wrap and
+// under-allocate.
+Test(ic_buffer, detects_size_overflow_before_allocating) {
     ic_buffer_t buf;
     cr_expect_eq(ic_buffer_init(&buf), IC_OK);
 
@@ -85,4 +87,3 @@ Test(ic_buffer, detects_size_overflow_before_allocating)
 
     ic_buffer_free(&buf);
 }
-

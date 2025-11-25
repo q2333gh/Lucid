@@ -12,14 +12,15 @@ clangd behaves best when host-only compile commands are separated from the WASM 
 ```bash
 cd cdk-c
 cmake -S test -B test/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-ln -sf "$PWD/test/build/compile_commands.json" ../compile_commands.json
+ln -sf "$PWD/test/build/compile_commands.json" "$PWD/compile_commands.json"
+# optional but recommended if you open the repo root in clangd/VS Code
+ln -sf "$PWD/compile_commands.json" ../compile_commands.json
 ```
 
 - `cmake ... -DCMAKE_EXPORT_COMPILE_COMMANDS=ON` emits the host `compile_commands.json` inside `cdk-c/test/build/`.
-- The symlink keeps the repo-root `compile_commands.json` pointing at that host file so clangd always indexes against the native headers (Criterion, glibc, etc.).
+- The first `ln` keeps `cdk-c/compile_commands.json` stable for editors configured to look inside `cdk-c/`.
+- The second `ln` mirrors that file back to the repo root so root-level workspaces still function; skip it if you never open the root folder.
 - Re-run those commands whenever you clean `cdk-c/test/build/` or install new headers.
-
-> Tip: open the workspace at `/home/<username>/code/Lucid` (not `cdk-c/` directly) so clangd finds the root-level `compile_commands.json` automatically.
 
 ### WASM compile database (optional tooling)
 

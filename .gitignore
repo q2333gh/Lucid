@@ -9,6 +9,8 @@ attempts/hello_c_wasm/emcc/emsdk/
 ## build artifacts and runtime artifacts 
 .dfx/
 build/
+cdk-c/build/
+cdk-c/test/build/
 *.wasm
 ## compile commands for IDEs
 compile_commands.json

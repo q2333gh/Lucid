@@ -163,5 +163,5 @@ See `examples/hello_lucid/` for a complete example canister with PocketIC tests.
 - Examples: See `examples/` directory
 
 ## License
+Apache 2.0
 
-[Add your license information here]

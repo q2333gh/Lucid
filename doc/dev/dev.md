@@ -6,7 +6,7 @@ Generate `compile_commands.json` for IDE code completion and navigation (clangd,
 
 ```bash
 cd cdk-c
-bear python scripts/build.py --wasi --examples
+bear python scripts/build.py --wasi --examples ( i use bear 2.4.4)
 ```
 
 This will create `compile_commands.json` in the project root, enabling better IDE support for C code navigation and autocomplete.

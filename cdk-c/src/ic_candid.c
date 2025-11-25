@@ -80,7 +80,8 @@ ic_result_t candid_read_sleb128(const uint8_t* data, size_t len, size_t* offset,
         if ((byte & 0x80) == 0) {
             // Apply sign extension when needed
             if (shift < 63 && (byte & 0x40) != 0) {
-                *value |= ((int64_t)(-1)) << (shift + 7);
+                int64_t mask = -((int64_t)1 << (shift + 7));
+                *value |= mask;
             }
             return IC_OK;  // Encoding complete
         }

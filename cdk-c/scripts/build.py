@@ -5,9 +5,11 @@ Supports native and WASI platform compilation
 """
 
 import sys
-import argparse
 import shutil
 from pathlib import Path
+
+import typer
+from rich.console import Console
 
 # Import build utilities
 from build_utils import (
@@ -28,6 +30,11 @@ from build_utils import (
     verify_raw_init_import,
     optimize_wasm,
 )
+
+
+########################################################################
+console = Console(force_terminal=True, markup=True)
+print = console.print  # route legacy prints through Rich for consistent styling
 
 
 ########################################################################
@@ -52,6 +59,9 @@ BUILD_WASI2IC_SCRIPT = SCRIPT_DIR / "build_wasi2ic.py"
 
 # Example files
 EXAMPLE_SOURCES = list(EXAMPLES_DIR.glob("*.c")) if EXAMPLES_DIR.exists() else []
+
+# Typer app
+app = typer.Typer(add_completion=False, help="IC C SDK build tool")
 
 
 ########################################################################
@@ -114,13 +124,13 @@ class ICBuilder:
     def build_library(self) -> bool:
         """Build library"""
         platform_name = "WASI" if self.target_platform == "wasi" else "Native"
-        print(f"🚀 Starting IC C SDK library build ({platform_name})")
+        print(f"[bold cyan]Starting IC C SDK library build ({platform_name})[/]")
         
         # Check if WASI SDK exists
         if self.target_platform == "wasi":
             wasi_paths = get_wasi_sdk_paths()
             if not wasi_paths['WASI_C'].exists():
-                print(f"❌ WASI SDK not found: {wasi_paths['WASI_C']}")
+                print(f"[red]Error: WASI SDK not found: {wasi_paths['WASI_C']}[/]")
                 print(f"   Please install WASI SDK to: {wasi_paths['WASI_SDK_COMPILER_ROOT']}")
                 print(f"   Or set environment variable WASI_SDK_ROOT")
                 return False
@@ -131,13 +141,13 @@ class ICBuilder:
         # Check if source files exist
         all_exist, missing_files = check_source_files_exist(SRC_DIR, LIB_SOURCES)
         if not all_exist:
-            print("❌ Missing source files:")
+            print("[red]Missing source files:[/]")
             for file in missing_files:
                 print(f"   • {file}")
             return False
         
         # Compile all library source files
-        print("\n📦 Compiling library source files...")
+        print("\n[bold]Compiling library source files...[/]")
         object_files = []
         for source in LIB_SOURCES:
             obj_file = self.build_dir / source.replace(".c", ".o")
@@ -146,11 +156,11 @@ class ICBuilder:
             object_files.append(obj_file)
         
         # Create static library
-        print("\n📚 Creating static library...")
+        print("\n[bold]Creating static library...[/]")
         if not self.create_static_lib(object_files):
             return False
         
-        print(f"\n✅ Library build successful! Static library: {self.lib_path}")
+        print(f"\n[green]Library build successful! Static library: {self.lib_path}[/]")
         return True
     
     def ensure_polyfill_library(self) -> bool:
@@ -178,19 +188,19 @@ class ICBuilder:
     def build_examples(self) -> bool:
         """Build example programs"""
         if not EXAMPLE_SOURCES:
-            print("⚠️  No example files found")
+            print("[yellow]No example files found[/]")
             return True
         
         # Check if library needs rebuild
         if needs_rebuild(self.lib_path, SRC_DIR, LIB_SOURCES, self.target_platform, self.build_dir):
-            print("⚠️  Library needs rebuild, auto-building library...")
+            print("[yellow]Library needs rebuild, auto-building library...[/]")
             if not self.build_library():
-                print("❌ Library build failed, cannot continue building examples")
+                print("[red]Library build failed, cannot continue building examples[/]")
                 return False
             print()
         
         platform_name = "WASI" if self.target_platform == "wasi" else "Native"
-        print(f"\n📝 Building example programs ({platform_name})...")
+        print(f"\n[bold]Building example programs ({platform_name})...[/]")
         
         success = True
         for example_src in EXAMPLE_SOURCES:
@@ -207,7 +217,7 @@ class ICBuilder:
             if self.target_platform == "wasi":
                 # Ensure polyfill library exists
                 if not self.ensure_polyfill_library():
-                    print(f"  ❌ Error: Cannot proceed without libic_wasi_polyfill.a")
+                    print(f"[red]  Error: Cannot proceed without libic_wasi_polyfill.a[/]")
                     success = False
                     continue
                 
@@ -215,7 +225,7 @@ class ICBuilder:
                 ic_wasm_target = self.build_dir / f"{example_name}.wasm"
                 
                 # Step 1: Link to generate WASI WASM (includes libic_wasi_polyfill.a)
-                print(f"\n  🔗 Linking with IC WASI Polyfill library:")
+                print(f"\n  [bold]Linking with IC WASI Polyfill library:[/]")
                 print(f"     Path: {self.polyfill_library.resolve()}")
                 
                 # Remove LTO from link flags to prevent removal of raw_init import
@@ -229,61 +239,61 @@ class ICBuilder:
                     continue
                 
                 # Verify that raw_init import is present in the linked WASM file
-                print(f"\n  🔍 Verifying raw_init import linkage...")
+                print(f"\n  [bold]Verifying raw_init import linkage...[/]")
                 if not verify_raw_init_import(wasi_wasm_target, self.wasi_sdk_compiler_root):
-                    print(f"  ⚠️  Warning: raw_init import verification failed for {example_name}")
+                    print(f"[yellow]  Warning: raw_init import verification failed for {example_name}[/]")
                     success = False
                 
                 # Step 2: Use wasi2ic to convert to IC-compatible WASM
                 if not self.ensure_wasi2ic_tool():
-                    print(f"  ❌ Error: Cannot proceed without wasi2ic tool")
+                    print(f"[red]  Error: Cannot proceed without wasi2ic tool[/]")
                     success = False
                     continue
                 
-                print(f"\n  🔧 Using wasi2ic tool:")
+                print(f"\n  [bold]Using wasi2ic tool:[/]")
                 print(f"     Path: {self.wasi2ic_tool.resolve()}")
                 
                 wasi2ic_cmd = [str(self.wasi2ic_tool), str(wasi_wasm_target), str(ic_wasm_target)]
                 if run_command(wasi2ic_cmd, f"Converting {example_name} to IC-compatible version"):
-                    print(f"  ✅ {example_name}: {ic_wasm_target} (IC compatible)")
+                    print(f"[green]  {example_name}: {ic_wasm_target} (IC compatible)[/]")
                     print(f"     (WASI version: {wasi_wasm_target})")
                     
                     # Step 3: Optimize WASM file with wasm-opt
                     optimized_wasm_target = self.build_dir / f"{example_name}_optimized.wasm"
-                    print(f"\n  ⚡ Optimizing WASM file...")
+                    print(f"\n  [bold]Optimizing WASM file...[/]")
                     if optimize_wasm(ic_wasm_target, optimized_wasm_target):
-                        print(f"  ✅ Optimized version: {optimized_wasm_target}")
+                        print(f"[green]  Optimized version: {optimized_wasm_target}[/]")
                     else:
                         # Optimization is optional, don't fail the build
-                        print(f"  ℹ️  Original version available: {ic_wasm_target}")
+                        print(f"[cyan]  Original version available: {ic_wasm_target}[/]")
                 else:
-                    print(f"  ⚠️  wasi2ic conversion failed, but WASI WASM generated: {wasi_wasm_target}")
+                    print(f"[yellow]  wasi2ic conversion failed, but WASI WASM generated: {wasi_wasm_target}[/]")
                     success = False
             else:
                 # Native platform only compiles object files
-                print(f"  ✅ {example_name}: {obj_file} (object file)")
+                print(f"[green]  {example_name}: {obj_file} (object file)[/]")
                 print(f"     Note: Native platform requires separate test program to call these functions")
         
         return success
     
     def clean(self):
         """Clean build artifacts"""
-        print("🧹 Cleaning build artifacts...")
+        print("[bold]Cleaning build artifacts...[/]")
         
         removed_count = 0
         for build_path in [BUILD_DIR, WASI_BUILD_DIR]:
             if build_path.exists():
                 try:
                     shutil.rmtree(build_path)
-                    print(f"  🗑️  Deleted directory: {build_path}")
+                    print(f"[green]  Deleted directory: {build_path}[/]")
                     removed_count += 1
                 except OSError as e:
-                    print(f"  ❌ Cannot delete {build_path}: {e}")
+                    print(f"[red]  Cannot delete {build_path}: {e}[/]")
         
         if removed_count == 0:
-            print("  ✨ No directories to clean")
+            print("[cyan]  No directories to clean[/]")
         else:
-            print(f"  ✅ Cleaned {removed_count} directory(ies)")
+            print(f"[green]  Cleaned {removed_count} directory(ies)[/]")
     
     def show_info(self):
         """Show build information"""
@@ -301,7 +311,7 @@ class ICBuilder:
         print("\n  Library source files:")
         for src in LIB_SOURCES:
             src_path = SRC_DIR / src
-            status = "✓" if src_path.exists() else "✗"
+            status = "[green]OK[/]" if src_path.exists() else "[red]Missing[/]"
             print(f"    {status} {src}")
         
         if EXAMPLE_SOURCES:
@@ -317,7 +327,7 @@ class ICBuilder:
             polyfill_path = ensure_polyfill_library(SCRIPTS_DIR, BUILD_POLYFILL_SCRIPT)
             if polyfill_path:
                 print(f"    Library: {polyfill_path}")
-                print(f"    Status: ✓ Found")
+                print(f"    Status: [green]Found[/]")
             else:
                 print(f"    Status: ✗ Not found")
             print(f"    Build script: {BUILD_POLYFILL_SCRIPT}")
@@ -326,7 +336,7 @@ class ICBuilder:
             wasi2ic_path = ensure_wasi2ic_tool(SCRIPTS_DIR, BUILD_WASI2IC_SCRIPT)
             if wasi2ic_path:
                 print(f"    Path: {wasi2ic_path}")
-                print(f"    Status: ✓ Found")
+                print(f"    Status: [green]Found[/]")
             else:
                 print(f"    Status: ✗ Not found")
                 print(f"    Note: Set WASI2IC_PATH environment variable to specify custom path")
@@ -336,65 +346,70 @@ class ICBuilder:
 # Main Entry Point
 ########################################################################
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="IC C SDK build script - supports native and WASI platforms",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Usage examples:
-  python build.py                    # Build native library
-  python build.py --wasi             # Build WASI library
-  python build.py --examples         # Build example programs
-  python build.py --clean            # Clean build artifacts
-  python build.py --info             # Show build information
-  python build.py --wasi --examples  # WASI: Build library and examples
-        """
-    )
-    
-    parser.add_argument("--build", "-b", action="store_true", 
-                       help="Build library (default action)")
-    parser.add_argument("--clean", "-c", action="store_true", 
-                       help="Clean build artifacts")
-    parser.add_argument("--examples", "-e", action="store_true", 
-                       help="Build example programs")
-    parser.add_argument("--info", "-i", action="store_true", 
-                       help="Show build information")
-    parser.add_argument("--wasi", "-w", action="store_true", 
-                       help="Compile for WASI platform (default is native platform)")
-    
-    args = parser.parse_args()
-    
-    # Determine target platform
-    target_platform = "wasi" if args.wasi else "native"
+@app.command(context_settings={"help_option_names": ["-h", "--help"]})
+def run(
+    build: bool = typer.Option(
+        False,
+        "--build",
+        "-b",
+        help="Build the IC C SDK library",
+    ),
+    clean: bool = typer.Option(
+        False,
+        "--clean",
+        "-c",
+        help="Remove build artifacts",
+    ),
+    examples: bool = typer.Option(
+        False,
+        "--examples",
+        "-e",
+        help="Build example programs",
+    ),
+    info: bool = typer.Option(
+        False,
+        "--info",
+        "-i",
+        help="Show build configuration",
+    ),
+    wasi: bool = typer.Option(
+        False,
+        "--wasi",
+        "-w",
+        help="Target the WASI toolchain (default is native)",
+    ),
+):
+    """
+    Manage IC C SDK builds. If no action flags are provided, --build is assumed.
+    """
+    # Default to building when no action was specified
+    if not any([build, clean, examples, info]):
+        build = True
+
+    target_platform = "wasi" if wasi else "native"
     builder = ICBuilder(target_platform)
     success = True
-    
-    # If no arguments specified, default to build
-    if not any([args.build, args.clean, args.examples, args.info]):
-        args.build = True
-    
-    # Execute operations
-    if args.info:
+
+    if info:
         builder.show_info()
         print()
-    
-    if args.clean:
+
+    if clean:
         builder.clean()
         print()
-    
-    if args.build:
+
+    if build:
         if not builder.build_library():
             success = False
         print()
-    
-    if args.examples and success:
+
+    if examples and success:
         if not builder.build_examples():
             success = False
         print()
-    
-    # Return appropriate exit code
-    sys.exit(0 if success else 1)
+
+    raise typer.Exit(code=0 if success else 1)
 
 
 if __name__ == "__main__":
-    main()
+    app()

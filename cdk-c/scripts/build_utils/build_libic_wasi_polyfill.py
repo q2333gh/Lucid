@@ -40,18 +40,21 @@ def run_cmd(
     if not parts:
         raise ValueError("Empty command")
     
-    program = parts[0]
-    args = parts[1:]
+    program = str(parts[0])
+    args = [str(arg) for arg in parts[1:]]
     
-    cmd_func = getattr(sh, program)
+    cmd_func = sh.Command(program)
+    
     kwargs = {}
     if cwd:
         kwargs['_cwd'] = str(cwd)
-    
     if capture_output:
-        try:
-            result = cmd_func(*args, _iter=False, **kwargs)
-            stdout = result.stdout.decode('utf-8') if isinstance(result.stdout, bytes) else (result.stdout or "")
+        kwargs['_iter'] = False
+    
+    try:
+        result = cmd_func(*args, **kwargs)
+        if capture_output:
+            stdout = result or ""
             if stdout:
                 print(stdout)
             return type('Result', (), {
@@ -59,38 +62,38 @@ def run_cmd(
                 'stderr': '',
                 'returncode': 0
             })()
-        except sh.ErrorReturnCode as e:
+    except sh.ErrorReturnCode as e:
+        if capture_output and not check:
             stdout = e.stdout.decode('utf-8') if isinstance(e.stdout, bytes) else (e.stdout or "")
             stderr = e.stderr.decode('utf-8') if isinstance(e.stderr, bytes) else (e.stderr or "")
-            if check:
-                raise
             return type('Result', (), {
                 'stdout': stdout,
                 'stderr': stderr,
                 'returncode': e.exit_code
             })()
-    else:
-        try:
-            cmd_func(*args, **kwargs)
-        except sh.ErrorReturnCode as e:
-            if check:
-                raise
+        if check:
+            raise
 
 
 def check_command_exists(cmd: str) -> bool:
     """Check if command exists"""
     try:
-        getattr(sh, cmd)
+        if '/' in cmd:
+            # Full path - check if file exists
+            cmd_path = Path(cmd)
+            return cmd_path.exists() and cmd_path.is_file()
+        # Simple command name - let sh resolve it (raises CommandNotFound if missing)
+        sh.Command(cmd)
         return True
-    except AttributeError:
+    except sh.CommandNotFound:
         return False
 
 
 def check_rust_installed() -> bool:
     """Check if Rust is installed"""
     try:
-        result = sh.rustc("--version", _iter=False)
-        version = result.stdout.decode('utf-8') if isinstance(result.stdout, bytes) else result.stdout
+        result = sh.rustc("--version")
+        version = result.strip()
         print(f"✓ Found Rust: {version.strip()}")
         return True
     except (sh.ErrorReturnCode, AttributeError):
@@ -100,8 +103,8 @@ def check_rust_installed() -> bool:
 def check_cargo_installed() -> bool:
     """Check if Cargo is installed"""
     try:
-        result = sh.cargo("--version", _iter=False)
-        version = result.stdout.decode('utf-8') if isinstance(result.stdout, bytes) else result.stdout
+        result = sh.cargo("--version")
+        version = result.strip()
         print(f"✓ Found Cargo: {version.strip()}")
         return True
     except (sh.ErrorReturnCode, AttributeError):
@@ -111,8 +114,8 @@ def check_cargo_installed() -> bool:
 def check_wasm32_target_installed() -> bool:
     """Check if wasm32-wasip1 target is installed"""
     try:
-        result = sh.rustup("target", "list", "--installed", _iter=False)
-        output = result.stdout.decode('utf-8') if isinstance(result.stdout, bytes) else result.stdout
+        result = sh.rustup("target", "list", "--installed")
+        output = result.strip()
         targets = output.strip().split("\n")
         if "wasm32-wasip1" in targets:
             print("✓ wasm32-wasip1 target is installed")

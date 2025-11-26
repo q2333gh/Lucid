@@ -35,25 +35,17 @@ def run_command(cmd, description="", cwd=None, show_stderr=True):
         return False
     
     try:
-        program = cmd[0]
-        args = cmd[1:] if len(cmd) > 1 else []
+        program = str(cmd[0])
+        args = [str(arg) for arg in cmd[1:]] if len(cmd) > 1 else []
         
-        cmd_func = getattr(sh, program)
-        kwargs = {'_iter': False}
+        cmd_func = sh.Command(program)
+        
+        kwargs = {}
         if cwd:
             kwargs['_cwd'] = str(cwd)
         
         result = cmd_func(*args, **kwargs)
         
-        # Handle output
-        stdout = result.stdout.decode('utf-8') if isinstance(result.stdout, bytes) else (result.stdout or "")
-        stderr = result.stderr.decode('utf-8') if isinstance(result.stderr, bytes) else (result.stderr or "")
-        
-        if stdout:
-            print(stdout)
-        # Show stderr for compiler messages (like #pragma message and #warning)
-        if show_stderr and stderr:
-            print(stderr, end='')
         return True
     except sh.ErrorReturnCode as e:
         print(f"❌ Error: Command failed with exit code {e.exit_code}")
@@ -61,7 +53,7 @@ def run_command(cmd, description="", cwd=None, show_stderr=True):
         if stderr:
             print(f"Error details: {stderr}")
         return False
-    except AttributeError as e:
+    except sh.CommandNotFound:
         print(f"❌ Error: Command not found: {cmd[0]}")
         print(f"   Please ensure the corresponding compiler is installed")
         return False

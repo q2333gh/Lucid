@@ -36,13 +36,7 @@ def verify_raw_init_import(wasm_file: Path, wasi_sdk_compiler_root: Optional[Pat
     
     try:
         # Use wasm-objdump to list imports
-        result_obj = wasm_objdump_cmd("-x", str(wasm_file), _iter=False)
-        output = result_obj.stdout.decode('utf-8') if isinstance(result_obj.stdout, bytes) else (result_obj.stdout or "")
-        result = type('Result', (), {
-            'stdout': output,
-            'stderr': '',
-            'returncode': 0
-        })()
+        output = wasm_objdump_cmd("-x", str(wasm_file), _iter=False) or ""
     except (sh.ErrorReturnCode, AttributeError) as e:
         # If wasm-objdump is not available, warn but don't fail
         error_msg = str(e)
@@ -52,7 +46,6 @@ def verify_raw_init_import(wasm_file: Path, wasi_sdk_compiler_root: Optional[Pat
         return True  # Don't fail if verification tool is not available
     
     # Check if raw_init import exists (may be from polyfill module or as undefined import)
-    output = result.stdout + result.stderr
     import_found = False
     import_line = ""
     polyfill_import_found = False

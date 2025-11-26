@@ -26,13 +26,29 @@ cmake --build test/build
 ```
 
 - This generates the `ic_cdk_tests` executable in `test/build`.
-- After configuration, run:
-  ```bash
-  ln -sf "$PWD/test/build/compile_commands.json" "$PWD/compile_commands.json"
-  ln -sf "$PWD/compile_commands.json" ../compile_commands.json   # optional root alias
-  ```
-  This keeps `cdk-c/compile_commands.json` (and optionally the repo-root alias) pointing at the host build so clangd/VS Code treat the Criterion tests as native builds.
 - After source changes, rerun `cmake --build test/build` for incremental builds.
+
+### Keeping clangd happy
+
+The helper script at the repo root merges everything for you:
+
+```bash
+# 1) Generate/refresh the host database (Criterion build)
+cd /home/<you>/code/Lucid/cdk-c
+cmake -S test -B test/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+# 2) Generate/refresh the WASI database (lands in cdk-c/build/compile_commands.json)
+bear --cdb build/compile_commands.json python scripts/build.py --wasi --examples
+
+# 3) Merge from the cdk-c directory
+cd /home/<you>/code/Lucid/cdk-c
+python scripts/merge_compile_commands.py
+```
+
+- The script looks for `cdk-c/build/compile_commands.json` (WASI) and `cdk-c/test/build/compile_commands.json` (host) and writes the merged result to `cdk-c/compile_commands.json`, which clangd/VS Code can consume directly (VS Code is already configured via `.vscode/c_cpp_properties.json`).
+- If you need the merged database available at the repo root for other tooling, add `ln -sf cdk-c/compile_commands.json compile_commands.json`.
+- Pass `--inputs ...` if you want to add more submodules, `--output` to write elsewhere, or `--keep-duplicates` if you need the raw entries untouched.
+- Because the script resolves absolute paths internally, you can run it from any directory; just point `--root` to your workspace if you are not already inside it.
 
 ## 3. Running Tests
 

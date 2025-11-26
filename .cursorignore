@@ -7,10 +7,8 @@ attempts/hello_c_wasm/emcc/emsdk/
 .dfx/
 build/
 *.wasm
-## compile commands for IDEs
-compile_commands.json
+
 ## tests
-src/c_canister_dev_kit/cdk-c-ic-syscall/examples/test/pocket-ic
 pocket-ic
 
 ####
@@ -49,7 +47,6 @@ ehthumbs.db
 Thumbs.db
 
 # IDE and editor files
-.vscode/
 .idea/
 *.swp
 *.swo

@@ -6,10 +6,11 @@ Command execution, file finding, and other helper functions
 
 import os
 import sys
-import subprocess
 import shutil
 from pathlib import Path
 from typing import Optional, Tuple
+
+import sh
 
 from .config import IC_WASI_POLYFILL_COMMIT, WASI2IC_COMMIT
 
@@ -28,28 +29,44 @@ def run_command(cmd, description="", cwd=None, show_stderr=True):
         bool: True if command succeeded, False otherwise
     """
     print(f"🔨 {description or ' '.join(cmd)}")
-    try:
-        result = subprocess.run(
-            cmd, 
-            check=True, 
-            capture_output=True, 
-            text=True,
-            cwd=cwd
-        )
-        if result.stdout:
-            print(result.stdout)
-        # Show stderr for compiler messages (like #pragma message and #warning)
-        if show_stderr and result.stderr:
-            print(result.stderr, end='')
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Error: {e}")
-        if e.stderr:
-            print(f"Error details: {e.stderr}")
+    
+    if not cmd:
+        print("❌ Error: Empty command")
         return False
-    except FileNotFoundError:
-        print(f"❌ Command not found: {cmd[0]}")
+    
+    try:
+        program = cmd[0]
+        args = cmd[1:] if len(cmd) > 1 else []
+        
+        cmd_func = getattr(sh, program)
+        kwargs = {'_iter': False}
+        if cwd:
+            kwargs['_cwd'] = str(cwd)
+        
+        result = cmd_func(*args, **kwargs)
+        
+        # Handle output
+        stdout = result.stdout.decode('utf-8') if isinstance(result.stdout, bytes) else (result.stdout or "")
+        stderr = result.stderr.decode('utf-8') if isinstance(result.stderr, bytes) else (result.stderr or "")
+        
+        if stdout:
+            print(stdout)
+        # Show stderr for compiler messages (like #pragma message and #warning)
+        if show_stderr and stderr:
+            print(stderr, end='')
+        return True
+    except sh.ErrorReturnCode as e:
+        print(f"❌ Error: Command failed with exit code {e.exit_code}")
+        stderr = e.stderr.decode('utf-8') if isinstance(e.stderr, bytes) else (e.stderr or "")
+        if stderr:
+            print(f"Error details: {stderr}")
+        return False
+    except AttributeError as e:
+        print(f"❌ Error: Command not found: {cmd[0]}")
         print(f"   Please ensure the corresponding compiler is installed")
+        return False
+    except Exception as e:
+        print(f"❌ Error: {e}")
         return False
 
 
@@ -340,7 +357,8 @@ def optimize_wasm(wasm_file: Path, optimized_file: Path, optimization_level: str
     # Run wasm-opt with optimization flags
     # -Oz: optimize for size (most aggressive)
     # --strip-debug: remove debug information
-    cmd = [str(wasm_opt), optimization_level, "--strip-debug", str(wasm_file), "-o", str(optimized_file)]
+    wasm_opt_str = str(wasm_opt) if isinstance(wasm_opt, Path) else wasm_opt
+    cmd = [wasm_opt_str, optimization_level, "--strip-debug", str(wasm_file), "-o", str(optimized_file)]
     
     if run_command(cmd, f"Optimizing {wasm_file.name} with wasm-opt"):
         if optimized_file.exists():
@@ -356,4 +374,3 @@ def optimize_wasm(wasm_file: Path, optimized_file: Path, optimization_level: str
     else:
         print(f"  ⚠️  wasm-opt optimization failed, but original WASM file is available: {wasm_file}")
         return False
-

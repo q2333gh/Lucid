@@ -7,8 +7,12 @@ from pathlib import Path
 from typing import Optional
 
 import sh
+from rich.console import Console
 
 from .config import get_wasi_sdk_paths
+
+console = Console(force_terminal=True, markup=True)
+print = console.print
 
 
 def verify_raw_init_import(wasm_file: Path, wasi_sdk_compiler_root: Optional[Path] = None) -> bool:
@@ -40,7 +44,7 @@ def verify_raw_init_import(wasm_file: Path, wasi_sdk_compiler_root: Optional[Pat
     except (sh.ErrorReturnCode, AttributeError) as e:
         # If wasm-objdump is not available, warn but don't fail
         error_msg = str(e)
-        print(f"  ⚠️  Could not verify raw_init import (wasm-objdump not available: {error_msg})")
+        print(f"[yellow]  Could not verify raw_init import (wasm-objdump not available: {error_msg})[/]")
         print(f"     Manually verify that {wasm_file.name} contains 'polyfill::raw_init' import")
         print(f"     You can use: wasm-objdump -x {wasm_file}")
         return True  # Don't fail if verification tool is not available
@@ -73,22 +77,21 @@ def verify_raw_init_import(wasm_file: Path, wasi_sdk_compiler_root: Optional[Pat
     
     if import_found:
         if polyfill_import_found:
-            print(f"  ✅ Verified: raw_init import from polyfill module found in {wasm_file.name}")
+            print(f"[green]  Verified: raw_init import from polyfill module found in {wasm_file.name}[/]")
         else:
-            print(f"  ✅ Verified: raw_init import found in {wasm_file.name} (may be converted by --import-undefined)")
+            print(f"[green]  Verified: raw_init import found in {wasm_file.name} (may be converted by --import-undefined)[/]")
         print(f"     Import: {import_line}")
         return True
     else:
-        print(f"  ❌ Error: raw_init import NOT found in {wasm_file.name}")
-        print(f"     Expected: import from 'polyfill' module, function 'raw_init'")
-        print(f"     This indicates LTO optimization removed the unused import")
-        print(f"     Note: raw_init is declared as import in source code, but LTO removed it")
-        print(f"     Possible solutions:")
-        print(f"       1. Ensure __ic_wasi_polyfill_start is called (it's exported as 'start')")
-        print(f"       2. Check if --import-undefined linker option is supported")
-        print(f"       3. Consider disabling LTO for this module")
-        # Print all imports for debugging
-        print(f"     Available imports in WASM file:")
+        print(f"[red]  Error: raw_init import NOT found in {wasm_file.name}[/]")
+        print("     Expected: import from 'polyfill' module, function 'raw_init'")
+        print("     This indicates LTO optimization removed the unused import")
+        print("     Note: raw_init is declared as import in source code, but LTO removed it")
+        print("     Possible solutions:")
+        print("       1. Ensure __ic_wasi_polyfill_start is called (it's exported as 'start')")
+        print("       2. Check if --import-undefined linker option is supported")
+        print("       3. Consider disabling LTO for this module")
+        print("     Available imports in WASM file:")
         import_count = 0
         for line in lines:
             if 'import[' in line.lower() or ('<-' in line and 'func[' in line.lower()):

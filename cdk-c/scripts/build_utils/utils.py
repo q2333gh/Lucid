@@ -11,8 +11,12 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 import sh
+from rich.console import Console
 
 from .config import IC_WASI_POLYFILL_COMMIT, WASI2IC_COMMIT
+
+console = Console(force_terminal=True, markup=True)
+print = console.print  # route legacy prints through Rich
 
 
 def run_command(cmd, description="", cwd=None, show_stderr=True):
@@ -28,10 +32,10 @@ def run_command(cmd, description="", cwd=None, show_stderr=True):
     Returns:
         bool: True if command succeeded, False otherwise
     """
-    print(f"🔨 {description or ' '.join(cmd)}")
+    print(f"[bold]{description or ' '.join(cmd)}[/]")
     
     if not cmd:
-        print("❌ Error: Empty command")
+        print("[red]Error: Empty command[/]")
         return False
     
     try:
@@ -48,17 +52,17 @@ def run_command(cmd, description="", cwd=None, show_stderr=True):
         
         return True
     except sh.ErrorReturnCode as e:
-        print(f"❌ Error: Command failed with exit code {e.exit_code}")
+        print(f"[red]Error: Command failed with exit code {e.exit_code}[/]")
         stderr = e.stderr.decode('utf-8') if isinstance(e.stderr, bytes) else (e.stderr or "")
         if stderr:
             print(f"Error details: {stderr}")
         return False
     except sh.CommandNotFound:
-        print(f"❌ Error: Command not found: {cmd[0]}")
-        print(f"   Please ensure the corresponding compiler is installed")
+        print(f"[red]Error: Command not found: {cmd[0]}[/]")
+        print("   Please ensure the corresponding compiler is installed")
         return False
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"[red]Error: {e}[/]")
         return False
 
 
@@ -134,7 +138,7 @@ def ensure_polyfill_library(scripts_dir: Path, build_polyfill_script: Path) -> O
     # Method 1: Check scripts directory (preferred)
     scripts_polyfill = scripts_dir / "libic_wasi_polyfill.a"
     if scripts_polyfill.exists():
-        print(f"\n📦 Using IC WASI Polyfill library:")
+        print(f"\n[bold]Using IC WASI Polyfill library:[/]")
         print(f"   Path: {scripts_polyfill.resolve()}")
         
         return scripts_polyfill
@@ -144,18 +148,17 @@ def ensure_polyfill_library(scripts_dir: Path, build_polyfill_script: Path) -> O
     if env_polyfill:
         env_path = Path(env_polyfill)
         if env_path.exists():
-            print(f"\n📦 Using IC WASI Polyfill library (from IC_WASI_POLYFILL_PATH):")
+            print(f"\n[bold]Using IC WASI Polyfill library (from IC_WASI_POLYFILL_PATH):[/]")
             print(f"   Path: {env_path.resolve()}")
             
             return env_path
     
     # If neither exists, try to build it
-    print(f"\n⚠️  libic_wasi_polyfill.a not found")
-    
-    print(f"   Attempting to build it using build_libic_wasi_polyfill.py...")
+    print(f"\n[yellow]libic_wasi_polyfill.a not found[/]")
+    print("   Attempting to build it using build_libic_wasi_polyfill.py...")
     
     if not build_polyfill_script.exists():
-        print(f"❌ Build script not found: {build_polyfill_script}")
+        print(f"[red]Build script not found: {build_polyfill_script}[/]")
         print(f"   Please run build_libic_wasi_polyfill.py manually")
         print(f"   Expected commit: {IC_WASI_POLYFILL_COMMIT}")
         return None
@@ -168,16 +171,16 @@ def ensure_polyfill_library(scripts_dir: Path, build_polyfill_script: Path) -> O
         "--version", IC_WASI_POLYFILL_COMMIT
     ]
     if not run_command(cmd, f"Building libic_wasi_polyfill.a"):
-        print(f"❌ Failed to build libic_wasi_polyfill.a")
+        print(f"[red]Failed to build libic_wasi_polyfill.a[/]")
         print(f"   Expected commit: {IC_WASI_POLYFILL_COMMIT}")
         return None
     
     if not scripts_polyfill.exists():
-        print(f"❌ libic_wasi_polyfill.a still not found after build attempt")
+        print(f"[red]libic_wasi_polyfill.a still not found after build attempt[/]")
         return None
     
-    print(f"✓ libic_wasi_polyfill.a is ready")
-    print(f"\n📦 Using IC WASI Polyfill library (newly built):")
+    print("[green]libic_wasi_polyfill.a is ready[/]")
+    print(f"\n[bold]Using IC WASI Polyfill library (newly built):[/]")
     print(f"   Path: {scripts_polyfill.resolve()}")
     
     return scripts_polyfill
@@ -199,7 +202,7 @@ def ensure_wasi2ic_tool(scripts_dir: Path, build_wasi2ic_script: Path) -> Option
     
     # Method 1: Check if already exists
     if wasi2ic.exists():
-        print(f"\n🔧 Using wasi2ic tool:")
+        print(f"\n[bold]Using wasi2ic tool:[/]")
         print(f"   Path: {wasi2ic.resolve()}")
         
         return wasi2ic
@@ -209,7 +212,7 @@ def ensure_wasi2ic_tool(scripts_dir: Path, build_wasi2ic_script: Path) -> Option
     if env_wasi2ic:
         env_path = Path(env_wasi2ic)
         if env_path.exists():
-            print(f"\n🔧 Using wasi2ic tool (from WASI2IC_PATH):")
+            print(f"\n[bold]Using wasi2ic tool (from WASI2IC_PATH):[/]")
             print(f"   Path: {env_path.resolve()}")
             
             return env_path
@@ -218,18 +221,17 @@ def ensure_wasi2ic_tool(scripts_dir: Path, build_wasi2ic_script: Path) -> Option
     wasi2ic_in_path = shutil.which("wasi2ic")
     if wasi2ic_in_path:
         wasi2ic = Path(wasi2ic_in_path)
-        print(f"\n🔧 Using wasi2ic tool (from PATH):")
+        print(f"\n[bold]Using wasi2ic tool (from PATH):[/]")
         print(f"   Path: {wasi2ic.resolve()}")
         
         return wasi2ic
     
     # If not found, try to build it
-    print(f"\n⚠️  wasi2ic tool not found")
-    
-    print(f"   Attempting to build it using build_wasi2ic.py...")
+    print(f"\n[yellow]wasi2ic tool not found[/]")
+    print("   Attempting to build it using build_wasi2ic.py...")
     
     if not build_wasi2ic_script.exists():
-        print(f"❌ Build script not found: {build_wasi2ic_script}")
+        print(f"[red]Build script not found: {build_wasi2ic_script}[/]")
         print(f"   Please run build_wasi2ic.py manually")
         print(f"   Expected commit: {WASI2IC_COMMIT}")
         return None
@@ -242,17 +244,17 @@ def ensure_wasi2ic_tool(scripts_dir: Path, build_wasi2ic_script: Path) -> Option
         "--version", WASI2IC_COMMIT
     ]
     if not run_command(cmd, f"Building wasi2ic tool"):
-        print(f"❌ Failed to build wasi2ic tool")
+        print(f"[red]Failed to build wasi2ic tool[/]")
         print(f"   Expected commit: {WASI2IC_COMMIT}")
         return None
     
     wasi2ic = scripts_dir / "wasi2ic"
     if not wasi2ic.exists():
-        print(f"❌ wasi2ic tool still not found after build attempt")
+        print(f"[red]wasi2ic tool still not found after build attempt[/]")
         return None
     
-    print(f"✓ wasi2ic tool is ready")
-    print(f"\n🔧 Using wasi2ic tool (newly built):")
+    print("[green]wasi2ic tool is ready[/]")
+    print(f"\n[bold]Using wasi2ic tool (newly built):[/]")
     print(f"   Path: {wasi2ic.resolve()}")
     
     return wasi2ic
@@ -337,13 +339,13 @@ def optimize_wasm(wasm_file: Path, optimized_file: Path, optimization_level: str
     """
     wasm_opt = find_wasm_opt()
     if not wasm_opt:
-        print(f"  ⚠️  wasm-opt not found in PATH, skipping optimization")
-        print(f"     Install binaryen package: sudo apt install binaryen")
-        print(f"     Or: brew install binaryen (on macOS)")
+        print("[yellow]  wasm-opt not found in PATH, skipping optimization[/]")
+        print("     Install binaryen package: sudo apt install binaryen")
+        print("     Or: brew install binaryen (on macOS)")
         return False
     
     if not wasm_file.exists():
-        print(f"  ❌ Input WASM file not found: {wasm_file}")
+        print(f"[red]  Input WASM file not found: {wasm_file}[/]")
         return False
     
     # Run wasm-opt with optimization flags
@@ -358,11 +360,11 @@ def optimize_wasm(wasm_file: Path, optimized_file: Path, optimization_level: str
             original_size = wasm_file.stat().st_size
             optimized_size = optimized_file.stat().st_size
             reduction = ((original_size - optimized_size) / original_size) * 100
-            print(f"  ✅ Optimized: {wasm_file.name} ({original_size:,} bytes) -> {optimized_file.name} ({optimized_size:,} bytes, {reduction:.1f}% reduction)")
+            print(f"[green]  Optimized: {wasm_file.name} ({original_size:,} bytes) -> {optimized_file.name} ({optimized_size:,} bytes, {reduction:.1f}% reduction)[/]")
             return True
         else:
-            print(f"  ⚠️  Optimization completed but output file not found: {optimized_file}")
+            print(f"[yellow]  Optimization completed but output file not found: {optimized_file}[/]")
             return False
     else:
-        print(f"  ⚠️  wasm-opt optimization failed, but original WASM file is available: {wasm_file}")
+        print(f"[yellow]  wasm-opt optimization failed, but original WASM file is available: {wasm_file}[/]")
         return False

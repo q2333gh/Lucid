@@ -93,7 +93,7 @@ def check_rust_installed() -> bool:
     try:
         result = sh.rustc("--version")
         version = result.strip()
-        print(f"✓ Found Rust: {version.strip()}")
+        print(f"[green]Found Rust: {version.strip()}[/]")
         return True
     except (sh.ErrorReturnCode, AttributeError):
         return False
@@ -104,7 +104,7 @@ def check_cargo_installed() -> bool:
     try:
         result = sh.cargo("--version")
         version = result.strip()
-        print(f"✓ Found Cargo: {version.strip()}")
+        print(f"[green]Found Cargo: {version.strip()}[/]")
         return True
     except (sh.ErrorReturnCode, AttributeError):
         return False
@@ -139,14 +139,14 @@ def clone_repository(repo_url: str, clone_dir: Path, version: str) -> Path:
         check=True,
     )
     current_version = result.stdout.strip()
-    print(f"✓ Current version: {current_version}")
+    print(f"[green]Current version: {current_version}[/]")
 
     return repo_path
 
 
 def build_binary(repo_path: Path) -> Path:
     """Build wasi2ic binary"""
-    print(f"\n🔨 Building wasi2ic binary...")
+    print(f"\n[bold]Building wasi2ic binary...[/]")
     print(f"   Working directory: {repo_path}")
 
     # Build release binary
@@ -165,14 +165,14 @@ def build_binary(repo_path: Path) -> Path:
         bin_files = list(target_dir.glob("wasi2ic*"))
         if bin_files:
             binary_file = bin_files[0]
-            print(f"⚠️  Found binary file: {binary_file.name}")
+            print(f"[yellow]Found binary file: {binary_file.name}[/]")
         else:
             raise FileNotFoundError(
                 f"Binary file not found in {target_dir}. "
                 f"Build may have failed or binary name is different."
             )
 
-    print(f"✓ Binary built successfully: {binary_file}")
+    print(f"[green]Binary built successfully: {binary_file}[/]")
     return binary_file
 
 
@@ -225,19 +225,19 @@ Examples:
     print("=" * 70)
 
     # Check dependencies
-    print("\n🔍 Checking dependencies...")
+    print("\n[bold]Checking dependencies...[/]")
     if not check_rust_installed():
-        print("❌ Error: Rust is not installed")
+        print("[red]Error: Rust is not installed[/]")
         print("   Please visit https://rustup.rs/ to install Rust")
         sys.exit(1)
 
     if not check_cargo_installed():
-        print("❌ Error: Cargo is not installed")
+        print("[red]Error: Cargo is not installed[/]")
         print("   Please visit https://rustup.rs/ to install Rust (includes Cargo)")
         sys.exit(1)
 
     if not check_command_exists("git"):
-        print("❌ Error: git is not installed")
+        print("[red]Error: git is not installed[/]")
         print("   Please install git")
         sys.exit(1)
 
@@ -250,7 +250,7 @@ Examples:
 
     # Clean option
     if args.clean and (work_dir / "wasi2ic").exists():
-        print(f"\n🧹 Cleaning work directory: {work_dir / 'wasi2ic'}")
+        print(f"\n[bold]Cleaning work directory: {work_dir / 'wasi2ic'}[/]")
         shutil.rmtree(work_dir / "wasi2ic")
 
     # Clone repository and switch to specified version
@@ -277,7 +277,7 @@ Examples:
         if os.name != 'nt':
             os.chmod(output_file, 0o755)
 
-        print(f"✓ Binary file copied to: {output_file}")
+        print(f"[green]Binary file copied to: {output_file}[/]")
         file_size = output_file.stat().st_size
         if file_size > 1024 * 1024:
             print(f"  File size: {file_size / (1024 * 1024):.2f} MB")
@@ -285,16 +285,16 @@ Examples:
             print(f"  File size: {file_size / 1024:.2f} KB")
 
         print("\n" + "=" * 70)
-        print("✅ Build complete!")
+        print("[green]Build complete![/]")
         print("=" * 70)
-        print(f"📦 Output file: {output_file}")
+        print(f"[bold]Output file: {output_file}[/]")
         print(f"📂 Source file location: {binary_file}")
         if not args.work_dir:
             print(f"\n💡 Tip: Temporary files are located at {work_dir}")
             print(f"   To clean up, run: rm -rf {work_dir}")
 
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n[red]Error: {e}[/]")
         if isinstance(e, sh.ErrorReturnCode):
             if hasattr(e, 'stdout') and e.stdout:
                 stdout = e.stdout.decode('utf-8') if isinstance(e.stdout, bytes) else e.stdout

@@ -94,7 +94,7 @@ def check_rust_installed() -> bool:
     try:
         result = sh.rustc("--version")
         version = result.strip()
-        print(f"✓ Found Rust: {version.strip()}")
+        print(f"[green]Found Rust: {version.strip()}[/]")
         return True
     except (sh.ErrorReturnCode, AttributeError):
         return False
@@ -105,7 +105,7 @@ def check_cargo_installed() -> bool:
     try:
         result = sh.cargo("--version")
         version = result.strip()
-        print(f"✓ Found Cargo: {version.strip()}")
+        print(f"[green]Found Cargo: {version.strip()}[/]")
         return True
     except (sh.ErrorReturnCode, AttributeError):
         return False
@@ -118,7 +118,7 @@ def check_wasm32_target_installed() -> bool:
         output = result.strip()
         targets = output.strip().split("\n")
         if "wasm32-wasip1" in targets:
-            print("✓ wasm32-wasip1 target is installed")
+            print("[green]wasm32-wasip1 target is installed[/]")
             return True
         return False
     except (sh.ErrorReturnCode, AttributeError):
@@ -127,9 +127,9 @@ def check_wasm32_target_installed() -> bool:
 
 def install_wasm32_target() -> None:
     """Install wasm32-wasip1 target"""
-    print("\n📦 Installing wasm32-wasip1 target...")
+    print("\n[bold]Installing wasm32-wasip1 target...[/]")
     run_cmd("rustup target add wasm32-wasip1", check=True)
-    print("✓ wasm32-wasip1 target installed successfully")
+    print("[green]wasm32-wasip1 target installed successfully[/]")
 
 
 def clone_repository(repo_url: str, clone_dir: Path, version: str) -> Path:
@@ -161,14 +161,14 @@ def clone_repository(repo_url: str, clone_dir: Path, version: str) -> Path:
         check=True,
     )
     current_version = result.stdout.strip()
-    print(f"✓ Current version: {current_version}")
+    print(f"[green]Current version: {current_version}[/]")
 
     return repo_path
 
 
 def build_library(repo_path: Path, features: Optional[str] = None) -> Path:
     """Build libic_wasi_polyfill.a"""
-    print(f"\n🔨 Building libic_wasi_polyfill.a...")
+    print(f"\n[bold]Building libic_wasi_polyfill.a...[/]")
     print(f"   Working directory: {repo_path}")
 
     cmd = "cargo build --release --target wasm32-wasip1"
@@ -186,14 +186,14 @@ def build_library(repo_path: Path, features: Optional[str] = None) -> Path:
         lib_files = list(target_dir.glob("*.a"))
         if lib_files:
             library_file = lib_files[0]
-            print(f"⚠️  Found library file: {library_file.name}")
+            print(f"[yellow]Found library file: {library_file.name}[/]")
         else:
             raise FileNotFoundError(
                 f"Library file not found in {target_dir}. "
                 f"Build may have failed or library name is different."
             )
 
-    print(f"✓ Library built successfully: {library_file}")
+    print(f"[green]Library built successfully: {library_file}[/]")
     return library_file
 
 
@@ -251,19 +251,19 @@ Examples:
     print("=" * 70)
 
     # Check dependencies
-    print("\n🔍 Checking dependencies...")
+    print("\n[bold]Checking dependencies...[/]")
     if not check_rust_installed():
-        print("❌ Error: Rust is not installed")
+        print("[red]Error: Rust is not installed[/]")
         print("   Please visit https://rustup.rs/ to install Rust")
         sys.exit(1)
 
     if not check_cargo_installed():
-        print("❌ Error: Cargo is not installed")
+        print("[red]Error: Cargo is not installed[/]")
         print("   Please visit https://rustup.rs/ to install Rust (includes Cargo)")
         sys.exit(1)
 
     if not check_command_exists("git"):
-        print("❌ Error: git is not installed")
+        print("[red]Error: git is not installed[/]")
         print("   Please install git")
         sys.exit(1)
 
@@ -271,7 +271,7 @@ Examples:
     if not check_wasm32_target_installed():
         install_wasm32_target()
     else:
-        print("✓ wasm32-wasip1 target is already installed")
+        print("[green]wasm32-wasip1 target is already installed[/]")
 
     # Set work directory
     if args.work_dir:
@@ -282,7 +282,7 @@ Examples:
 
     # Clean option
     if args.clean and (work_dir / "ic-wasi-polyfill").exists():
-        print(f"\n🧹 Cleaning work directory: {work_dir / 'ic-wasi-polyfill'}")
+        print(f"\n[bold]Cleaning work directory: {work_dir / 'ic-wasi-polyfill'}[/]")
         shutil.rmtree(work_dir / "ic-wasi-polyfill")
 
     # Clone repository and switch to specified version
@@ -300,20 +300,20 @@ Examples:
 
         print(f"\n📋 Copying library file to output directory...")
         shutil.copy2(library_file, output_file)
-        print(f"✓ Library file copied to: {output_file}")
+        print(f"[green]Library file copied to: {output_file}[/]")
         print(f"  File size: {output_file.stat().st_size / 1024:.2f} KB")
 
         print("\n" + "=" * 70)
-        print("✅ Build complete!")
+        print("[green]Build complete![/]")
         print("=" * 70)
-        print(f"📦 Output file: {output_file}")
+        print(f"[bold]Output file: {output_file}[/]")
         print(f"📂 Source file location: {library_file}")
         if not args.work_dir:
             print(f"\n💡 Tip: Temporary files are located at {work_dir}")
             print(f"   To clean up, run: rm -rf {work_dir}")
 
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n[red]Error: {e}[/]")
         if isinstance(e, sh.ErrorReturnCode):
             if hasattr(e, 'stdout') and e.stdout:
                 stdout = e.stdout.decode('utf-8') if isinstance(e.stdout, bytes) else e.stdout

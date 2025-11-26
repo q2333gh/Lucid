@@ -11,6 +11,7 @@ Usage:
     python3 build_wasi2ic.py [--output-dir OUTPUT_DIR] [--clean]
 
 Dependencies:
+    - Python package: sh (pip install sh)
     - Rust/Cargo (must be installed on system)
     - git (for cloning repository)
 """
@@ -18,10 +19,11 @@ Dependencies:
 import argparse
 import os
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
+
+import sh
 
 
 def run_cmd(
@@ -29,60 +31,79 @@ def run_cmd(
     cwd: Optional[Path] = None,
     check: bool = True,
     capture_output: bool = False,
-) -> subprocess.CompletedProcess:
-    """Run shell command"""
+):
+    """Run shell command using sh library"""
     print(f"$ {cmd}")
-    result = subprocess.run(
-        cmd,
-        shell=True,
-        cwd=cwd,
-        check=check,
-        capture_output=capture_output,
-        text=True,
-    )
-    if capture_output and result.stdout:
-        print(result.stdout)
-    return result
+    
+    parts = cmd.split()
+    if not parts:
+        raise ValueError("Empty command")
+    
+    program = parts[0]
+    args = parts[1:]
+    
+    cmd_func = getattr(sh, program)
+    kwargs = {}
+    if cwd:
+        kwargs['_cwd'] = str(cwd)
+    
+    if capture_output:
+        try:
+            result = cmd_func(*args, _iter=False, **kwargs)
+            stdout = result.stdout.decode('utf-8') if isinstance(result.stdout, bytes) else (result.stdout or "")
+            if stdout:
+                print(stdout)
+            return type('Result', (), {
+                'stdout': stdout,
+                'stderr': '',
+                'returncode': 0
+            })()
+        except sh.ErrorReturnCode as e:
+            stdout = e.stdout.decode('utf-8') if isinstance(e.stdout, bytes) else (e.stdout or "")
+            stderr = e.stderr.decode('utf-8') if isinstance(e.stderr, bytes) else (e.stderr or "")
+            if check:
+                raise
+            return type('Result', (), {
+                'stdout': stdout,
+                'stderr': stderr,
+                'returncode': e.exit_code
+            })()
+    else:
+        try:
+            cmd_func(*args, **kwargs)
+        except sh.ErrorReturnCode as e:
+            if check:
+                raise
 
 
 def check_command_exists(cmd: str) -> bool:
     """Check if command exists"""
     try:
-        subprocess.run(
-            ["which", cmd],
-            capture_output=True,
-            check=True,
-        )
+        getattr(sh, cmd)
         return True
-    except subprocess.CalledProcessError:
+    except AttributeError:
         return False
 
 
 def check_rust_installed() -> bool:
     """Check if Rust is installed"""
     try:
-        result = subprocess.run(
-            ["rustc", "--version"],
-            capture_output=True,
-            check=True,
-        )
-        print(f"✓ Found Rust: {result.stdout.decode().strip()}")
+        result = sh.rustc("--version", _iter=False)
+        version = result.stdout.decode('utf-8') if isinstance(result.stdout, bytes) else result.stdout
+        print(f"✓ Found Rust: {version.strip()}")
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (sh.ErrorReturnCode, AttributeError):
         return False
 
 
 def check_cargo_installed() -> bool:
     """Check if Cargo is installed"""
     try:
-        result = subprocess.run(
-            ["cargo", "--version"],
-            capture_output=True,
-            check=True,
-        )
-        print(f"✓ Found Cargo: {result.stdout.decode().strip()}")
+        result = sh.cargo("--version", _iter=False)
+        version = result.stdout.decode('utf-8') if isinstance(result.stdout, bytes) else result.stdout
+        print(f"✓ Found Cargo: {version.strip()}")
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (sh.ErrorReturnCode, AttributeError):
         return False
 
 
@@ -99,10 +120,9 @@ def clone_repository(repo_url: str, clone_dir: Path, version: str) -> Path:
         run_cmd(f"git clone {repo_url} {repo_path}", cwd=clone_dir.parent, check=True)
 
     print(f"\n🔀 Switching to version: {version}")
-    # Try to checkout tag, if it fails try as commit hash
     try:
         run_cmd(f"git checkout {version}", cwd=repo_path, check=True)
-    except subprocess.CalledProcessError:
+    except sh.ErrorReturnCode:
         # If tag doesn't exist, try fetching tags first
         print(f"   Tag not found locally, fetching tags...")
         run_cmd("git fetch --tags", cwd=repo_path, check=True)
@@ -270,21 +290,20 @@ Examples:
             print(f"\n💡 Tip: Temporary files are located at {work_dir}")
             print(f"   To clean up, run: rm -rf {work_dir}")
 
-    except subprocess.CalledProcessError as e:
-        print(f"\n❌ Build failed: {e}")
-        if e.stdout:
-            print(f"Output: {e.stdout}")
-        if e.stderr:
-            print(f"Error: {e.stderr}")
-        sys.exit(1)
     except Exception as e:
         print(f"\n❌ Error: {e}")
-        import traceback
-
-        traceback.print_exc()
+        if isinstance(e, sh.ErrorReturnCode):
+            if hasattr(e, 'stdout') and e.stdout:
+                stdout = e.stdout.decode('utf-8') if isinstance(e.stdout, bytes) else e.stdout
+                print(f"Output: {stdout}")
+            if hasattr(e, 'stderr') and e.stderr:
+                stderr = e.stderr.decode('utf-8') if isinstance(e.stderr, bytes) else e.stderr
+                print(f"Error: {stderr}")
+        else:
+            import traceback
+            traceback.print_exc()
         sys.exit(1)
 
 
 if __name__ == "__main__":
     main()
-

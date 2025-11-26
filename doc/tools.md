@@ -3,8 +3,10 @@
 ## Required Tools
 
 - **WASI SDK**: Compiler toolchain for WebAssembly
-- **Python 3**: Build script execution
-- **wasm-opt** (optional): WASM optimization
+- **Python 3**: Required for build scripts  
+  - It is recommended to use **uv** as your Python virtual environment and package manager (see [uv documentation](https://github.com/astral-sh/uv))
+- **Python package: sh** (install via `pip install sh` or with `uv pip install sh`)
+- **wasm-opt** (optional): For WASM optimization
 
 ## Build Scripts
 

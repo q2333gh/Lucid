@@ -38,27 +38,10 @@ print = console.print  # route legacy prints through Rich for consistent styling
 
 
 ########################################################################
-# Initialize Paths
+# Initialize Paths - Removed Global State
 ########################################################################
+# Configuration is now handled inside the run function and passed to ICBuilder
 
-SCRIPT_DIR = Path(__file__).parent.resolve()
-PATHS = initialize_paths(SCRIPT_DIR)
-
-# Extract paths for convenience
-PROJECT_ROOT = PATHS['PROJECT_ROOT']
-SRC_DIR = PATHS['SRC_DIR']
-INCLUDE_DIR = PATHS['INCLUDE_DIR']
-EXAMPLES_DIR = PATHS['EXAMPLES_DIR']
-SCRIPTS_DIR = PATHS['SCRIPTS_DIR']
-BUILD_DIR = PATHS['BUILD_DIR']
-WASI_BUILD_DIR = PATHS['WASI_BUILD_DIR']
-
-# Build script paths
-BUILD_POLYFILL_SCRIPT = SCRIPT_DIR / "build_libic_wasi_polyfill.py"
-BUILD_WASI2IC_SCRIPT = SCRIPT_DIR / "build_wasi2ic.py"
-
-# Example files
-EXAMPLE_SOURCES = list(EXAMPLES_DIR.glob("*.c")) if EXAMPLES_DIR.exists() else []
 
 # Typer app
 app = typer.Typer(add_completion=False, help="IC C SDK build tool")
@@ -71,8 +54,26 @@ app = typer.Typer(add_completion=False, help="IC C SDK build tool")
 class ICBuilder:
     """Builder class for IC C SDK library"""
     
-    def __init__(self, target_platform="native"):
+    def __init__(self, target_platform="native", paths=None, script_dir=None):
         self.target_platform = target_platform
+        if paths is None or script_dir is None:
+            # Fallback for safety, though run() should always provide them
+            script_dir = Path(__file__).parent.resolve()
+            paths = initialize_paths(script_dir)
+            
+        self.paths = paths
+        self.script_dir = script_dir
+        
+        # Extract paths from config
+        self.src_dir = paths['SRC_DIR']
+        self.include_dir = paths['INCLUDE_DIR']
+        self.examples_dir = paths['EXAMPLES_DIR']
+        self.scripts_dir = paths['SCRIPTS_DIR']
+        
+        # Build script paths
+        self.build_polyfill_script = script_dir / "build_libic_wasi_polyfill.py"
+        self.build_wasi2ic_script = script_dir / "build_wasi2ic.py"
+
         self.polyfill_library = None
         self.wasi2ic_tool = None
         
@@ -82,15 +83,15 @@ class ICBuilder:
             self.cc = str(wasi_paths['WASI_C'])
             self.ar = str(wasi_paths['WASI_AR'])
             self.wasi_sdk_compiler_root = wasi_paths['WASI_SDK_COMPILER_ROOT']
-            self.build_dir = WASI_BUILD_DIR
+            self.build_dir = paths['WASI_BUILD_DIR']
         else:  # native
             self.cc = NATIVE_C
             self.ar = NATIVE_AR
             self.wasi_sdk_compiler_root = None
-            self.build_dir = BUILD_DIR
+            self.build_dir = paths['BUILD_DIR']
         
         # Get compilation flags
-        flags = get_compile_flags(INCLUDE_DIR, target_platform)
+        flags = get_compile_flags(self.include_dir, target_platform)
         self.cflags = flags['CFLAGS'].copy()
         self.ldflags = flags['LDFLAGS'].copy()
         
@@ -141,7 +142,7 @@ class ICBuilder:
         self.ensure_directories()
         
         # Check if source files exist
-        all_exist, missing_files = check_source_files_exist(SRC_DIR, LIB_SOURCES)
+        all_exist, missing_files = check_source_files_exist(self.src_dir, LIB_SOURCES)
         if not all_exist:
             print("[red]Missing source files:[/]")
             for file in missing_files:
@@ -153,7 +154,7 @@ class ICBuilder:
         object_files = []
         for source in LIB_SOURCES:
             obj_file = self.build_dir / source.replace(".c", ".o")
-            if not self.compile_source(source, SRC_DIR):
+            if not self.compile_source(source, self.src_dir):
                 return False
             object_files.append(obj_file)
         
@@ -170,7 +171,7 @@ class ICBuilder:
         if self.polyfill_library and self.polyfill_library.exists():
             return True
         
-        polyfill_path = ensure_polyfill_library(SCRIPTS_DIR, BUILD_POLYFILL_SCRIPT)
+        polyfill_path = ensure_polyfill_library(self.scripts_dir, self.build_polyfill_script)
         if polyfill_path:
             self.polyfill_library = polyfill_path
             return True
@@ -181,7 +182,7 @@ class ICBuilder:
         if self.wasi2ic_tool and self.wasi2ic_tool.exists():
             return True
         
-        wasi2ic_path = ensure_wasi2ic_tool(SCRIPTS_DIR, BUILD_WASI2IC_SCRIPT)
+        wasi2ic_path = ensure_wasi2ic_tool(self.scripts_dir, self.build_wasi2ic_script)
         if wasi2ic_path:
             self.wasi2ic_tool = wasi2ic_path
             return True
@@ -243,12 +244,14 @@ class ICBuilder:
 
     def build_examples(self) -> bool:
         """Build example programs"""
-        if not EXAMPLE_SOURCES:
+        example_sources = list(self.examples_dir.glob("*.c")) if self.examples_dir.exists() else []
+        
+        if not example_sources:
             print("[yellow]No example files found[/]")
             return True
         
         # Check if library needs rebuild
-        if needs_rebuild(self.lib_path, SRC_DIR, LIB_SOURCES, self.target_platform, self.build_dir):
+        if needs_rebuild(self.lib_path, self.src_dir, LIB_SOURCES, self.target_platform, self.build_dir):
             print("[yellow]Library needs rebuild, auto-building library...[/]")
             if not self.build_library():
                 print("[red]Library build failed, cannot continue building examples[/]")
@@ -259,7 +262,7 @@ class ICBuilder:
         print(f"\n[bold]Building example programs ({platform_name})...[/]")
         
         success = True
-        for example_src in EXAMPLE_SOURCES:
+        for example_src in example_sources:
             example_name = example_src.stem
             
             # Compile example using shared compile logic
@@ -285,7 +288,10 @@ class ICBuilder:
         print("[bold]Cleaning build artifacts...[/]")
         
         removed_count = 0
-        for build_path in [BUILD_DIR, WASI_BUILD_DIR]:
+        # Use paths from config
+        build_dirs = [self.paths['BUILD_DIR'], self.paths['WASI_BUILD_DIR']]
+        
+        for build_path in build_dirs:
             if build_path.exists():
                 try:
                     shutil.rmtree(build_path)
@@ -314,13 +320,14 @@ class ICBuilder:
         
         print("\n  Library source files:")
         for src in LIB_SOURCES:
-            src_path = SRC_DIR / src
+            src_path = self.src_dir / src
             status = "[green]OK[/]" if src_path.exists() else "[red]Missing[/]"
             print(f"    {status} {src}")
         
-        if EXAMPLE_SOURCES:
+        example_sources = list(self.examples_dir.glob("*.c")) if self.examples_dir.exists() else []
+        if example_sources:
             print("\n  Example files:")
-            for example in EXAMPLE_SOURCES:
+            for example in example_sources:
                 print(f"    • {example.name}")
         
         if self.target_platform == "wasi":
@@ -328,16 +335,16 @@ class ICBuilder:
             print(f"\n  WASI SDK: {wasi_paths['WASI_SDK_COMPILER_ROOT']}")
             print(f"  System root: {wasi_paths['WASI_SYSROOT']}")
             print(f"\n  IC WASI Polyfill (locked commit: {IC_WASI_POLYFILL_COMMIT}):")
-            polyfill_path = ensure_polyfill_library(SCRIPTS_DIR, BUILD_POLYFILL_SCRIPT)
+            polyfill_path = ensure_polyfill_library(self.scripts_dir, self.build_polyfill_script)
             if polyfill_path:
                 print(f"    Library: {polyfill_path}")
                 print(f"    Status: [green]Found[/]")
             else:
                 print(f"    Status: ✗ Not found")
-            print(f"    Build script: {BUILD_POLYFILL_SCRIPT}")
+            print(f"    Build script: {self.build_polyfill_script}")
             
             print(f"\n  wasi2ic tool (locked commit: {WASI2IC_COMMIT}):")
-            wasi2ic_path = ensure_wasi2ic_tool(SCRIPTS_DIR, BUILD_WASI2IC_SCRIPT)
+            wasi2ic_path = ensure_wasi2ic_tool(self.scripts_dir, self.build_wasi2ic_script)
             if wasi2ic_path:
                 print(f"    Path: {wasi2ic_path}")
                 print(f"    Status: [green]Found[/]")
@@ -386,12 +393,18 @@ def run(
     """
     Manage IC C SDK builds. If no action flags are provided, --build is assumed.
     """
+    # Initialize paths locally within the run context
+    script_dir = Path(__file__).parent.resolve()
+    paths = initialize_paths(script_dir)
+    
     # Default to building when no action was specified
     if not any([build, clean, examples, info]):
         build = True
 
     target_platform = "wasi" if wasi else "native"
-    builder = ICBuilder(target_platform)
+    
+    # Initialize Builder with config
+    builder = ICBuilder(target_platform, paths=paths, script_dir=script_dir)
     success = True
 
     if info:

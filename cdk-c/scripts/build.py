@@ -308,7 +308,7 @@ class ICBuilder:
     def show_info(self):
         """Show build information"""
         platform_name = "WASI" if self.target_platform == "wasi" else "Native"
-        print("📋 Build configuration information:")
+        print(" Build configuration information:")
         print(f"  Target platform: {platform_name}")
         print(f"  Compiler: {self.cc}")
         print(f"  Archiver: {self.ar}")

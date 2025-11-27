@@ -250,8 +250,8 @@ class ICBuilder:
                     success = False
                     continue
                 
-                print(f"\n  [bold]Using wasi2ic tool:[/]")
-                print(f"     Path: {self.wasi2ic_tool.resolve()}")
+                # print(f"\n  [bold]Using wasi2ic tool:[/]")
+                # print(f"     Path: {self.wasi2ic_tool.resolve()}")
                 
                 wasi2ic_cmd = [str(self.wasi2ic_tool), str(wasi_wasm_target), str(ic_wasm_target)]
                 if run_command(wasi2ic_cmd, f"Converting {example_name} to IC-compatible version"):

@@ -4,50 +4,42 @@ This directory contains Rust `didc`-based **reference tools** used as an oracle
 when developing and testing the C implementation of Candid.
 
 ### Prerequisites
-
-- Build `didc` at the repository root:
-
+isntall didc cli tool
 ```bash
-cargo build -p didc --release
-```
-
-- Add `target/release/didc` to your `PATH`, or set an explicit binary via:
-
-```bash
-export DIDC_BIN=/abs/path/to/target/release/didc
+cargo binsintall   didc 
 ```
 
 ### Tools
 
-- `encode.sh`  
+- `encode.py`  
   - stdin: Candid text (for example `("hello", 42)`).  
   - stdout: Candid binary encoded as a hex string (no `0x` prefix).  
   - Internally calls: `didc encode --format hex …`.
 
-- `decode.sh`  
+- `decode.py`  
   - stdin: Candid binary as a hex string.  
   - stdout: Candid text.  
   - Internally calls: `didc decode --format hex …`.
 
 - `compare.py`  
   - Compares the **C implementation** against `didc` for both encode and decode.  
-  - Assumes there are two C executables:
-    - `./c_candid_encode`: reads Candid text from stdin, writes hex to stdout.  
-    - `./c_candid_decode`: reads hex from stdin, writes Candid text to stdout.
+  - Assumes the stub binaries built via `python3 c_candid/build.py bins`:
+    - `c_candid/runtime/build/bin/c_candid_encode`: reads Candid text from stdin, writes hex to stdout.  
+    - `c_candid/runtime/build/bin/c_candid_decode`: reads hex from stdin, writes Candid text to stdout.
 
 #### Example: compare encode
 
 ```bash
-echo '("hello", 42)' | ./oracle/compare.py encode \
-  --c-bin ./c_candid_encode \
+echo '("hello", 42)' | python3 c_candid/oracle/compare.py encode \
+  --c-bin c_candid/runtime/build/bin/c_candid_encode \
   --didc-bin "${DIDC_BIN:-didc}"
 ```
 
 #### Example: compare decode
 
 ```bash
-echo "$HEX" | ./oracle/compare.py decode \
-  --c-bin ./c_candid_decode \
+echo "$HEX" | python3 c_candid/oracle/compare.py decode \
+  --c-bin c_candid/runtime/build/bin/c_candid_decode \
   --didc-bin "${DIDC_BIN:-didc}"
 ```
 

@@ -104,15 +104,17 @@ class ICBuilder:
     
     def compile_source(self, source_file: str, source_dir: Path) -> bool:
         """Compile a single source file"""
-        obj_file = self.build_dir / source_file.replace(".c", ".o")
-        cmd = [self.cc] + self.cflags + ["-c", str(source_dir / source_file), "-o", str(obj_file)]
+        source_path = source_dir / source_file
+        obj_file = self.build_dir / Path(source_file).with_suffix(".o")
+        
+        # Default flags
+        current_cflags = self.cflags[:]
         
         # Disable LTO for ic_wasi_polyfill.c to prevent removal of raw_init import
         if source_file == "ic_wasi_polyfill.c" and self.target_platform == "wasi":
-            # Remove LTO flags for this file
-            cmd = [self.cc] + [f for f in self.cflags if not f.startswith("-flto")] + \
-                  ["-c", str(source_dir / source_file), "-o", str(obj_file)]
-        
+            current_cflags = [f for f in self.cflags if not f.startswith("-flto")]
+            
+        cmd = [self.cc] + current_cflags + ["-c", str(source_path), "-o", str(obj_file)]
         return run_command(cmd, f"Compiling {source_file}")
     
     def create_static_lib(self, object_files: list) -> bool:
@@ -185,6 +187,60 @@ class ICBuilder:
             return True
         return False
     
+    def _process_wasi_artifact(self, example_name: str, obj_file: Path) -> bool:
+        """
+        Process WASI artifacts: Link -> Polyfill -> wasi2ic -> Optimize
+        """
+        if not self.ensure_polyfill_library():
+            print(f"[red]  Error: Cannot proceed without libic_wasi_polyfill.a[/]")
+            return False
+
+        wasi_wasm_target = self.build_dir / f"{example_name}_wasi.wasm"
+        ic_wasm_target = self.build_dir / f"{example_name}.wasm"
+
+        # Step 1: Link to generate WASI WASM (includes libic_wasi_polyfill.a)
+        print(f"\n  [bold]Linking with IC WASI Polyfill library:[/]")
+        print(f"     Path: {self.polyfill_library.resolve()}")
+        
+        # Remove LTO from link flags to prevent removal of raw_init import
+        link_flags = [f for f in self.ldflags if not f.startswith("-Wl,--lto")]
+        cmd = [self.cc] + [str(obj_file), str(self.lib_path), str(self.polyfill_library)] + \
+              link_flags + ["-Wl,--no-entry", "-Wl,--export-all", "-Wl,--import-undefined", 
+                           "-Wl,--undefined=raw_init", "-o", str(wasi_wasm_target)]
+        
+        if not run_command(cmd, f"Linking to generate WASI WASM {example_name}"):
+            return False
+        
+        # Verify that raw_init import is present in the linked WASM file
+        print(f"\n  [bold]Verifying raw_init import linkage...[/]")
+        if not verify_raw_init_import(wasi_wasm_target, self.wasi_sdk_compiler_root):
+            print(f"[yellow]  Warning: raw_init import verification failed for {example_name}[/]")
+            return False
+        
+        # Step 2: Use wasi2ic to convert to IC-compatible WASM
+        if not self.ensure_wasi2ic_tool():
+            print(f"[red]  Error: Cannot proceed without wasi2ic tool[/]")
+            return False
+        
+        wasi2ic_cmd = [str(self.wasi2ic_tool), str(wasi_wasm_target), str(ic_wasm_target)]
+        if run_command(wasi2ic_cmd, f"Converting {example_name} to IC-compatible version"):
+            print(f"[green]  {example_name}: {ic_wasm_target} (IC compatible)[/]")
+            print(f"     (WASI version: {wasi_wasm_target})")
+            
+            # Step 3: Optimize WASM file with wasm-opt
+            optimized_wasm_target = self.build_dir / f"{example_name}_optimized.wasm"
+            print(f"\n  [bold]Optimizing WASM file...[/]")
+            if optimize_wasm(ic_wasm_target, optimized_wasm_target):
+                print(f"[green]  Optimized version: {optimized_wasm_target}[/]")
+            else:
+                # Optimization is optional, don't fail the build
+                print(f"[cyan]  Original version available: {ic_wasm_target}[/]")
+        else:
+            print(f"[yellow]  wasi2ic conversion failed, but WASI WASM generated: {wasi_wasm_target}[/]")
+            return False
+            
+        return True
+
     def build_examples(self) -> bool:
         """Build example programs"""
         if not EXAMPLE_SOURCES:
@@ -205,69 +261,17 @@ class ICBuilder:
         success = True
         for example_src in EXAMPLE_SOURCES:
             example_name = example_src.stem
-            obj_file = self.build_dir / f"{example_name}.o"
             
-            # Compile example as object file
-            cmd = [self.cc] + self.cflags + ["-c", str(example_src), "-o", str(obj_file)]
-            if not run_command(cmd, f"Compiling example {example_name}"):
+            # Compile example using shared compile logic
+            if not self.compile_source(example_src.name, example_src.parent):
                 success = False
                 continue
             
+            obj_file = self.build_dir / f"{example_name}.o"
+            
             # For WASI platform, link to generate .wasm file
             if self.target_platform == "wasi":
-                # Ensure polyfill library exists
-                if not self.ensure_polyfill_library():
-                    print(f"[red]  Error: Cannot proceed without libic_wasi_polyfill.a[/]")
-                    success = False
-                    continue
-                
-                wasi_wasm_target = self.build_dir / f"{example_name}_wasi.wasm"
-                ic_wasm_target = self.build_dir / f"{example_name}.wasm"
-                
-                # Step 1: Link to generate WASI WASM (includes libic_wasi_polyfill.a)
-                print(f"\n  [bold]Linking with IC WASI Polyfill library:[/]")
-                print(f"     Path: {self.polyfill_library.resolve()}")
-                
-                # Remove LTO from link flags to prevent removal of raw_init import
-                link_flags = [f for f in self.ldflags if not f.startswith("-Wl,--lto")]
-                cmd = [self.cc] + [str(obj_file), str(self.lib_path), str(self.polyfill_library)] + \
-                      link_flags + ["-Wl,--no-entry", "-Wl,--export-all", "-Wl,--import-undefined", 
-                                   "-Wl,--undefined=raw_init", "-o", str(wasi_wasm_target)]
-                
-                if not run_command(cmd, f"Linking to generate WASI WASM {example_name}"):
-                    success = False
-                    continue
-                
-                # Verify that raw_init import is present in the linked WASM file
-                print(f"\n  [bold]Verifying raw_init import linkage...[/]")
-                if not verify_raw_init_import(wasi_wasm_target, self.wasi_sdk_compiler_root):
-                    print(f"[yellow]  Warning: raw_init import verification failed for {example_name}[/]")
-                    success = False
-                
-                # Step 2: Use wasi2ic to convert to IC-compatible WASM
-                if not self.ensure_wasi2ic_tool():
-                    print(f"[red]  Error: Cannot proceed without wasi2ic tool[/]")
-                    success = False
-                    continue
-                
-                # print(f"\n  [bold]Using wasi2ic tool:[/]")
-                # print(f"     Path: {self.wasi2ic_tool.resolve()}")
-                
-                wasi2ic_cmd = [str(self.wasi2ic_tool), str(wasi_wasm_target), str(ic_wasm_target)]
-                if run_command(wasi2ic_cmd, f"Converting {example_name} to IC-compatible version"):
-                    print(f"[green]  {example_name}: {ic_wasm_target} (IC compatible)[/]")
-                    print(f"     (WASI version: {wasi_wasm_target})")
-                    
-                    # Step 3: Optimize WASM file with wasm-opt
-                    optimized_wasm_target = self.build_dir / f"{example_name}_optimized.wasm"
-                    print(f"\n  [bold]Optimizing WASM file...[/]")
-                    if optimize_wasm(ic_wasm_target, optimized_wasm_target):
-                        print(f"[green]  Optimized version: {optimized_wasm_target}[/]")
-                    else:
-                        # Optimization is optional, don't fail the build
-                        print(f"[cyan]  Original version available: {ic_wasm_target}[/]")
-                else:
-                    print(f"[yellow]  wasi2ic conversion failed, but WASI WASM generated: {wasi_wasm_target}[/]")
+                if not self._process_wasi_artifact(example_name, obj_file):
                     success = False
             else:
                 # Native platform only compiles object files

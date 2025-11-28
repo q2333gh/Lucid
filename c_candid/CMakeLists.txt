@@ -37,30 +37,35 @@ add_library(candid_runtime STATIC
 )
 target_include_directories(candid_runtime PUBLIC ${RUNTIME_DIR}/include)
 
-add_executable(c_candid_encode ${STUB_DIR}/c_candid_encode.c)
-target_include_directories(c_candid_encode PRIVATE ${RUNTIME_DIR}/include)
-target_link_libraries(c_candid_encode candid_runtime)
-
-add_executable(c_candid_decode ${STUB_DIR}/c_candid_decode.c)
-target_include_directories(c_candid_decode PRIVATE ${RUNTIME_DIR}/include)
-target_link_libraries(c_candid_decode candid_runtime)
-
-if(C_CANDID_BUILD_TESTS)
-    enable_testing()
-    add_executable(runtime_tests ${TESTS_DIR}/runtime_tests.c)
-    target_include_directories(runtime_tests PRIVATE ${RUNTIME_DIR}/include)
-    target_link_libraries(runtime_tests candid_runtime)
-    add_test(NAME runtime_tests COMMAND runtime_tests)
-endif()
-
 # Examples
 option(C_CANDID_BUILD_EXAMPLES "Build C candid examples" ON)
-if(C_CANDID_BUILD_EXAMPLES)
-    add_executable(basic_usage ${CMAKE_CURRENT_SOURCE_DIR}/examples/basic_usage.c)
-    target_link_libraries(basic_usage candid_runtime)
 
-    add_executable(candid_style_usage ${CMAKE_CURRENT_SOURCE_DIR}/examples/candid_style_usage.c)
-    target_link_libraries(candid_style_usage candid_runtime)
+# Skip executables if building for WASI reactor (Canister)
+# We only need the library in that case
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
+    if(C_CANDID_BUILD_EXAMPLES)
+        add_executable(basic_usage ${CMAKE_CURRENT_SOURCE_DIR}/examples/basic_usage.c)
+        target_link_libraries(basic_usage candid_runtime)
+
+        add_executable(candid_style_usage ${CMAKE_CURRENT_SOURCE_DIR}/examples/candid_style_usage.c)
+        target_link_libraries(candid_style_usage candid_runtime)
+    endif()
+    
+    add_executable(c_candid_encode ${STUB_DIR}/c_candid_encode.c)
+    target_include_directories(c_candid_encode PRIVATE ${RUNTIME_DIR}/include)
+    target_link_libraries(c_candid_encode candid_runtime)
+
+    add_executable(c_candid_decode ${STUB_DIR}/c_candid_decode.c)
+    target_include_directories(c_candid_decode PRIVATE ${RUNTIME_DIR}/include)
+    target_link_libraries(c_candid_decode candid_runtime)
+
+    if(C_CANDID_BUILD_TESTS)
+        enable_testing()
+        add_executable(runtime_tests ${TESTS_DIR}/runtime_tests.c)
+        target_include_directories(runtime_tests PRIVATE ${RUNTIME_DIR}/include)
+        target_link_libraries(runtime_tests candid_runtime)
+        add_test(NAME runtime_tests COMMAND runtime_tests)
+    endif()
 endif()
 
 

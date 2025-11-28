@@ -5,7 +5,7 @@ Standalone script: Build libic_wasi_polyfill.a
 Build libic_wasi_polyfill.a static library from
 https://github.com/wasm-forge/ic-wasi-polyfill
 
-Default version: b3ef005140e7eebf7d0b5471ccc3a6d4cbec4ee5
+Default version taken from build_utils/config.py (IC_WASI_POLYFILL_COMMIT)
 
 Usage:
     python3 build_libic_wasi_polyfill.py [--output-dir OUTPUT_DIR] [--clean]
@@ -25,6 +25,15 @@ from pathlib import Path
 from typing import Optional
 
 import sh
+
+# Allow importing sibling config when executed directly
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from config import IC_WASI_POLYFILL_COMMIT
+
+DEFAULT_POLYFILL_VERSION = IC_WASI_POLYFILL_COMMIT
 
 
 def run_cmd(
@@ -154,13 +163,22 @@ def clone_repository(repo_url: str, clone_dir: Path, version: str) -> Path:
         run_cmd(f"git checkout {version}", cwd=repo_path, check=True)
 
     # Verify current version
-    result = run_cmd(
-        "git describe --tags --exact-match HEAD 2>/dev/null || git rev-parse HEAD",
+    describe_result = run_cmd(
+        "git describe --tags --exact-match HEAD",
         cwd=repo_path,
         capture_output=True,
-        check=True,
+        check=False,
     )
-    current_version = result.stdout.strip()
+    if describe_result and getattr(describe_result, "returncode", 0) == 0:
+        current_version = describe_result.stdout.strip()
+    else:
+        rev_result = run_cmd(
+            "git rev-parse HEAD",
+            cwd=repo_path,
+            capture_output=True,
+            check=True,
+        )
+        current_version = rev_result.stdout.strip()
     print(f"[green]Current version: {current_version}[/]")
 
     return repo_path
@@ -230,7 +248,7 @@ Examples:
     parser.add_argument(
         "--version",
         type=str,
-        default="b3ef005140e7eebf7d0b5471ccc3a6d4cbec4ee5",
+        default=DEFAULT_POLYFILL_VERSION,
         help="Version tag or commit hash to build ",
     )
     parser.add_argument(

@@ -5,109 +5,143 @@ Standalone script: Build wasi2ic tool
 Build wasi2ic binary from
 https://github.com/wasm-forge/wasi2ic
 
-Default version: c0f5063e734f8365f1946baf2845d8322cc9bfec
-
-Usage:
-    python3 build_wasi2ic.py [--output-dir OUTPUT_DIR] [--clean]
-
-Dependencies:
-    - Python package: sh (pip install sh)
-    - Rust/Cargo (must be installed on system)
-    - git (for cloning repository)
+Default version taken from build_utils/config.py (WASI2IC_COMMIT)
 """
 
-import argparse
 import os
 import shutil
+import subprocess
 import sys
+from collections import deque
 from pathlib import Path
 from typing import Optional
 
 import sh
+import typer
+from rich.console import Console
+from rich.live import Live
+from rich.panel import Panel
+
+# Allow importing sibling config when executed directly
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+try:
+    from config import WASI2IC_COMMIT
+except ImportError:
+    # Fallback if config not found (e.g. moved)
+    WASI2IC_COMMIT = "c0f5063e734f8365f1946baf2845d8322cc9bfec"
+
+app = typer.Typer(help="Build wasi2ic tool from source")
+console = Console()
+
+DEFAULT_WASI2IC_VERSION = WASI2IC_COMMIT
 
 
-def run_cmd(
-    cmd: str,
+def command_exists(cmd: str) -> bool:
+    """Check whether a command/binary is available on the system."""
+    if "/" in cmd or "\\" in cmd:
+        cmd_path = Path(cmd)
+        return cmd_path.exists() and os.access(cmd_path, os.X_OK)
+    return shutil.which(cmd) is not None
+
+
+def resolve_command(cmd_name: str) -> sh.Command:
+    """Resolve command name to an sh.Command, exiting early if missing."""
+    if not command_exists(cmd_name):
+        console.print(f"[bold red]Command not found: {cmd_name}[/]")
+        raise typer.Exit(code=1)
+    return sh.Command(cmd_name)
+
+
+def run_streaming_cmd(
+    cmd_name: str,
+    *args,
     cwd: Optional[Path] = None,
-    check: bool = True,
-    capture_output: bool = False,
+    title: str = "Processing...",
+    max_lines: int = 4
 ):
-    """Run shell command using sh library"""
-    print(f"$ {cmd}")
+    """
+    Executes a shell command using rich's Live display to show the last few lines of output.
+    Inspired by run_and_tail from cdk-c/a.py.
+    """
+    if not command_exists(cmd_name):
+        console.print(f"[bold red]Command not found: {cmd_name}[/]")
+        raise typer.Exit(code=1)
+
+    cmd = [cmd_name, *[str(a) for a in args]]
     
-    parts = cmd.split()
-    if not parts:
-        raise ValueError("Empty command")
-    
-    program = str(parts[0])
-    args = [str(arg) for arg in parts[1:]]
-    
-    cmd_func = sh.Command(program)
-    
-    kwargs = {}
-    if cwd:
-        kwargs['_cwd'] = str(cwd)
-    if capture_output:
-        kwargs['_iter'] = False
+    # Buffer to store recent lines
+    buffer = deque(maxlen=max_lines)
     
     try:
-        result = cmd_func(*args, **kwargs)
-        if capture_output:
-            stdout = result or ""
-            if stdout:
-                print(stdout)
-            return type('Result', (), {
-                'stdout': stdout,
-                'stderr': '',
-                'returncode': 0
-            })()
-    except sh.ErrorReturnCode as e:
-        if capture_output and not check:
-            stdout = e.stdout.decode('utf-8') if isinstance(e.stdout, bytes) else (e.stdout or "")
-            stderr = e.stderr.decode('utf-8') if isinstance(e.stderr, bytes) else (e.stderr or "")
-            return type('Result', (), {
-                'stdout': stdout,
-                'stderr': stderr,
-                'returncode': e.exit_code
-            })()
-        if check:
-            raise
+        # Start the process
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            cwd=cwd
+        )
+        
+        with Live(console=console, refresh_per_second=10) as live:
+            # Initial display
+            live.update(Panel("\n" * max_lines, title=title))
+            
+            # Read output line by line
+            for line in proc.stdout:
+                line_text = line.rstrip()
+                buffer.append(line_text)
+                
+                # Update panel content
+                content = "\n".join(buffer)
+                live.update(Panel(content, title=f"{title} (last {max_lines} lines)"))
+            
+            proc.wait()
+            
+        if proc.returncode != 0:
+            console.print(f"[bold red]Command failed with exit code {proc.returncode}[/]")
+            # Print the captured buffer as context
+            for line in buffer:
+                console.print(f"[red]{line}[/]")
+            raise typer.Exit(code=1)
+            
+    except Exception as e:
+        console.print(f"[bold red]Error executing command: {cmd_name}[/]")
+        console.print(f"[red]{e}[/]")
+        raise typer.Exit(code=1)
 
 
-def check_command_exists(cmd: str) -> bool:
-    """Check if command exists"""
+def ensure_toolchain_ready():
+    """Verify required tooling exists before running expensive work."""
+    console.print("\n[bold]Checking dependencies...[/]")
+
+    required_tools = ("rustc", "cargo", "git")
+    missing_tools = [tool for tool in required_tools if not command_exists(tool)]
+
+    if missing_tools:
+        console.print(f"[red]Missing required tools: {', '.join(missing_tools)}[/]")
+        console.print("   Please install them before rerunning the build.")
+        raise typer.Exit(code=1)
+
+    # After confirming availability, report versions for key tools.
     try:
-        if '/' in cmd:
-            # Full path - check if file exists
-            cmd_path = Path(cmd)
-            return cmd_path.exists() and cmd_path.is_file()
-        # Simple command name - let sh resolve it (raises CommandNotFound if missing)
-        sh.Command(cmd)
-        return True
-    except sh.CommandNotFound:
-        return False
+        rust_version = sh.rustc("--version").strip()
+        console.print(f"[green]Found Rust: {rust_version}[/]")
+    except sh.ErrorReturnCode as err:
+        console.print(f"[red]rustc reported an error: {err}[/]")
+        raise typer.Exit(code=1)
 
-
-def check_rust_installed() -> bool:
-    """Check if Rust is installed"""
     try:
-        result = sh.rustc("--version")
-        version = result.strip()
-        print(f"[green]Found Rust: {version.strip()}[/]")
-        return True
-    except (sh.ErrorReturnCode, AttributeError):
-        return False
+        cargo_version = sh.cargo("--version").strip()
+        console.print(f"[green]Found Cargo: {cargo_version}[/]")
+    except sh.ErrorReturnCode as err:
+        console.print(f"[red]cargo reported an error: {err}[/]")
+        raise typer.Exit(code=1)
 
-
-def check_cargo_installed() -> bool:
-    """Check if Cargo is installed"""
-    try:
-        result = sh.cargo("--version")
-        version = result.strip()
-        print(f"[green]Found Cargo: {version.strip()}[/]")
-        return True
-    except (sh.ErrorReturnCode, AttributeError):
-        return False
+    # git availability already confirmed; no version needed for success path.
 
 
 def clone_repository(repo_url: str, clone_dir: Path, version: str) -> Path:
@@ -115,198 +149,130 @@ def clone_repository(repo_url: str, clone_dir: Path, version: str) -> Path:
     repo_path = clone_dir / "wasi2ic"
 
     if repo_path.exists():
-        print(f"\n📂 Repository already exists at {repo_path}")
-        print("   Updating to latest and switching to version...")
-        run_cmd("git fetch origin", cwd=repo_path, check=True)
+        console.print(f"\n[bold cyan]Repository already exists at:[/] {repo_path}")
+        console.print("   Updating to latest...")
+        run_streaming_cmd("git", "fetch", "origin", cwd=repo_path, title="Fetching updates")
     else:
-        print(f"\n📥 Cloning repository from {repo_url}...")
-        run_cmd(f"git clone {repo_url} {repo_path}", cwd=clone_dir.parent, check=True)
+        console.print(f"\n[bold] Cloning repository...[/]")
+        run_streaming_cmd("git", "clone", repo_url, str(repo_path), cwd=clone_dir.parent, title="Cloning repository")
 
-    print(f"\n🔀 Switching to version: {version}")
+    console.print(f"\n[bold] Switching to version: {version}[/]")
     try:
-        run_cmd(f"git checkout {version}", cwd=repo_path, check=True)
+        # Try direct checkout
+        sh.git("checkout", version, _cwd=repo_path)
     except sh.ErrorReturnCode:
-        # If tag doesn't exist, try fetching tags first
-        print(f"   Tag not found locally, fetching tags...")
-        run_cmd("git fetch --tags", cwd=repo_path, check=True)
-        run_cmd(f"git checkout {version}", cwd=repo_path, check=True)
+        # Fetch tags if needed
+        console.print("   Tag not found locally, fetching tags...")
+        run_streaming_cmd("git", "fetch", "--tags", cwd=repo_path, title="Fetching tags")
+        sh.git("checkout", version, _cwd=repo_path)
 
-    # Verify current version
-    result = run_cmd(
-        "git describe --tags --exact-match HEAD 2>/dev/null || git rev-parse HEAD",
-        cwd=repo_path,
-        capture_output=True,
-        check=True,
-    )
-    current_version = result.stdout.strip()
-    print(f"[green]Current version: {current_version}[/]")
-
+    # Verify version
+    try:
+        current = sh.git("describe", "--tags", "--exact-match", "HEAD", _cwd=repo_path).strip()
+    except sh.ErrorReturnCode:
+        current = sh.git("rev-parse", "HEAD", _cwd=repo_path).strip()
+    
+    console.print(f"[green]Current version: {current}[/]")
     return repo_path
 
 
 def build_binary(repo_path: Path) -> Path:
     """Build wasi2ic binary"""
-    print(f"\n[bold]Building wasi2ic binary...[/]")
-    print(f"   Working directory: {repo_path}")
+    console.print(f"\n[bold]Building wasi2ic binary...[/]")
+    
+    run_streaming_cmd(
+        "cargo", "build", "--release", 
+        cwd=repo_path, 
+        title="Compiling wasi2ic (release)"
+    )
 
-    # Build release binary
-    run_cmd("cargo build --release", cwd=repo_path, check=True)
-
-    # Find generated binary file
     target_dir = repo_path / "target" / "release"
+    
+    # Locate binary (handle Windows .exe)
     binary_file = target_dir / "wasi2ic"
-
-    # On Windows, binary might have .exe extension
     if not binary_file.exists():
         binary_file = target_dir / "wasi2ic.exe"
-
+        
     if not binary_file.exists():
-        # Try to find any binary file in target/release
+        # Fallback search
         bin_files = list(target_dir.glob("wasi2ic*"))
         if bin_files:
             binary_file = bin_files[0]
-            print(f"[yellow]Found binary file: {binary_file.name}[/]")
         else:
-            raise FileNotFoundError(
-                f"Binary file not found in {target_dir}. "
-                f"Build may have failed or binary name is different."
-            )
+            console.print(f"[red]Binary not found in {target_dir}[/]")
+            raise typer.Exit(code=1)
 
-    print(f"[green]Binary built successfully: {binary_file}[/]")
+    console.print(f"[green]Binary built successfully: {binary_file}[/]")
     return binary_file
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Build wasi2ic tool from wasi2ic repository",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Use default output directory (current directory)
-  python3 build_wasi2ic.py
-
-  # Specify output directory
-  python3 build_wasi2ic.py --output-dir ./bin
-
-  # Clean temporary files before building
-  python3 build_wasi2ic.py --clean
-
-  # Build specific version
-  python3 build_wasi2ic.py --version c0f5063e734f8365f1946baf2845d8322cc9bfec
-        """,
+@app.command()
+def main(
+    output_dir: str = typer.Option(
+        ".", 
+        "--output-dir", "-o",
+        help="Output directory for the binary"
+    ),
+    clean: bool = typer.Option(
+        False, 
+        "--clean", 
+        help="Clean temporary files before building"
+    ),
+    version: str = typer.Option(
+        DEFAULT_WASI2IC_VERSION, 
+        "--version", "-v",
+        help="Version tag or commit hash to build"
+    ),
+    work_dir: Optional[str] = typer.Option(
+        None,
+        "--work-dir", "-w",
+        help="Custom work directory for cloning"
     )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default=".",
-        help="Output directory (default: current directory)",
-    )
-    parser.add_argument(
-        "--clean",
-        action="store_true",
-        help="Clean temporary files before building",
-    )
-    parser.add_argument(
-        "--version",
-        type=str,
-        default="c0f5063e734f8365f1946baf2845d8322cc9bfec",
-        help="Version tag or commit hash to build",
-    )
-    parser.add_argument(
-        "--work-dir",
-        type=str,
-        help="Work directory for cloning repository (default: temporary directory)",
-    )
+):
+    """
+    Build the wasi2ic tool from source using Cargo.
+    """
+    ensure_toolchain_ready()
+    console.print(Panel.fit("[bold]wasi2ic Build Tool[/]", border_style="green"))
 
-    args = parser.parse_args()
-
-    print("=" * 70)
-    print("Building wasi2ic tool")
-    print("=" * 70)
-
-    # Check dependencies
-    print("\n[bold]Checking dependencies...[/]")
-    if not check_rust_installed():
-        print("[red]Error: Rust is not installed[/]")
-        print("   Please visit https://rustup.rs/ to install Rust")
-        sys.exit(1)
-
-    if not check_cargo_installed():
-        print("[red]Error: Cargo is not installed[/]")
-        print("   Please visit https://rustup.rs/ to install Rust (includes Cargo)")
-        sys.exit(1)
-
-    if not check_command_exists("git"):
-        print("[red]Error: git is not installed[/]")
-        print("   Please install git")
-        sys.exit(1)
-
-    # Set work directory
-    if args.work_dir:
-        work_dir = Path(args.work_dir).resolve()
+    # Setup directories
+    if work_dir:
+        working_path = Path(work_dir).resolve()
+        console.print(f"\n[bold]Using custom work directory: {working_path}[/]")
     else:
-        work_dir = Path.home() / ".tmp_build_wasi2ic"
-    work_dir.mkdir(parents=True, exist_ok=True)
+        working_path = Path.home() / ".tmp_build_wasi2ic"
+        console.print(f"\n[bold]Using default work directory: {working_path}[/]")
+    
+    working_path.mkdir(parents=True, exist_ok=True)
 
-    # Clean option
-    if args.clean and (work_dir / "wasi2ic").exists():
-        print(f"\n[bold]Cleaning work directory: {work_dir / 'wasi2ic'}[/]")
-        shutil.rmtree(work_dir / "wasi2ic")
+    if clean and (working_path / "wasi2ic").exists():
+        console.print(f"[yellow]Cleaning work directory...[/]")
+        shutil.rmtree(working_path / "wasi2ic")
 
-    # Clone repository and switch to specified version
+    # Process
     repo_url = "https://github.com/wasm-forge/wasi2ic"
-    repo_path = clone_repository(repo_url, work_dir, args.version)
+    repo_path = clone_repository(repo_url, working_path, version)
+    binary_file = build_binary(repo_path)
 
-    # Build binary
-    try:
-        binary_file = build_binary(repo_path)
+    # Copy to output
+    out_path = Path(output_dir).resolve()
+    out_path.mkdir(parents=True, exist_ok=True)
+    
+    dest_file = out_path / binary_file.name
+    
+    console.print(f"\n[bold]Copying to {dest_file}...[/]")
+    shutil.copy2(binary_file, dest_file)
 
-        # Copy to output directory
-        output_dir = Path(args.output_dir).resolve()
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_file = output_dir / "wasi2ic"
+    if os.name != 'nt':
+        os.chmod(dest_file, 0o755)
 
-        # On Windows, preserve .exe extension if present
-        if binary_file.suffix == ".exe":
-            output_file = output_dir / "wasi2ic.exe"
+    size_mb = dest_file.stat().st_size / (1024 * 1024)
+    console.print(f"[green]Build complete! File size: {size_mb:.2f} MB[/]")
+    console.print(f"[bold]Location: {dest_file}[/]")
 
-        print(f"\n📋 Copying binary file to output directory...")
-        shutil.copy2(binary_file, output_file)
-        
-        # Make executable on Unix-like systems
-        if os.name != 'nt':
-            os.chmod(output_file, 0o755)
-
-        print(f"[green]Binary file copied to: {output_file}[/]")
-        file_size = output_file.stat().st_size
-        if file_size > 1024 * 1024:
-            print(f"  File size: {file_size / (1024 * 1024):.2f} MB")
-        else:
-            print(f"  File size: {file_size / 1024:.2f} KB")
-
-        print("\n" + "=" * 70)
-        print("[green]Build complete![/]")
-        print("=" * 70)
-        print(f"[bold]Output file: {output_file}[/]")
-        print(f"📂 Source file location: {binary_file}")
-        if not args.work_dir:
-            print(f"\n💡 Tip: Temporary files are located at {work_dir}")
-            print(f"   To clean up, run: rm -rf {work_dir}")
-
-    except Exception as e:
-        print(f"\n[red]Error: {e}[/]")
-        if isinstance(e, sh.ErrorReturnCode):
-            if hasattr(e, 'stdout') and e.stdout:
-                stdout = e.stdout.decode('utf-8') if isinstance(e.stdout, bytes) else e.stdout
-                print(f"Output: {stdout}")
-            if hasattr(e, 'stderr') and e.stderr:
-                stderr = e.stderr.decode('utf-8') if isinstance(e.stderr, bytes) else e.stderr
-                print(f"Error: {stderr}")
-        else:
-            import traceback
-            traceback.print_exc()
-        sys.exit(1)
+    if not work_dir:
+        console.print(f"\n[dim]Tip: Temporary files at {working_path}[/]")
 
 
 if __name__ == "__main__":
-    main()
+    app()

@@ -1,0 +1,66 @@
+cmake_minimum_required(VERSION 3.16)
+project(c_candid_runtime C)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+
+option(C_CANDID_BUILD_TESTS "Build C candid runtime tests" ON)
+
+set(RUNTIME_DIR ${CMAKE_SOURCE_DIR}/runtime/runtime)
+set(STUB_DIR ${CMAKE_SOURCE_DIR}/runtime/src)
+set(TESTS_DIR ${CMAKE_SOURCE_DIR}/runtime/tests)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+add_library(candid_runtime STATIC
+    # Phase 1: Core utilities
+    ${RUNTIME_DIR}/src/arena.c
+    ${RUNTIME_DIR}/src/base.c
+    ${RUNTIME_DIR}/src/hash.c
+    ${RUNTIME_DIR}/src/leb128.c
+    # Phase 2: Type system and header
+    ${RUNTIME_DIR}/src/types.c
+    ${RUNTIME_DIR}/src/type_env.c
+    ${RUNTIME_DIR}/src/type_table.c
+    ${RUNTIME_DIR}/src/header.c
+    # Phase 3: Value serialization
+    ${RUNTIME_DIR}/src/value.c
+    ${RUNTIME_DIR}/src/value_serializer.c
+    ${RUNTIME_DIR}/src/builder.c
+    # Phase 4: Value deserialization
+    ${RUNTIME_DIR}/src/deserializer.c
+    # Phase 5: Subtype and coercion
+    ${RUNTIME_DIR}/src/subtype.c
+    ${RUNTIME_DIR}/src/coerce.c
+)
+target_include_directories(candid_runtime PUBLIC ${RUNTIME_DIR}/include)
+
+add_executable(c_candid_encode ${STUB_DIR}/c_candid_encode.c)
+target_include_directories(c_candid_encode PRIVATE ${RUNTIME_DIR}/include)
+target_link_libraries(c_candid_encode candid_runtime)
+
+add_executable(c_candid_decode ${STUB_DIR}/c_candid_decode.c)
+target_include_directories(c_candid_decode PRIVATE ${RUNTIME_DIR}/include)
+target_link_libraries(c_candid_decode candid_runtime)
+
+if(C_CANDID_BUILD_TESTS)
+    enable_testing()
+    add_executable(runtime_tests ${TESTS_DIR}/runtime_tests.c)
+    target_include_directories(runtime_tests PRIVATE ${RUNTIME_DIR}/include)
+    target_link_libraries(runtime_tests candid_runtime)
+    add_test(NAME runtime_tests COMMAND runtime_tests)
+endif()
+
+# Examples
+option(C_CANDID_BUILD_EXAMPLES "Build C candid examples" ON)
+if(C_CANDID_BUILD_EXAMPLES)
+    add_executable(basic_usage ${CMAKE_SOURCE_DIR}/examples/basic_usage.c)
+    target_link_libraries(basic_usage candid_runtime)
+
+    add_executable(candid_style_usage ${CMAKE_SOURCE_DIR}/examples/candid_style_usage.c)
+    target_link_libraries(candid_style_usage candid_runtime)
+endif()
+
+

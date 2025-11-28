@@ -1,0 +1,6 @@
+Phase 1 is now in place with a reusable C runtime layer plus tooling updates:
+Added c_candid/runtime with public headers (idl/base.h, idl/leb128.h, idl/hash.h, idl/arena.h, idl/runtime.h) and implementations for LEB128 encode/decode, Candid’s hash helpers (including stable in-place field sorting and uniqueness checks), status messaging, and a simple bump-arena allocator.
+Introduced a project Makefile that builds libcandid_runtime.a, the existing encode/decode stubs, and a new tests/runtime_tests target; created unit tests covering LEB128 round-trips/error paths, hash helpers, and arena allocation.
+Updated the oracle tooling to be pure Python (encode.py, decode.py, compare.py, smoke.py) and documented the workflow in English, now pointing to the new build outputs (make bins) for the stub binaries.
+Verified everything via make tests (runtime unit tests) and python3 c_candid/oracle/smoke.py (didc vs. C cross-check). Remember to pip install sh if you haven’t already, since all oracle scripts depend on that module.
+The runtime now gives us the low-level primitives required for the upcoming phases (TypeEnv, builders, etc.). Next steps would be to build on these helpers for Phase 2’s type table infrastructure and wire the new library into future C serialization/deserialization code.

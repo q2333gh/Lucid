@@ -1,0 +1,22 @@
+{
+  "canisters": {
+    "greet": {
+      "candid": "greet.did",
+      "wasm": "greet_optimized.wasm",
+      "type": "custom",
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

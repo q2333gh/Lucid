@@ -35,3 +35,5 @@ This document summarizes how `cdk-c/scripts/build.py` orchestrates builds for th
 
 Use `--help` to see the full set of switches exposed by Typer.
 
+
+(cdk-c lib + example +  c_candid)->

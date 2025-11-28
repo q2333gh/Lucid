@@ -25,13 +25,9 @@ A pure C language SDK for developing Internet Computer (IC) canisters. This SDK 
 ### Building the SDK
 
 ```bash
-cd cdk-c
-
-# Build WASI library
-python scripts/build.py --wasi
 
 # Build with hello examples
-python scripts/build.py --wasi --examples
+python build.py --wasi 
 
 ```
 
@@ -59,7 +55,7 @@ Build and test:
 
 ```bash
 # Build WASM
-python scripts/build.py --wasi --examples
+python build.py --wasi --examples
 
 # Run tests with PocketIC
 python examples/hello_lucid/test/t1_candid.py

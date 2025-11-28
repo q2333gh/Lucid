@@ -36,4 +36,4 @@ This document summarizes how `cdk-c/scripts/build.py` orchestrates builds for th
 Use `--help` to see the full set of switches exposed by Typer.
 
 
-(cdk-c lib + example +  c_candid)->
+(cdk-c lib + user-example-code +  c_candid)-> link polyfill.a->wasi2ic cli program

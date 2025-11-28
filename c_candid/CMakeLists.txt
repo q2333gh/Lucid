@@ -7,9 +7,9 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 option(C_CANDID_BUILD_TESTS "Build C candid runtime tests" ON)
 
-set(RUNTIME_DIR ${CMAKE_SOURCE_DIR}/runtime/runtime)
-set(STUB_DIR ${CMAKE_SOURCE_DIR}/runtime/src)
-set(TESTS_DIR ${CMAKE_SOURCE_DIR}/runtime/tests)
+set(RUNTIME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/runtime/runtime)
+set(STUB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/runtime/src)
+set(TESTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/runtime/tests)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -56,10 +56,10 @@ endif()
 # Examples
 option(C_CANDID_BUILD_EXAMPLES "Build C candid examples" ON)
 if(C_CANDID_BUILD_EXAMPLES)
-    add_executable(basic_usage ${CMAKE_SOURCE_DIR}/examples/basic_usage.c)
+    add_executable(basic_usage ${CMAKE_CURRENT_SOURCE_DIR}/examples/basic_usage.c)
     target_link_libraries(basic_usage candid_runtime)
 
-    add_executable(candid_style_usage ${CMAKE_SOURCE_DIR}/examples/candid_style_usage.c)
+    add_executable(candid_style_usage ${CMAKE_CURRENT_SOURCE_DIR}/examples/candid_style_usage.c)
     target_link_libraries(candid_style_usage candid_runtime)
 endif()
 

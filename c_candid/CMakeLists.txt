@@ -61,6 +61,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
     target_include_directories(c_candid_decode PRIVATE ${RUNTIME_DIR}/include)
     target_link_libraries(c_candid_decode candid_runtime)
 
+    # c candid tests: 
     if(C_CANDID_BUILD_TESTS)
         enable_testing()
         add_executable(runtime_tests ${TESTS_DIR}/runtime_tests.c)

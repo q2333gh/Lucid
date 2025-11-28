@@ -199,7 +199,7 @@ def build(wasi=False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Build IC C SDK project")
+    parser = argparse.ArgumentParser(description="Build IC C SDK project , native mode will build the library and run the tests")
     parser.add_argument(
         "--wasi",
         action="store_true",

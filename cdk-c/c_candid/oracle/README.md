@@ -24,22 +24,22 @@ cargo binsintall   didc
 - `compare.py`  
   - Compares the **C implementation** against `didc` for both encode and decode.  
   - Assumes the stub binaries built via `python3 c_candid/build.py bins`:
-    - `c_candid/runtime/build/bin/c_candid_encode`: reads Candid text from stdin, writes hex to stdout.  
-    - `c_candid/runtime/build/bin/c_candid_decode`: reads hex from stdin, writes Candid text to stdout.
+    - `build/bin/c_candid_encode`: reads Candid text from stdin, writes hex to stdout.  
+    - `build/bin/c_candid_decode`: reads hex from stdin, writes Candid text to stdout.
 
 #### Example: compare encode
 
 ```bash
-echo '("hello", 42)' | python3 c_candid/oracle/compare.py encode \
-  --c-bin c_candid/runtime/build/bin/c_candid_encode \
+echo '("hello", 42)' | python3 oracle/compare.py encode \
+  --c-bin build/bin/c_candid_encode \
   --didc-bin "${DIDC_BIN:-didc}"
 ```
 
 #### Example: compare decode
 
 ```bash
-echo "$HEX" | python3 c_candid/oracle/compare.py decode \
-  --c-bin c_candid/runtime/build/bin/c_candid_decode \
+echo "$HEX" | python3 oracle/compare.py decode \
+  --c-bin build/bin/c_candid_decode \
   --didc-bin "${DIDC_BIN:-didc}"
 ```
 

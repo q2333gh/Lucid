@@ -57,13 +57,24 @@ def ensure_wasi_sdk():
 
 def build(wasi=False):
     ROOT_DIR = pathlib.Path(__file__).parent.resolve()
-    BUILD_DIR = ROOT_DIR / "build"
+
+    # Use separate build directories for Native and WASI to avoid cache pollution
+    if wasi:
+        BUILD_DIR = ROOT_DIR / "build-wasi"
+    else:
+        BUILD_DIR = ROOT_DIR / "build"
+
     BUILD_LIB_DIR = ROOT_DIR / "build_lib"
 
     BUILD_DIR.mkdir(exist_ok=True)
     BUILD_LIB_DIR.mkdir(exist_ok=True)
 
     cmake_args = ["cmake", "..", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
+
+    if not wasi:
+        # Enable tests for native build
+        cmake_args.append("-DBUILD_CDK_TESTS=ON")
+        cmake_args.append("-DC_CANDID_BUILD_TESTS=ON")
 
     # Store paths for post-processing
     wasi2ic_tool = None
@@ -147,6 +158,13 @@ def build(wasi=False):
     print("\n[Building Project]")
     subprocess.run(["cmake", "--build", "."], cwd=BUILD_DIR, check=True)
 
+    if not wasi:
+        print("\n[Running Tests]")
+        try:
+            subprocess.run(["ctest", "--output-on-failure"], cwd=BUILD_DIR, check=False)
+        except Exception:
+            print(" Tests failed to run.")
+
     # Copy compile_commands.json to project root for IDE support
     compile_commands = BUILD_DIR / "compile_commands.json"
     if compile_commands.exists():
@@ -154,7 +172,7 @@ def build(wasi=False):
             shutil.copy(compile_commands, ROOT_DIR / "compile_commands.json")
             print(f" Copied compile_commands.json to {ROOT_DIR}")
         except Exception as e:
-             print(f" Warning: Failed to copy compile_commands.json: {e}")
+            print(f" Warning: Failed to copy compile_commands.json: {e}")
 
     # Step 2: Post-processing (WASI only)
     if wasi and wasi2ic_tool and wasi2ic_tool.exists():

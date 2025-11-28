@@ -10,19 +10,16 @@ Default version taken from build_utils/config.py (WASI2IC_COMMIT)
 
 import os
 import shutil
-import subprocess
 import sys
-from collections import deque
 from pathlib import Path
 from typing import Optional
 
 import sh
 import typer
 from rich.console import Console
-from rich.live import Live
 from rich.panel import Panel
 
-# Allow importing sibling config when executed directly
+# Allow importing sibling config/utils when executed directly
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -30,88 +27,23 @@ if str(SCRIPT_DIR) not in sys.path:
 try:
     from config import WASI2IC_COMMIT
 except ImportError:
-    # Fallback if config not found (e.g. moved)
+    # Fallback if config not found
     WASI2IC_COMMIT = "c0f5063e734f8365f1946baf2845d8322cc9bfec"
+
+try:
+    from utils import run_streaming_cmd, command_exists, clone_repository_safe
+except ImportError:
+    # Attempt to import from build_utils if running from parent
+    try:
+        from build_utils.utils import run_streaming_cmd, command_exists, clone_repository_safe
+    except ImportError:
+        print("Error: Could not import utils module.")
+        sys.exit(1)
 
 app = typer.Typer(help="Build wasi2ic tool from source")
 console = Console()
 
 DEFAULT_WASI2IC_VERSION = WASI2IC_COMMIT
-
-
-def command_exists(cmd: str) -> bool:
-    """Check whether a command/binary is available on the system."""
-    if "/" in cmd or "\\" in cmd:
-        cmd_path = Path(cmd)
-        return cmd_path.exists() and os.access(cmd_path, os.X_OK)
-    return shutil.which(cmd) is not None
-
-
-def resolve_command(cmd_name: str) -> sh.Command:
-    """Resolve command name to an sh.Command, exiting early if missing."""
-    if not command_exists(cmd_name):
-        console.print(f"[bold red]Command not found: {cmd_name}[/]")
-        raise typer.Exit(code=1)
-    return sh.Command(cmd_name)
-
-
-def run_streaming_cmd(
-    cmd_name: str,
-    *args,
-    cwd: Optional[Path] = None,
-    title: str = "Processing...",
-    max_lines: int = 4
-):
-    """
-    Executes a shell command using rich's Live display to show the last few lines of output.
-    Inspired by run_and_tail from cdk-c/a.py.
-    """
-    if not command_exists(cmd_name):
-        console.print(f"[bold red]Command not found: {cmd_name}[/]")
-        raise typer.Exit(code=1)
-
-    cmd = [cmd_name, *[str(a) for a in args]]
-    
-    # Buffer to store recent lines
-    buffer = deque(maxlen=max_lines)
-    
-    try:
-        # Start the process
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-            cwd=cwd
-        )
-        
-        with Live(console=console, refresh_per_second=10) as live:
-            # Initial display
-            live.update(Panel("\n" * max_lines, title=title))
-            
-            # Read output line by line
-            for line in proc.stdout:
-                line_text = line.rstrip()
-                buffer.append(line_text)
-                
-                # Update panel content
-                content = "\n".join(buffer)
-                live.update(Panel(content, title=f"{title} (last {max_lines} lines)"))
-            
-            proc.wait()
-            
-        if proc.returncode != 0:
-            console.print(f"[bold red]Command failed with exit code {proc.returncode}[/]")
-            # Print the captured buffer as context
-            for line in buffer:
-                console.print(f"[red]{line}[/]")
-            raise typer.Exit(code=1)
-            
-    except Exception as e:
-        console.print(f"[bold red]Error executing command: {cmd_name}[/]")
-        console.print(f"[red]{e}[/]")
-        raise typer.Exit(code=1)
 
 
 def ensure_toolchain_ready():
@@ -141,50 +73,20 @@ def ensure_toolchain_ready():
         console.print(f"[red]cargo reported an error: {err}[/]")
         raise typer.Exit(code=1)
 
-    # git availability already confirmed; no version needed for success path.
-
-
-def clone_repository(repo_url: str, clone_dir: Path, version: str) -> Path:
-    """Clone repository and switch to specified version"""
-    repo_path = clone_dir / "wasi2ic"
-
-    if repo_path.exists():
-        console.print(f"\n[bold cyan]Repository already exists at:[/] {repo_path}")
-        console.print("   Updating to latest...")
-        run_streaming_cmd("git", "fetch", "origin", cwd=repo_path, title="Fetching updates")
-    else:
-        console.print(f"\n[bold] Cloning repository...[/]")
-        run_streaming_cmd("git", "clone", repo_url, str(repo_path), cwd=clone_dir.parent, title="Cloning repository")
-
-    console.print(f"\n[bold] Switching to version: {version}[/]")
-    try:
-        # Try direct checkout
-        sh.git("checkout", version, _cwd=repo_path)
-    except sh.ErrorReturnCode:
-        # Fetch tags if needed
-        console.print("   Tag not found locally, fetching tags...")
-        run_streaming_cmd("git", "fetch", "--tags", cwd=repo_path, title="Fetching tags")
-        sh.git("checkout", version, _cwd=repo_path)
-
-    # Verify version
-    try:
-        current = sh.git("describe", "--tags", "--exact-match", "HEAD", _cwd=repo_path).strip()
-    except sh.ErrorReturnCode:
-        current = sh.git("rev-parse", "HEAD", _cwd=repo_path).strip()
-    
-    console.print(f"[green]Current version: {current}[/]")
-    return repo_path
-
 
 def build_binary(repo_path: Path) -> Path:
     """Build wasi2ic binary"""
     console.print(f"\n[bold]Building wasi2ic binary...[/]")
     
-    run_streaming_cmd(
-        "cargo", "build", "--release", 
-        cwd=repo_path, 
-        title="Compiling wasi2ic (release)"
-    )
+    try:
+        run_streaming_cmd(
+            "cargo", "build", "--release", 
+            cwd=repo_path, 
+            title="Compiling wasi2ic (release)"
+        )
+    except RuntimeError as e:
+        console.print(f"[red]Build failed: {e}[/]")
+        raise typer.Exit(code=1)
 
     target_dir = repo_path / "target" / "release"
     
@@ -251,7 +153,13 @@ def main(
 
     # Process
     repo_url = "https://github.com/wasm-forge/wasi2ic"
-    repo_path = clone_repository(repo_url, working_path, version)
+    
+    try:
+        repo_path = clone_repository_safe(repo_url, working_path, version, repo_name="wasi2ic")
+    except RuntimeError as e:
+        console.print(f"[red]Cloning/checkout failed: {e}[/]")
+        raise typer.Exit(code=1)
+        
     binary_file = build_binary(repo_path)
 
     # Copy to output

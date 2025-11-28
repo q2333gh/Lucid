@@ -2,12 +2,12 @@
   "configurations": [
     {
       "name": "WASI",
-      "compileCommands": "${workspaceFolder}/cdk-c/compile_commands.json",
+      "compileCommands": "${workspaceFolder}/compile_commands.json",
       "intelliSenseMode": "clang-x64",
       "compilerPath": "/usr/bin/clang",
       "browse": {
         "path": [
-          "${workspaceFolder}/cdk-c"
+          "${workspaceFolder}"
         ]
       }
     }

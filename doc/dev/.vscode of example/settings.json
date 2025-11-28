@@ -1,7 +1,9 @@
 {
-  "C_Cpp.default.compileCommands": "${workspaceFolder}/cdk-c/compile_commands.json",
+  "mesonbuild.configureOnOpen": false,
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/compile_commands.json",
   "clangd.arguments": [
-    "--compile-commands-dir=${workspaceFolder}/cdk-c"
+    "--compile-commands-dir=${workspaceFolder}",
+    "--query-driver=/home/jwk/opt/wasi-sdk/bin/clang,/usr/bin/clang,/usr/bin/gcc"
   ],
   "clangd.path": "/usr/bin/clangd"
 }

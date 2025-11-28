@@ -234,26 +234,12 @@ def find_wasi2ic_tool(scripts_dir: Path) -> Path:
     Returns:
         Path to wasi2ic tool
     """
-    # Method 1: Environment variable override
-    env_wasi2ic = os.environ.get("WASI2IC_PATH")
-    if env_wasi2ic:
-        env_path = Path(env_wasi2ic)
-        if env_path.exists():
-            console.print(f"[bold][cyan]Using wasi2ic tool from WASI2IC_PATH:[/] {env_path.resolve()}")
-            return env_path
 
-    # Method 2: Scripts directory (if built locally)
+    # main build directory
     scripts_wasi2ic = scripts_dir / "wasi2ic"
     if scripts_wasi2ic.exists():
         console.print(f"[bold][cyan]Using locally built wasi2ic tool:[/] {scripts_wasi2ic.resolve()}")
         return scripts_wasi2ic
-
-    # Method 3: Common installation locations
-    # Check if wasi2ic is in PATH
-    wasi2ic_in_path = shutil.which("wasi2ic")
-    if wasi2ic_in_path:
-        console.print(f"[bold][cyan]Using wasi2ic tool from PATH:[/] {Path(wasi2ic_in_path).resolve()}")
-        return Path(wasi2ic_in_path)
 
     # Default to scripts directory (will be checked/used when needed)
     console.print(f"[yellow]wasi2ic tool not found in environment, local scripts, or PATH. Defaulting to:[/] {scripts_wasi2ic.resolve()}")
@@ -263,7 +249,7 @@ def ensure_polyfill_library(scripts_dir: Path, build_polyfill_script: Path) -> O
     """
     Ensure libic_wasi_polyfill.a exists, build it if needed
     """
-    # Method 1: Check scripts directory (preferred)
+    #  Check scripts directory (preferred)
     scripts_polyfill = scripts_dir / "libic_wasi_polyfill.a"
     if scripts_polyfill.exists():
         console.print(f"\n[bold]Using IC WASI Polyfill library:[/]")
@@ -271,15 +257,6 @@ def ensure_polyfill_library(scripts_dir: Path, build_polyfill_script: Path) -> O
         
         return scripts_polyfill
     
-    # Method 2: Check environment variable override
-    env_polyfill = os.environ.get("IC_WASI_POLYFILL_PATH")
-    if env_polyfill:
-        env_path = Path(env_polyfill)
-        if env_path.exists():
-            console.print(f"\n[bold]Using IC WASI Polyfill library (from IC_WASI_POLYFILL_PATH):[/]")
-            console.print(f"   Path: {env_path.resolve()}")
-            
-            return env_path
     
     # If neither exists, try to build it
     console.print(f"\n[yellow]libic_wasi_polyfill.a not found[/]")

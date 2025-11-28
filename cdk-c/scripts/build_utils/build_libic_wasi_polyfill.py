@@ -44,6 +44,9 @@ except ImportError:
 app = typer.Typer(help="Build libic_wasi_polyfill.a from source")
 console = Console()
 
+PROJECT_ROOT = SCRIPT_DIR.parent.parent
+DEFAULT_OUTPUT_DIR = (PROJECT_ROOT / "build_lib").resolve()
+
 DEFAULT_POLYFILL_VERSION = IC_WASI_POLYFILL_COMMIT
 
 
@@ -127,9 +130,9 @@ def build_library(repo_path: Path, features: Optional[str] = None) -> Path:
 @app.command()
 def main(
     output_dir: str = typer.Option(
-        ".", 
+        str(DEFAULT_OUTPUT_DIR), 
         "--output-dir", "-o",
-        help="Output directory for the library"
+        help="Output directory for the library (default: cdk-c/build)"
     ),
     clean: bool = typer.Option(
         False, 
@@ -194,7 +197,7 @@ def main(
 
     size_kb = dest_file.stat().st_size / 1024
     console.print(f"[green]Build complete! File size: {size_kb:.2f} KB[/]")
-    console.print(f"[bold]Location: {dest_file}[/]")
+    console.print(f"[bold]Result target location: {dest_file}[/]")
 
     if not work_dir:
         console.print(f"\n[dim]Tip: Temporary files at {working_path}[/]")

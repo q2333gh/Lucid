@@ -43,6 +43,9 @@ except ImportError:
 app = typer.Typer(help="Build wasi2ic tool from source")
 console = Console()
 
+PROJECT_ROOT = SCRIPT_DIR.parent.parent
+DEFAULT_OUTPUT_DIR = (PROJECT_ROOT / "build_lib").resolve()
+
 DEFAULT_WASI2IC_VERSION = WASI2IC_COMMIT
 
 
@@ -111,9 +114,9 @@ def build_binary(repo_path: Path) -> Path:
 @app.command()
 def main(
     output_dir: str = typer.Option(
-        ".", 
+        str(DEFAULT_OUTPUT_DIR), 
         "--output-dir", "-o",
-        help="Output directory for the binary"
+        help="Output directory for the binary (default: cdk-c/build)"
     ),
     clean: bool = typer.Option(
         False, 

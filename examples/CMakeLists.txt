@@ -1,4 +1,12 @@
-if (CMAKE_SYSTEM_PROCESSOR STREQUAL "wasm32" OR CMAKE_SYSTEM_NAME STREQUAL "WASI" OR BUILD_WASI)
+# Define a standard option for WASI builds
+option(BUILD_TARGET_WASI "Build for WASI/IC platform" OFF)
+
+# Auto-detect if we are cross-compiling to WASI
+if (CMAKE_SYSTEM_PROCESSOR STREQUAL "wasm32" OR CMAKE_SYSTEM_NAME STREQUAL "WASI")
+    set(BUILD_TARGET_WASI ON)
+endif()
+
+if (BUILD_TARGET_WASI)
     add_executable(hello_lucid hello_lucid/greet.c)
     
     # Link against the CDK library and Candid runtime
@@ -27,5 +35,5 @@ if (CMAKE_SYSTEM_PROCESSOR STREQUAL "wasm32" OR CMAKE_SYSTEM_NAME STREQUAL "WASI
     set_target_properties(hello_lucid PROPERTIES SUFFIX ".wasm")
 
 else()
-    message(STATUS "Skipping examples build: Target is not WASM/WASI (CMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR})")
+    message(STATUS "Skipping examples build: Target is not WASM/WASI (BUILD_TARGET_WASI=${BUILD_TARGET_WASI})")
 endif()

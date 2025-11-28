@@ -69,6 +69,7 @@ class ICBuilder:
         self.include_dir = paths['INCLUDE_DIR']
         self.examples_dir = paths['EXAMPLES_DIR']
         self.scripts_dir = paths['SCRIPTS_DIR']
+        self.build_lib_dir = paths['BUILD_LIB_DIR']
         
         # Build script paths
         self.build_polyfill_script = script_dir / "build_libic_wasi_polyfill.py"
@@ -167,22 +168,24 @@ class ICBuilder:
         return True
     
     def ensure_polyfill_library(self) -> bool:
-        """Ensure libic_wasi_polyfill.a exists, build it if needed"""
+        """Ensure libic_wasi_polyfill.a exists in build_lib, build it if needed"""
         if self.polyfill_library and self.polyfill_library.exists():
             return True
         
-        polyfill_path = ensure_polyfill_library(self.scripts_dir, self.build_polyfill_script)
+        # Use build_lib_dir as the target directory
+        polyfill_path = ensure_polyfill_library(self.build_lib_dir, self.build_polyfill_script)
         if polyfill_path:
             self.polyfill_library = polyfill_path
             return True
         return False
     
     def ensure_wasi2ic_tool(self) -> bool:
-        """Ensure wasi2ic tool exists, build it if needed"""
+        """Ensure wasi2ic tool exists in build_lib, build it if needed"""
         if self.wasi2ic_tool and self.wasi2ic_tool.exists():
             return True
         
-        wasi2ic_path = ensure_wasi2ic_tool(self.scripts_dir, self.build_wasi2ic_script)
+        # Use build_lib_dir as the target directory
+        wasi2ic_path = ensure_wasi2ic_tool(self.build_lib_dir, self.build_wasi2ic_script)
         if wasi2ic_path:
             self.wasi2ic_tool = wasi2ic_path
             return True
@@ -291,6 +294,10 @@ class ICBuilder:
         # Use paths from config
         build_dirs = [self.paths['BUILD_DIR'], self.paths['WASI_BUILD_DIR']]
         
+        # Also verify if we want to clean build_lib_dir? 
+        # Usually artifacts tools are kept, but if 'clean' implies everything...
+        # User didn't specify. Let's keep the tools for now as they are expensive to rebuild.
+        
         for build_path in build_dirs:
             if build_path.exists():
                 try:
@@ -317,6 +324,7 @@ class ICBuilder:
             print(f"  Linking options: {' '.join(self.ldflags)}")
         print(f"  Build directory: {self.build_dir}")
         print(f"  Library file: {self.lib_path}")
+        print(f"  Build Lib directory (Tools): {self.build_lib_dir}")
         
         print("\n  Library source files:")
         for src in LIB_SOURCES:
@@ -335,7 +343,9 @@ class ICBuilder:
             print(f"\n  WASI SDK: {wasi_paths['WASI_SDK_COMPILER_ROOT']}")
             print(f"  System root: {wasi_paths['WASI_SYSROOT']}")
             print(f"\n  IC WASI Polyfill (locked commit: {IC_WASI_POLYFILL_COMMIT}):")
-            polyfill_path = ensure_polyfill_library(self.scripts_dir, self.build_polyfill_script)
+            
+            # Use build_lib_dir
+            polyfill_path = ensure_polyfill_library(self.build_lib_dir, self.build_polyfill_script)
             if polyfill_path:
                 print(f"    Library: {polyfill_path}")
                 print(f"    Status: [green]Found[/]")
@@ -344,13 +354,13 @@ class ICBuilder:
             print(f"    Build script: {self.build_polyfill_script}")
             
             print(f"\n  wasi2ic tool (locked commit: {WASI2IC_COMMIT}):")
-            wasi2ic_path = ensure_wasi2ic_tool(self.scripts_dir, self.build_wasi2ic_script)
+            # Use build_lib_dir
+            wasi2ic_path = ensure_wasi2ic_tool(self.build_lib_dir, self.build_wasi2ic_script)
             if wasi2ic_path:
                 print(f"    Path: {wasi2ic_path}")
                 print(f"    Status: [green]Found[/]")
             else:
                 print(f"    Status: ✗ Not found")
-                print(f"    Note: Set WASI2IC_PATH environment variable to specify custom path")
 
 
 ########################################################################

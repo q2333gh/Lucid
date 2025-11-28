@@ -49,7 +49,7 @@ def find_project_root(start_path: Path) -> Path:
 def initialize_paths(script_dir: Path):
     """Initialize all project paths based on script directory"""
     project_root = find_project_root(script_dir)
-    
+
     return {
         'PROJECT_ROOT': project_root,
         'SRC_DIR': project_root / "src",
@@ -66,9 +66,9 @@ def initialize_paths(script_dir: Path):
 # WASI SDK Configuration
 ########################################################################
 
-# Locked versions from dependency_commit_report.md
-IC_WASI_POLYFILL_COMMIT = "b3ef005140e7eebf7d0b5471ccc3a6d4cbec4ee5"
-WASI2IC_COMMIT = "c0f5063e734f8365f1946baf2845d8322cc9bfec"
+# Locked versions for ic-wasi-polyfill and wasi2ic
+IC_WASI_POLYFILL_COMMIT = "c7f3bf771c5e92e0fba55655da9fae3fc3bf22c"
+WASI2IC_COMMIT = "59f4d8b7f9ef856e771f6f48c8c65fefb347982c"
 
 WASI_SDK_VERSION = os.environ.get("WASI_SDK_VERSION", "25.0")
 
@@ -160,4 +160,3 @@ LIB_NAME = "ic_c_sdk"
 def get_library_name(target_platform: str = "native"):
     """Get library name for the specified platform"""
     return f"lib{LIB_NAME}.a"
-

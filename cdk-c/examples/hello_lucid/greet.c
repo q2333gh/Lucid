@@ -3,9 +3,9 @@
 
 #include "greet.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <string.h>
 
 #include "ic_c_sdk.h"
 
@@ -26,5 +26,5 @@ IC_EXPORT_QUERY(greet_no_arg) {
         ic_api_trap("Failed to send response");
     }
     ic_api_debug_print("debug print: hello dfx console ");
-    printf("stdio print : hello dfx console\n");
+    // printf("stdio print : hello dfx console\n");
 }

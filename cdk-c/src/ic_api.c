@@ -4,7 +4,7 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
+// #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -94,8 +94,8 @@ ic_api_t *ic_api_init(ic_entry_type_t entry_type, const char *func_name,
         if (ic_principal_to_text(&api->caller, caller_text,
                                  sizeof(caller_text)) > 0) {
             char msg[256];
-            snprintf(msg, sizeof(msg), "cdk-c: caller principal = %s",
-                     caller_text);
+            // snprintf(msg, sizeof(msg), "cdk-c: caller principal = %s",
+                    //  caller_text);
             ic_api_debug_print(msg);
         }
     }

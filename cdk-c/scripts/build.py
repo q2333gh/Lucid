@@ -32,24 +32,14 @@ from build_utils import (
 )
 
 
-########################################################################
 console = Console(force_terminal=True, markup=True)
 print = console.print  # route legacy prints through Rich for consistent styling
-
-
-########################################################################
-# Initialize Paths - Removed Global State
-########################################################################
-# Configuration is now handled inside the run function and passed to ICBuilder
 
 
 # Typer app
 app = typer.Typer(add_completion=False, help="IC C SDK build tool")
 
 
-########################################################################
-# ICBuilder Class
-########################################################################
 
 class ICBuilder:
     """Builder class for IC C SDK library"""
@@ -57,14 +47,12 @@ class ICBuilder:
     def __init__(self, target_platform="native", paths=None, script_dir=None):
         self.target_platform = target_platform
         if paths is None or script_dir is None:
-            # Fallback for safety, though run() should always provide them
             script_dir = Path(__file__).parent.resolve()
             paths = initialize_paths(script_dir)
             
         self.paths = paths
         self.script_dir = script_dir
         
-        # Extract paths from config
         self.src_dir = paths['SRC_DIR']
         self.include_dir = paths['INCLUDE_DIR']
         self.examples_dir = paths['EXAMPLES_DIR']
@@ -236,10 +224,10 @@ class ICBuilder:
             optimized_wasm_target = self.build_dir / f"{example_name}_optimized.wasm"
             print(f"\n  [bold]Optimizing WASM file...[/]")
             if optimize_wasm(ic_wasm_target, optimized_wasm_target):
-                print(f"[green]  Optimized version: {optimized_wasm_target}[/]")
+                print(f"[green]  Optimized file saved: {optimized_wasm_target}[/]")
             else:
                 # Optimization is optional, don't fail the build
-                print(f"[cyan]  Original version available: {ic_wasm_target}[/]")
+                print(f"[cyan]  Original file available: {ic_wasm_target}[/]")
         else:
             print(f"[yellow]  wasi2ic conversion failed, but WASI WASM generated: {wasi_wasm_target}[/]")
             return False

@@ -15,6 +15,7 @@ cdk-c/compile_commands.json
 *.wasm
 .sconsign.dblite
 build_lib
+build-wasi/
 ## compile commands for IDEs
 compile_commands.json
 ## tests

@@ -71,9 +71,10 @@ class ICBuilder:
         self.scripts_dir = paths['SCRIPTS_DIR']
         self.build_lib_dir = paths['BUILD_LIB_DIR']
         
-        # Build script paths
-        self.build_polyfill_script = script_dir / "build_libic_wasi_polyfill.py"
-        self.build_wasi2ic_script = script_dir / "build_wasi2ic.py"
+        # Build script paths (located under build_utils/)
+        build_utils_dir = script_dir / "build_utils"
+        self.build_polyfill_script = build_utils_dir / "build_libic_wasi_polyfill.py"
+        self.build_wasi2ic_script = build_utils_dir / "build_wasi2ic.py"
 
         self.polyfill_library = None
         self.wasi2ic_tool = None

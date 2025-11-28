@@ -8,3 +8,5 @@ add_library(cdk_c STATIC
 
 target_include_directories(cdk_c PUBLIC include)
 
+# Enforce C11 standard for the library
+target_compile_features(cdk_c PUBLIC c_std_11)

@@ -14,26 +14,10 @@ set(TESTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/runtime/tests)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
+file(GLOB_RECURSE CANDID_RUNTIME_SOURCES "${RUNTIME_DIR}/src/*.c")
+
 add_library(candid_runtime STATIC
-    # Phase 1: Core utilities
-    ${RUNTIME_DIR}/src/arena.c
-    ${RUNTIME_DIR}/src/base.c
-    ${RUNTIME_DIR}/src/hash.c
-    ${RUNTIME_DIR}/src/leb128.c
-    # Phase 2: Type system and header
-    ${RUNTIME_DIR}/src/types.c
-    ${RUNTIME_DIR}/src/type_env.c
-    ${RUNTIME_DIR}/src/type_table.c
-    ${RUNTIME_DIR}/src/header.c
-    # Phase 3: Value serialization
-    ${RUNTIME_DIR}/src/value.c
-    ${RUNTIME_DIR}/src/value_serializer.c
-    ${RUNTIME_DIR}/src/builder.c
-    # Phase 4: Value deserialization
-    ${RUNTIME_DIR}/src/deserializer.c
-    # Phase 5: Subtype and coercion
-    ${RUNTIME_DIR}/src/subtype.c
-    ${RUNTIME_DIR}/src/coerce.c
+    ${CANDID_RUNTIME_SOURCES}
 )
 target_include_directories(candid_runtime PUBLIC ${RUNTIME_DIR}/include)
 

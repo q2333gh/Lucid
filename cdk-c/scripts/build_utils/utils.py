@@ -7,21 +7,36 @@ Command execution, file finding, and other helper functions
 import os
 import sys
 import shutil
+import subprocess
+from collections import deque
 from pathlib import Path
 from typing import Optional, Tuple
 
 import sh
 from rich.console import Console
+from rich.live import Live
+from rich.panel import Panel
 
-from .config import IC_WASI_POLYFILL_COMMIT, WASI2IC_COMMIT
+try:
+    from .config import IC_WASI_POLYFILL_COMMIT, WASI2IC_COMMIT
+except ImportError:
+    from config import IC_WASI_POLYFILL_COMMIT, WASI2IC_COMMIT
 
 console = Console(force_terminal=True, markup=True)
 print = console.print  # route legacy prints through Rich
 
 
+def command_exists(cmd: str) -> bool:
+    """Check whether a command/binary is available on the system."""
+    if "/" in cmd or "\\" in cmd:
+        cmd_path = Path(cmd)
+        return cmd_path.exists() and os.access(cmd_path, os.X_OK)
+    return shutil.which(cmd) is not None
+
+
 def run_command(cmd, description="", cwd=None, show_stderr=True):
     """
-    Execute command and handle errors
+    Execute command and handle errors (non-streaming)
     
     Args:
         cmd: Command to execute (list of strings)
@@ -48,7 +63,8 @@ def run_command(cmd, description="", cwd=None, show_stderr=True):
         if cwd:
             kwargs['_cwd'] = str(cwd)
         
-        result = cmd_func(*args, **kwargs)
+        # Run command
+        cmd_func(*args, **kwargs)
         
         return True
     except sh.ErrorReturnCode as e:
@@ -64,6 +80,122 @@ def run_command(cmd, description="", cwd=None, show_stderr=True):
     except Exception as e:
         print(f"[red]Error: {e}[/]")
         return False
+
+
+def run_streaming_cmd(
+    cmd_name: str,
+    *args,
+    cwd: Optional[Path] = None,
+    title: str = "Processing...",
+    max_lines: int = 4,
+    raise_on_error: bool = True
+) -> int:
+    """
+    Executes a shell command using rich's Live display to show the last few lines of output.
+    
+    Args:
+        cmd_name: Command to run
+        *args: Arguments for the command
+        cwd: Working directory
+        title: Title for the output panel
+        max_lines: Max lines to show in the rolling buffer
+        raise_on_error: Whether to raise an exception on non-zero exit code (default: True)
+        
+    Returns:
+        int: Exit code
+    
+    Raises:
+        RuntimeError: If raise_on_error is True and command fails
+    """
+    if not command_exists(cmd_name):
+        console.print(f"[bold red]Command not found: {cmd_name}[/]")
+        if raise_on_error:
+            raise RuntimeError(f"Command not found: {cmd_name}")
+        return 127
+
+    cmd = [cmd_name, *[str(a) for a in args]]
+    
+    # Buffer to store recent lines
+    buffer = deque(maxlen=max_lines)
+    
+    try:
+        # Start the process
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            cwd=cwd
+        )
+        
+        with Live(console=console, refresh_per_second=10) as live:
+            # Initial display
+            live.update(Panel("\n" * max_lines, title=title))
+            
+            # Read output line by line
+            for line in proc.stdout:
+                line_text = line.rstrip()
+                buffer.append(line_text)
+                
+                # Update panel content
+                content = "\n".join(buffer)
+                live.update(Panel(content, title=f"{title} (last {max_lines} lines)"))
+            
+            proc.wait()
+            
+        if proc.returncode != 0:
+            console.print(f"[bold red]Command failed with exit code {proc.returncode}[/]")
+            # Print the captured buffer as context
+            for line in buffer:
+                console.print(f"[red]{line}[/]")
+                
+            if raise_on_error:
+                raise RuntimeError(f"Command failed with exit code {proc.returncode}")
+            
+        return proc.returncode
+            
+    except Exception as e:
+        console.print(f"[bold red]Error executing command: {cmd_name}[/]")
+        console.print(f"[red]{e}[/]")
+        if raise_on_error:
+            raise e
+        return 1
+
+
+def clone_repository_safe(repo_url: str, clone_dir: Path, version: str, repo_name: Optional[str] = None) -> Path:
+    """
+    Clone repository and switch to specified version (generic version).
+    """
+    name = repo_name or repo_url.split('/')[-1].replace('.git', '')
+    repo_path = clone_dir / name
+
+    if repo_path.exists():
+        console.print(f"\n[bold cyan]Repository already exists at:[/] {repo_path}")
+        console.print("   Updating to latest...")
+        run_streaming_cmd("git", "fetch", "origin", cwd=repo_path, title=f"Fetching updates for {name}")
+    else:
+        console.print(f"\n[bold] Cloning repository...[/]")
+        run_streaming_cmd("git", "clone", repo_url, str(repo_path), cwd=clone_dir.parent, title=f"Cloning {name}")
+
+    console.print(f"\n[bold] Switching to version: {version}[/]")
+    try:
+        # Try direct checkout
+        sh.git("checkout", version, _cwd=repo_path)
+    except sh.ErrorReturnCode:
+        # Fetch tags if needed
+        console.print("   Tag not found locally, fetching tags...")
+        run_streaming_cmd("git", "fetch", "--tags", cwd=repo_path, title="Fetching tags")
+        sh.git("checkout", version, _cwd=repo_path)
+
+    # Verify version
+    try:
+        current = sh.git("describe", "--tags", "--exact-match", "HEAD", _cwd=repo_path).strip()
+    except sh.ErrorReturnCode:
+        current = sh.git("rev-parse", "HEAD", _cwd=repo_path).strip()
+    
+    console.print(f"[green]Current version: {current}[/]")
+    return repo_path
 
 
 def find_polyfill_library(scripts_dir: Path) -> Path:
@@ -95,10 +227,10 @@ def find_polyfill_library(scripts_dir: Path) -> Path:
 def find_wasi2ic_tool(scripts_dir: Path) -> Path:
     """
     Find wasi2ic tool. 
-
+    
     Args:
         scripts_dir: Scripts directory path
-
+    
     Returns:
         Path to wasi2ic tool
     """
@@ -107,42 +239,35 @@ def find_wasi2ic_tool(scripts_dir: Path) -> Path:
     if env_wasi2ic:
         env_path = Path(env_wasi2ic)
         if env_path.exists():
-            print(f"[bold][cyan]Using wasi2ic tool from WASI2IC_PATH:[/] {env_path.resolve()}")
+            console.print(f"[bold][cyan]Using wasi2ic tool from WASI2IC_PATH:[/] {env_path.resolve()}")
             return env_path
 
     # Method 2: Scripts directory (if built locally)
     scripts_wasi2ic = scripts_dir / "wasi2ic"
     if scripts_wasi2ic.exists():
-        print(f"[bold][cyan]Using locally built wasi2ic tool:[/] {scripts_wasi2ic.resolve()}")
+        console.print(f"[bold][cyan]Using locally built wasi2ic tool:[/] {scripts_wasi2ic.resolve()}")
         return scripts_wasi2ic
 
     # Method 3: Common installation locations
     # Check if wasi2ic is in PATH
     wasi2ic_in_path = shutil.which("wasi2ic")
     if wasi2ic_in_path:
-        print(f"[bold][cyan]Using wasi2ic tool from PATH:[/] {Path(wasi2ic_in_path).resolve()}")
+        console.print(f"[bold][cyan]Using wasi2ic tool from PATH:[/] {Path(wasi2ic_in_path).resolve()}")
         return Path(wasi2ic_in_path)
 
     # Default to scripts directory (will be checked/used when needed)
-    print(f"[yellow]wasi2ic tool not found in environment, local scripts, or PATH. Defaulting to:[/] {scripts_wasi2ic.resolve()}")
+    console.print(f"[yellow]wasi2ic tool not found in environment, local scripts, or PATH. Defaulting to:[/] {scripts_wasi2ic.resolve()}")
     return scripts_wasi2ic
 
 def ensure_polyfill_library(scripts_dir: Path, build_polyfill_script: Path) -> Optional[Path]:
     """
     Ensure libic_wasi_polyfill.a exists, build it if needed
-    
-    Args:
-        scripts_dir: Scripts directory path
-        build_polyfill_script: Path to build script
-    
-    Returns:
-        Path to polyfill library if successful, None otherwise
     """
     # Method 1: Check scripts directory (preferred)
     scripts_polyfill = scripts_dir / "libic_wasi_polyfill.a"
     if scripts_polyfill.exists():
-        print(f"\n[bold]Using IC WASI Polyfill library:[/]")
-        print(f"   Path: {scripts_polyfill.resolve()}")
+        console.print(f"\n[bold]Using IC WASI Polyfill library:[/]")
+        console.print(f"   Path: {scripts_polyfill.resolve()}")
         
         return scripts_polyfill
     
@@ -151,40 +276,54 @@ def ensure_polyfill_library(scripts_dir: Path, build_polyfill_script: Path) -> O
     if env_polyfill:
         env_path = Path(env_polyfill)
         if env_path.exists():
-            print(f"\n[bold]Using IC WASI Polyfill library (from IC_WASI_POLYFILL_PATH):[/]")
-            print(f"   Path: {env_path.resolve()}")
+            console.print(f"\n[bold]Using IC WASI Polyfill library (from IC_WASI_POLYFILL_PATH):[/]")
+            console.print(f"   Path: {env_path.resolve()}")
             
             return env_path
     
     # If neither exists, try to build it
-    print(f"\n[yellow]libic_wasi_polyfill.a not found[/]")
-    print("   Attempting to build it using build_libic_wasi_polyfill.py...")
+    console.print(f"\n[yellow]libic_wasi_polyfill.a not found[/]")
+    console.print("   Attempting to build it using build_libic_wasi_polyfill.py...")
     
     if not build_polyfill_script.exists():
-        print(f"[red]Build script not found: {build_polyfill_script}[/]")
-        print(f"   Please run build_libic_wasi_polyfill.py manually")
-        print(f"   Expected commit: {IC_WASI_POLYFILL_COMMIT}")
+        console.print(f"[red]Build script not found: {build_polyfill_script}[/]")
+        console.print(f"   Please run build_libic_wasi_polyfill.py manually")
+        console.print(f"   Expected commit: {IC_WASI_POLYFILL_COMMIT}")
         return None
     
     # Run the build script (should use locked commit)
+    # Use run_streaming_cmd here too for better UX, though subprocess.run via run_command is fine too.
+    # Since build_libic_wasi_polyfill.py is now interactive/rich-enabled, streaming it might be tricky 
+    # if it tries to take over the console. But run_command just waits.
+    # Let's stick to run_command for invoking another script to avoid rich-in-rich nesting issues 
+    # unless we're careful.
     cmd = [
         sys.executable, 
         str(build_polyfill_script), 
         "--output-dir", str(scripts_dir),
         "--version", IC_WASI_POLYFILL_COMMIT
     ]
+    
+    # We use run_command here because the child script has its own Rich output.
+    # If we used run_streaming_cmd, we'd capture its fancy output and print it as raw text lines
+    # inside a panel, which might look weird (ansi codes double rendered).
+    # Ideally, we just let it inherit stdout/stderr?
+    # run_command uses sh.Command which captures or streams.
+    # Let's just use subprocess.run to let it inherit stdio for best experience?
+    # For now keeping run_command logic but maybe we should improve it.
+    
     if not run_command(cmd, f"Building libic_wasi_polyfill.a"):
-        print(f"[red]Failed to build libic_wasi_polyfill.a[/]")
-        print(f"   Expected commit: {IC_WASI_POLYFILL_COMMIT}")
+        console.print(f"[red]Failed to build libic_wasi_polyfill.a[/]")
+        console.print(f"   Expected commit: {IC_WASI_POLYFILL_COMMIT}")
         return None
     
     if not scripts_polyfill.exists():
-        print(f"[red]libic_wasi_polyfill.a still not found after build attempt[/]")
+        console.print(f"[red]libic_wasi_polyfill.a still not found after build attempt[/]")
         return None
     
-    print("[green]libic_wasi_polyfill.a is ready[/]")
-    print(f"\n[bold]Using IC WASI Polyfill library (newly built):[/]")
-    print(f"   Path: {scripts_polyfill.resolve()}")
+    console.print("[green]libic_wasi_polyfill.a is ready[/]")
+    console.print(f"\n[bold]Using IC WASI Polyfill library (newly built):[/]")
+    console.print(f"   Path: {scripts_polyfill.resolve()}")
     
     return scripts_polyfill
 
@@ -192,73 +331,46 @@ def ensure_polyfill_library(scripts_dir: Path, build_polyfill_script: Path) -> O
 def ensure_wasi2ic_tool(scripts_dir: Path, build_wasi2ic_script: Path) -> Optional[Path]:
     """
     Ensure wasi2ic tool exists, build it if needed
-    
-    Args:
-        scripts_dir: Scripts directory path
-        build_wasi2ic_script: Path to build script
-    
-    Returns:
-        Path to wasi2ic tool if successful, None otherwise
     """
-    # Re-check wasi2ic location (may have been set via environment)
+    # Re-check wasi2ic location
     wasi2ic = find_wasi2ic_tool(scripts_dir)
     
     # Method 1: Check if already exists
     if wasi2ic.exists():
-        print(f"\n[bold]Using wasi2ic tool:[/]")
-        print(f"   Path: {wasi2ic.resolve()}")
-        
-        return wasi2ic
-    
-    # Method 2: Check environment variable override
-    env_wasi2ic = os.environ.get("WASI2IC_PATH")
-    if env_wasi2ic:
-        env_path = Path(env_wasi2ic)
-        if env_path.exists():
-            print(f"\n[bold]Using wasi2ic tool (from WASI2IC_PATH):[/]")
-            print(f"   Path: {env_path.resolve()}")
-            
-            return env_path
-    
-    # Method 3: Check if wasi2ic is in PATH
-    wasi2ic_in_path = shutil.which("wasi2ic")
-    if wasi2ic_in_path:
-        wasi2ic = Path(wasi2ic_in_path)
-        print(f"\n[bold]Using wasi2ic tool (from PATH):[/]")
-        print(f"   Path: {wasi2ic.resolve()}")
-        
         return wasi2ic
     
     # If not found, try to build it
-    print(f"\n[yellow]wasi2ic tool not found[/]")
-    print("   Attempting to build it using build_wasi2ic.py...")
+    console.print(f"\n[yellow]wasi2ic tool not found[/]")
+    console.print("   Attempting to build it using build_wasi2ic.py...")
     
     if not build_wasi2ic_script.exists():
-        print(f"[red]Build script not found: {build_wasi2ic_script}[/]")
-        print(f"   Please run build_wasi2ic.py manually")
-        print(f"   Expected commit: {WASI2IC_COMMIT}")
+        console.print(f"[red]Build script not found: {build_wasi2ic_script}[/]")
+        console.print(f"   Please run build_wasi2ic.py manually")
+        console.print(f"   Expected commit: {WASI2IC_COMMIT}")
         return None
     
-    # Run the build script (should use locked commit)
+    # Run the build script
     cmd = [
         sys.executable, 
         str(build_wasi2ic_script), 
         "--output-dir", str(scripts_dir),
         "--version", WASI2IC_COMMIT
     ]
+    
+    # Same logic as above: let the child script handle its own output
     if not run_command(cmd, f"Building wasi2ic tool"):
-        print(f"[red]Failed to build wasi2ic tool[/]")
-        print(f"   Expected commit: {WASI2IC_COMMIT}")
+        console.print(f"[red]Failed to build wasi2ic tool[/]")
+        console.print(f"   Expected commit: {WASI2IC_COMMIT}")
         return None
     
     wasi2ic = scripts_dir / "wasi2ic"
     if not wasi2ic.exists():
-        print(f"[red]wasi2ic tool still not found after build attempt[/]")
+        console.print(f"[red]wasi2ic tool still not found after build attempt[/]")
         return None
     
-    print("[green]wasi2ic tool is ready[/]")
-    print(f"\n[bold]Using wasi2ic tool (newly built):[/]")
-    print(f"   Path: {wasi2ic.resolve()}")
+    console.print("[green]wasi2ic tool is ready[/]")
+    console.print(f"\n[bold]Using wasi2ic tool (newly built):[/]")
+    console.print(f"   Path: {wasi2ic.resolve()}")
     
     return wasi2ic
 
@@ -266,13 +378,6 @@ def ensure_wasi2ic_tool(scripts_dir: Path, build_wasi2ic_script: Path) -> Option
 def check_source_files_exist(src_dir: Path, source_files: list) -> Tuple[bool, list]:
     """
     Check if all source files exist
-    
-    Args:
-        src_dir: Source directory path
-        source_files: List of source file names
-    
-    Returns:
-        Tuple of (all_exist: bool, missing_files: list)
     """
     missing_files = []
     for src in source_files:
@@ -285,16 +390,6 @@ def check_source_files_exist(src_dir: Path, source_files: list) -> Tuple[bool, l
 def needs_rebuild(lib_path: Path, src_dir: Path, source_files: list, target_platform: str, build_dir: Path) -> bool:
     """
     Check if library needs to be rebuilt
-    
-    Args:
-        lib_path: Path to library file
-        src_dir: Source directory path
-        source_files: List of source file names
-        target_platform: Target platform ("native" or "wasi")
-        build_dir: Build directory path
-    
-    Returns:
-        True if rebuild is needed, False otherwise
     """
     if not lib_path.exists():
         return True
@@ -318,9 +413,6 @@ def needs_rebuild(lib_path: Path, src_dir: Path, source_files: list, target_plat
 def find_wasm_opt() -> Optional[Path]:
     """
     Find wasm-opt tool
-    
-    Returns:
-        Path to wasm-opt tool if found, None otherwise
     """
     wasm_opt_in_path = shutil.which("wasm-opt")
     if wasm_opt_in_path:
@@ -331,43 +423,31 @@ def find_wasm_opt() -> Optional[Path]:
 def optimize_wasm(wasm_file: Path, optimized_file: Path, optimization_level: str = "-Oz") -> bool:
     """
     Optimize WASM file using wasm-opt
-    
-    Args:
-        wasm_file: Path to input WASM file
-        optimized_file: Path to output optimized WASM file
-        optimization_level: Optimization level (default: "-Oz" for size optimization)
-    
-    Returns:
-        True if optimization succeeded, False otherwise
     """
     wasm_opt = find_wasm_opt()
     if not wasm_opt:
-        print("[yellow]  wasm-opt not found in PATH, skipping optimization[/]")
-        print("     Install binaryen package: sudo apt install binaryen")
-        print("     Or: brew install binaryen (on macOS)")
+        console.print("[yellow]  wasm-opt not found in PATH, skipping optimization[/]")
+        console.print("     Install binaryen package: sudo apt install binaryen")
+        console.print("     Or: brew install binaryen (on macOS)")
         return False
     
     if not wasm_file.exists():
-        print(f"[red]  Input WASM file not found: {wasm_file}[/]")
+        console.print(f"[red]  Input WASM file not found: {wasm_file}[/]")
         return False
     
-    # Run wasm-opt with optimization flags
-    # -Oz: optimize for size (most aggressive)
-    # --strip-debug: remove debug information
     wasm_opt_str = str(wasm_opt) if isinstance(wasm_opt, Path) else wasm_opt
     cmd = [wasm_opt_str, optimization_level, "--strip-debug", str(wasm_file), "-o", str(optimized_file)]
     
     if run_command(cmd, f"Optimizing {wasm_file.name} with wasm-opt"):
         if optimized_file.exists():
-            # Show file size comparison
             original_size = wasm_file.stat().st_size
             optimized_size = optimized_file.stat().st_size
             reduction = ((original_size - optimized_size) / original_size) * 100
-            print(f"[green]  Optimized: {wasm_file.name} ({original_size:,} bytes) -> {optimized_file.name} ({optimized_size:,} bytes, {reduction:.1f}% reduction)[/]")
+            console.print(f"[green]  Optimized: {wasm_file.name} ({original_size:,} bytes) -> {optimized_file.name} ({optimized_size:,} bytes, {reduction:.1f}% reduction)[/]")
             return True
         else:
-            print(f"[yellow]  Optimization completed but output file not found: {optimized_file}[/]")
+            console.print(f"[yellow]  Optimization completed but output file not found: {optimized_file}[/]")
             return False
     else:
-        print(f"[yellow]  wasm-opt optimization failed, but original WASM file is available: {wasm_file}[/]")
+        console.print(f"[yellow]  wasm-opt optimization failed, but original WASM file is available: {wasm_file}[/]")
         return False

@@ -147,6 +147,15 @@ def build(wasi=False):
     print("\n[Building Project]")
     subprocess.run(["cmake", "--build", "."], cwd=BUILD_DIR, check=True)
 
+    # Copy compile_commands.json to project root for IDE support
+    compile_commands = BUILD_DIR / "compile_commands.json"
+    if compile_commands.exists():
+        try:
+            shutil.copy(compile_commands, ROOT_DIR / "compile_commands.json")
+            print(f" Copied compile_commands.json to {ROOT_DIR}")
+        except Exception as e:
+             print(f" Warning: Failed to copy compile_commands.json: {e}")
+
     # Step 2: Post-processing (WASI only)
     if wasi and wasi2ic_tool and wasi2ic_tool.exists():
         print("\n[Post-processing WASM files]")

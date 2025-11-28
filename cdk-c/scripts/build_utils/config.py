@@ -58,6 +58,7 @@ def initialize_paths(script_dir: Path):
         'SCRIPTS_DIR': project_root / "scripts",
         'BUILD_DIR': project_root / "build",
         'WASI_BUILD_DIR': project_root / "build",
+        'BUILD_LIB_DIR': project_root / "build_lib",
     }
 
 

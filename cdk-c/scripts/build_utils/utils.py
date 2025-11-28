@@ -198,149 +198,131 @@ def clone_repository_safe(repo_url: str, clone_dir: Path, version: str, repo_nam
     return repo_path
 
 
-def find_polyfill_library(scripts_dir: Path) -> Path:
+def find_polyfill_library(artifact_dir: Path) -> Path:
     """
-    Find IC WASI Polyfill library
+    Find IC WASI Polyfill library in the specific artifact directory.
     
     Args:
-        scripts_dir: Scripts directory path
+        artifact_dir: Directory where the polyfill library should reside (build_lib).
     
     Returns:
         Path to polyfill library
     """
-    # Preferred: Use scripts directory version (built from locked commit)
-    scripts_polyfill = scripts_dir / "libic_wasi_polyfill.a"
-    if scripts_polyfill.exists():
-        return scripts_polyfill
-    
-    # Fallback: Try environment variable override
-    env_polyfill = os.environ.get("IC_WASI_POLYFILL_PATH")
-    if env_polyfill:
-        env_path = Path(env_polyfill)
-        if env_path.exists():
-            return env_path
-    
-    # Default to scripts path (will be checked/used by ensure_polyfill_library)
-    return scripts_polyfill
+    return artifact_dir / "libic_wasi_polyfill.a"
 
 
-def find_wasi2ic_tool(scripts_dir: Path) -> Path:
+def find_wasi2ic_tool(artifact_dir: Path) -> Path:
     """
-    Find wasi2ic tool. 
+    Find wasi2ic tool in the specific artifact directory.
     
     Args:
-        scripts_dir: Scripts directory path
+        artifact_dir: Directory where the wasi2ic tool should reside (build_lib).
     
     Returns:
         Path to wasi2ic tool
     """
-
-    # main build directory
-    scripts_wasi2ic = scripts_dir / "wasi2ic"
-    if scripts_wasi2ic.exists():
-        console.print(f"[bold][cyan]Using locally built wasi2ic tool:[/] {scripts_wasi2ic.resolve()}")
-        return scripts_wasi2ic
-
-    # Default to scripts directory (will be checked/used when needed)
-    console.print(f"[yellow]wasi2ic tool not found in environment, local scripts, or PATH. Defaulting to:[/] {scripts_wasi2ic.resolve()}")
-    return scripts_wasi2ic
-
-def ensure_polyfill_library(scripts_dir: Path, build_polyfill_script: Path) -> Optional[Path]:
-    """
-    Ensure libic_wasi_polyfill.a exists, build it if needed
-    """
-    #  Check scripts directory (preferred)
-    scripts_polyfill = scripts_dir / "libic_wasi_polyfill.a"
-    if scripts_polyfill.exists():
-        console.print(f"\n[bold]Using IC WASI Polyfill library:[/]")
-        console.print(f"   Path: {scripts_polyfill.resolve()}")
+    # Check for binary with or without extension
+    wasi2ic = artifact_dir / "wasi2ic"
+    if wasi2ic.exists():
+        return wasi2ic
         
-        return scripts_polyfill
+    wasi2ic_exe = artifact_dir / "wasi2ic.exe"
+    if wasi2ic_exe.exists():
+        return wasi2ic_exe
+        
+    return wasi2ic
+
+
+def ensure_polyfill_library(artifact_dir: Path, build_polyfill_script: Path) -> Optional[Path]:
+    """
+    Ensure libic_wasi_polyfill.a exists in artifact_dir, build it if needed.
     
+    Args:
+        artifact_dir: Directory where artifacts should be stored
+        build_polyfill_script: Path to the build script
+    """
+    polyfill_lib = find_polyfill_library(artifact_dir)
     
-    # If neither exists, try to build it
-    console.print(f"\n[yellow]libic_wasi_polyfill.a not found[/]")
-    console.print("   Attempting to build it using build_libic_wasi_polyfill.py...")
+    if polyfill_lib.exists():
+        console.print(f"\n[bold]Using IC WASI Polyfill library:[/]")
+        console.print(f"   Path: {polyfill_lib.resolve()}")
+        return polyfill_lib
+    
+    # If not exists, build it
+    console.print(f"\n[yellow]libic_wasi_polyfill.a not found in {artifact_dir}[/]")
+    console.print("   Attempting to build it...")
     
     if not build_polyfill_script.exists():
         console.print(f"[red]Build script not found: {build_polyfill_script}[/]")
-        console.print(f"   Please run build_libic_wasi_polyfill.py manually")
-        console.print(f"   Expected commit: {IC_WASI_POLYFILL_COMMIT}")
         return None
     
-    # Run the build script (should use locked commit)
-    # Use run_streaming_cmd here too for better UX, though subprocess.run via run_command is fine too.
-    # Since build_libic_wasi_polyfill.py is now interactive/rich-enabled, streaming it might be tricky 
-    # if it tries to take over the console. But run_command just waits.
-    # Let's stick to run_command for invoking another script to avoid rich-in-rich nesting issues 
-    # unless we're careful.
+    # Ensure artifact directory exists
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Build directly to artifact_dir
     cmd = [
         sys.executable, 
         str(build_polyfill_script), 
-        "--output-dir", str(scripts_dir),
+        "--output-dir", str(artifact_dir),
         "--version", IC_WASI_POLYFILL_COMMIT
     ]
     
-    # We use run_command here because the child script has its own Rich output.
-    # If we used run_streaming_cmd, we'd capture its fancy output and print it as raw text lines
-    # inside a panel, which might look weird (ansi codes double rendered).
-    # Ideally, we just let it inherit stdout/stderr?
-    # run_command uses sh.Command which captures or streams.
-    # Let's just use subprocess.run to let it inherit stdio for best experience?
-    # For now keeping run_command logic but maybe we should improve it.
-    
     if not run_command(cmd, f"Building libic_wasi_polyfill.a"):
         console.print(f"[red]Failed to build libic_wasi_polyfill.a[/]")
-        console.print(f"   Expected commit: {IC_WASI_POLYFILL_COMMIT}")
         return None
     
-    if not scripts_polyfill.exists():
+    if not polyfill_lib.exists():
         console.print(f"[red]libic_wasi_polyfill.a still not found after build attempt[/]")
         return None
     
     console.print("[green]libic_wasi_polyfill.a is ready[/]")
     console.print(f"\n[bold]Using IC WASI Polyfill library (newly built):[/]")
-    console.print(f"   Path: {scripts_polyfill.resolve()}")
+    console.print(f"   Path: {polyfill_lib.resolve()}")
     
-    return scripts_polyfill
+    return polyfill_lib
 
 
-def ensure_wasi2ic_tool(scripts_dir: Path, build_wasi2ic_script: Path) -> Optional[Path]:
+def ensure_wasi2ic_tool(artifact_dir: Path, build_wasi2ic_script: Path) -> Optional[Path]:
     """
-    Ensure wasi2ic tool exists, build it if needed
-    """
-    # Re-check wasi2ic location
-    wasi2ic = find_wasi2ic_tool(scripts_dir)
+    Ensure wasi2ic tool exists in artifact_dir, build it if needed.
     
-    # Method 1: Check if already exists
+    Args:
+        artifact_dir: Directory where artifacts should be stored
+        build_wasi2ic_script: Path to the build script
+    """
+    wasi2ic = find_wasi2ic_tool(artifact_dir)
+    
     if wasi2ic.exists():
+        console.print(f"\n[bold]Using wasi2ic tool:[/]")
+        console.print(f"   Path: {wasi2ic.resolve()}")
         return wasi2ic
     
-    # If not found, try to build it
-    console.print(f"\n[yellow]wasi2ic tool not found[/]")
-    console.print("   Attempting to build it using build_wasi2ic.py...")
+    # If not exists, build it
+    console.print(f"\n[yellow]wasi2ic tool not found in {artifact_dir}[/]")
+    console.print("   Attempting to build it...")
     
     if not build_wasi2ic_script.exists():
         console.print(f"[red]Build script not found: {build_wasi2ic_script}[/]")
-        console.print(f"   Please run build_wasi2ic.py manually")
-        console.print(f"   Expected commit: {WASI2IC_COMMIT}")
         return None
     
-    # Run the build script
+    # Ensure artifact directory exists
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Build directly to artifact_dir
     cmd = [
         sys.executable, 
         str(build_wasi2ic_script), 
-        "--output-dir", str(scripts_dir),
+        "--output-dir", str(artifact_dir),
         "--version", WASI2IC_COMMIT
     ]
     
-    # Same logic as above: let the child script handle its own output
     if not run_command(cmd, f"Building wasi2ic tool"):
         console.print(f"[red]Failed to build wasi2ic tool[/]")
-        console.print(f"   Expected commit: {WASI2IC_COMMIT}")
         return None
     
-    wasi2ic = scripts_dir / "wasi2ic"
+    # Refresh path in case it was built with/without exe extension
+    wasi2ic = find_wasi2ic_tool(artifact_dir)
+    
     if not wasi2ic.exists():
         console.print(f"[red]wasi2ic tool still not found after build attempt[/]")
         return None

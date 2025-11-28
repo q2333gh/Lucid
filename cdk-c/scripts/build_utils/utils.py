@@ -94,11 +94,11 @@ def find_polyfill_library(scripts_dir: Path) -> Path:
 
 def find_wasi2ic_tool(scripts_dir: Path) -> Path:
     """
-    Find wasi2ic tool
-    
+    Find wasi2ic tool. 
+
     Args:
         scripts_dir: Scripts directory path
-    
+
     Returns:
         Path to wasi2ic tool
     """
@@ -107,22 +107,25 @@ def find_wasi2ic_tool(scripts_dir: Path) -> Path:
     if env_wasi2ic:
         env_path = Path(env_wasi2ic)
         if env_path.exists():
+            print(f"[bold][cyan]Using wasi2ic tool from WASI2IC_PATH:[/] {env_path.resolve()}")
             return env_path
-    
+
     # Method 2: Scripts directory (if built locally)
     scripts_wasi2ic = scripts_dir / "wasi2ic"
     if scripts_wasi2ic.exists():
+        print(f"[bold][cyan]Using locally built wasi2ic tool:[/] {scripts_wasi2ic.resolve()}")
         return scripts_wasi2ic
-    
+
     # Method 3: Common installation locations
     # Check if wasi2ic is in PATH
     wasi2ic_in_path = shutil.which("wasi2ic")
     if wasi2ic_in_path:
+        print(f"[bold][cyan]Using wasi2ic tool from PATH:[/] {Path(wasi2ic_in_path).resolve()}")
         return Path(wasi2ic_in_path)
-    
-    # Default to scripts directory (will be checked/used when needed)
-    return scripts_wasi2ic
 
+    # Default to scripts directory (will be checked/used when needed)
+    print(f"[yellow]wasi2ic tool not found in environment, local scripts, or PATH. Defaulting to:[/] {scripts_wasi2ic.resolve()}")
+    return scripts_wasi2ic
 
 def ensure_polyfill_library(scripts_dir: Path, build_polyfill_script: Path) -> Optional[Path]:
     """

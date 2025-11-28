@@ -5,6 +5,7 @@ import sys
 import argparse
 import os
 import shutil
+import importlib.util
 
 
 def check_command(cmd):
@@ -55,6 +56,27 @@ def ensure_wasi_sdk():
     return wasi_sdk_path, toolchain_file
 
 
+def verify_wasi_artifact(wasm_file: pathlib.Path, sdk_path: pathlib.Path) -> bool:
+    """Dynamically load verification module and verify WASM artifact"""
+    script_path = pathlib.Path("cdk-c/scripts/build_utils/verification.py").resolve()
+    if not script_path.exists():
+        print(f" Warning: Verification script not found at {script_path}")
+        return True
+
+    try:
+        spec = importlib.util.spec_from_file_location("verification", script_path)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            if hasattr(module, "verify_raw_init_import"):
+                # Note: verify_raw_init_import expects compiler_root, which is what sdk_path should be
+                return module.verify_raw_init_import(wasm_file, sdk_path)
+    except Exception as e:
+        print(f" Warning: Failed to run verification: {e}")
+
+    return True
+
+
 def build(wasi=False):
     ROOT_DIR = pathlib.Path(__file__).parent.resolve()
 
@@ -78,7 +100,7 @@ def build(wasi=False):
 
     # Store paths for post-processing
     wasi2ic_tool = None
-    generated_wasm_files = []
+    sdk_path = None  # Store SDK path for verification
 
     if wasi:
         print(" Targeting WASI/WASM...")
@@ -192,6 +214,12 @@ def build(wasi=False):
                         check=True,
                     )
                     print(f" Success: {output_wasm}")
+
+                    # Verify the output artifact
+                    if sdk_path:
+                        print(f" Verifying imports in {output_wasm.name}...")
+                        verify_wasi_artifact(output_wasm, sdk_path)
+
                 except subprocess.CalledProcessError:
                     print(f" Failed to convert {wasm_file.name}")
 
@@ -199,7 +227,7 @@ def build(wasi=False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Build IC C SDK project , native mode will build the library and run the tests")
+    parser = argparse.ArgumentParser(description="Build IC C SDK project")
     parser.add_argument(
         "--wasi",
         action="store_true",

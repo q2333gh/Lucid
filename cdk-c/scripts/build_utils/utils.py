@@ -244,8 +244,6 @@ def ensure_polyfill_library(artifact_dir: Path, build_polyfill_script: Path) -> 
     polyfill_lib = find_polyfill_library(artifact_dir)
     
     if polyfill_lib.exists():
-        console.print(f"\n[bold]Using IC WASI Polyfill library:[/]")
-        console.print(f"   Path: {polyfill_lib.resolve()}")
         return polyfill_lib
     
     # If not exists, build it
@@ -276,8 +274,6 @@ def ensure_polyfill_library(artifact_dir: Path, build_polyfill_script: Path) -> 
         return None
     
     console.print("[green]libic_wasi_polyfill.a is ready[/]")
-    console.print(f"\n[bold]Using IC WASI Polyfill library (newly built):[/]")
-    console.print(f"   Path: {polyfill_lib.resolve()}")
     
     return polyfill_lib
 
@@ -379,9 +375,11 @@ def find_wasm_opt() -> Optional[Path]:
     return None
 
 
-def optimize_wasm(wasm_file: Path, optimized_file: Path, optimization_level: str = "-Oz") -> bool:
+def optimize_wasm(wasm_file: Path, optimized_file: Path, optimization_level: str = "-O4") -> bool:
     """
     Optimize WASM file using wasm-opt
+    Oz for binary size
+    O4 for computation  heavy tasks
     """
     wasm_opt = find_wasm_opt()
     if not wasm_opt:
@@ -389,15 +387,15 @@ def optimize_wasm(wasm_file: Path, optimized_file: Path, optimization_level: str
         console.print("     Install binaryen package: sudo apt install binaryen")
         console.print("     Or: brew install binaryen (on macOS)")
         return False
-    
+
     if not wasm_file.exists():
         console.print(f"[red]  Input WASM file not found: {wasm_file}[/]")
         return False
-    
+
     wasm_opt_str = str(wasm_opt) if isinstance(wasm_opt, Path) else wasm_opt
     cmd = [wasm_opt_str, optimization_level, "--strip-debug", str(wasm_file), "-o", str(optimized_file)]
-    
-    if run_command(cmd, f"Optimizing {wasm_file.name} with wasm-opt"):
+
+    if run_command(cmd):
         if optimized_file.exists():
             original_size = wasm_file.stat().st_size
             optimized_size = optimized_file.stat().st_size

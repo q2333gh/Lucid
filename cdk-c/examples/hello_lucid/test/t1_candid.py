@@ -129,13 +129,8 @@ def main():
     
     print("Creating and installing canister with Candid interface...")
     print("(This method automatically handles type parsing using the DID file)")
-    
-    # Create and install canister with Candid interface
-    # This method:
-    # 1. Creates a canister
-    # 2. Adds cycles automatically
-    # 3. Installs the WASM code
-    # 4. Registers the Candid interface for automatic type parsing
+
+# create_and_install_canister_with_candid:(): automates canister creation, cycles, install, DID registration; returns object with canister_id.
     canister = pic.create_and_install_canister_with_candid(
         candid=candid_interface,
         wasm_module=wasm_module
@@ -177,16 +172,8 @@ def main():
     print("✓ greet_no_arg test passed")
     
     print("""\n=== All tests completed ===
-
-Benefits of using create_and_install_canister_with_candid:
-1. Automatic canister setup - creates canister, adds cycles, installs code
-2. Candid interface registration - DID file is parsed and stored
-3. Simplified workflow - single method call instead of multiple steps
-4. Canister object - provides canister_id and Candid interface reference
-
-Note: For method calls, we use pic.query_call() and decode responses
-      based on the DID file definition. The canister object's methods
-      may have method name formatting issues, so direct query_call is used.""")
+# Note: Call methods via pic.query_call() and decode per DID; canister object methods may not match method naming—use direct calls for reliability.
+    """)
 
 
 if __name__ == "__main__":

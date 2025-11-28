@@ -63,7 +63,7 @@ def build(wasi=False):
     BUILD_DIR.mkdir(exist_ok=True)
     BUILD_LIB_DIR.mkdir(exist_ok=True)
 
-    cmake_args = ["cmake", ".."]
+    cmake_args = ["cmake", "..", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
 
     # Store paths for post-processing
     wasi2ic_tool = None

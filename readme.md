@@ -13,7 +13,6 @@ A pure C language SDK for developing Internet Computer (IC) canisters. This SDK 
 - **WASI Support**: Compile to WebAssembly for IC canisters
 - **High-level API**: Easy-to-use API for common IC operations
 - **Candid Support**: Built-in Candid serialization/deserialization
-- **Principal Handling**: Type-safe principal operations
 - **Automatic Optimization**: Built-in WASM optimization with wasm-opt
 
 ## Getting Started

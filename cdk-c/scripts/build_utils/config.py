@@ -148,7 +148,6 @@ def get_compile_flags(include_dir: Path, target_platform: str = "native"):
 LIB_SOURCES = [
     "ic_api.c",
     "ic_buffer.c",
-    "ic_candid.c",
     "ic_principal.c",
     "ic_wasi_polyfill.c"
 ]

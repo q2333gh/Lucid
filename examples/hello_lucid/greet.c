@@ -7,7 +7,7 @@
 
 #include "ic_c_sdk.h"
 
-// Undefine macros from ic_c_sdk.h (via ic_candid.h) that conflict with
+// Undefine macros from ic_c_sdk.h that conflict with
 // idl/candid.h
 #undef CANDID_TYPE_NULL
 #undef CANDID_TYPE_BOOL

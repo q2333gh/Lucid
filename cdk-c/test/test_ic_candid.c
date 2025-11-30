@@ -7,6 +7,9 @@
 #include "ic_candid.h"
 #include "ic_principal.h"
 
+// Removed includes of idl/candid.h and idl/leb128.h to avoid macro redefinition
+// The test relies on ic_candid.h API, which should be implemented in CDK.
+
 // Tiny helper to keep buffer initialization consistent across tests.
 static ic_buffer_t make_buffer(void) {
     ic_buffer_t buf;

@@ -21,6 +21,22 @@ add_executable(ic_cdk_tests
 # Link against the main cdk_c library if available, otherwise build locally
 if(TARGET cdk_c)
     target_link_libraries(ic_cdk_tests PRIVATE cdk_c PkgConfig::CRITERION)
+    # cdk_c depends on candid_runtime, and since it's a static library,
+    # we might need to propagate includes or link directly if CMake doesn't transitively do it
+    if(TARGET candid_runtime)
+         target_link_libraries(ic_cdk_tests PRIVATE candid_runtime)
+         # We need to get the source dir of c_candid to include headers
+         get_target_property(CANDID_RUNTIME_SOURCE_DIR candid_runtime SOURCE_DIR)
+         # The SOURCE_DIR of the target is where CMakeLists.txt is.
+         # We need runtime/runtime/include relative to that.
+         # But we don't easily know where candid_runtime was defined if it came from parent.
+         
+         # Actually, cdk_c should expose the include directory if we set it to PUBLIC/INTERFACE
+         # In cdk-c/CMakeLists.txt we set it PRIVATE. 
+         # Let's add it here manually for the test.
+         get_filename_component(C_CANDID_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../c_candid" ABSOLUTE)
+         target_include_directories(ic_cdk_tests PRIVATE "${C_CANDID_ROOT}/runtime/runtime/include")
+    endif()
 else()
     # Standalone build fallback
     set(IC_CDK_CORE_SOURCES

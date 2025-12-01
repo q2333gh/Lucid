@@ -8,6 +8,10 @@
 // One-time initialization guard
 static bool g_initialized = false;
 
+/// Compiler barrier: prevents reordering of memory operations.
+/// Does NOT emit hardware fence instructions.
+#define COMPILER_BARRIER() __asm__ __volatile__("" ::: "memory")
+
 // WASI polyfill initialization entry point
 // Exported as "start" symbol, invoked by WASM runtime during module load
 // Prevent LTO from dropping it by marking it as used and externally visible
@@ -19,9 +23,9 @@ __ic_wasi_polyfill_start(void) {
     if (!g_initialized) {
         // Direct call - LTO must preserve this because function is exported and
         // used
-        __asm__ volatile("" ::: "memory");
+        COMPILER_BARRIER();
         raw_init(NULL, 0);
-        __asm__ volatile("" ::: "memory");
+        COMPILER_BARRIER();
         g_initialized = true;
     }
 }

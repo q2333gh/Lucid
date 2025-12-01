@@ -70,7 +70,7 @@ IC_EXPORT_QUERY(greet_no_arg) {
     // Clean up
     CandidArenaDestroy(&arena);
 
-    ic_api_debug_print("debug print: hello dfx console ");
+    ic_api_debug_print("debug print: hello dfx console. ");
     // printf("stdio print : hello dfx console\n");
 
     ic_api_free(api);

@@ -28,18 +28,23 @@ extern "C" {
  * @param value         The value to coerce.
  * @param out           The coerced value.
  */
-idl_status idl_coerce_value(idl_arena *arena, const idl_type_env *env,
-                            const idl_type *wire_type,
-                            const idl_type *expected_type,
-                            const idl_value *value, idl_value **out);
+idl_status idl_coerce_value(idl_arena          *arena,
+                            const idl_type_env *env,
+                            const idl_type     *wire_type,
+                            const idl_type     *expected_type,
+                            const idl_value    *value,
+                            idl_value         **out);
 
 /*
  * Skip a value on the wire (for extra fields).
  * This is used when decoding a record with more fields than expected.
  */
-idl_status idl_skip_value(const uint8_t *data, size_t data_len, size_t *pos,
-                          const idl_type_env *env, const idl_type *wire_type,
-                          size_t *bytes_skipped);
+idl_status idl_skip_value(const uint8_t      *data,
+                          size_t              data_len,
+                          size_t             *pos,
+                          const idl_type_env *env,
+                          const idl_type     *wire_type,
+                          size_t             *bytes_skipped);
 
 #ifdef __cplusplus
 }

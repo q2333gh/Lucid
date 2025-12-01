@@ -15,9 +15,10 @@
  * Or add to CMakeLists.txt as a target.
  */
 
-#include "idl/runtime.h"
 #include <stdio.h>
 #include <string.h>
+
+#include "idl/runtime.h"
 
 /* Helper: print hex bytes */
 static void print_hex(const uint8_t *data, size_t len) {
@@ -44,14 +45,14 @@ static void example_primitives(void) {
 
     /* Serialize to binary */
     uint8_t *bytes;
-    size_t len;
+    size_t   len;
     if (idl_builder_serialize(&builder, &bytes, &len) == IDL_STATUS_OK) {
         printf("Encoded: ");
         print_hex(bytes, len);
     }
 
     /* Also get hex string */
-    char *hex;
+    char  *hex;
     size_t hex_len;
     if (idl_builder_serialize_hex(&builder, &hex, &hex_len) == IDL_STATUS_OK) {
         printf("Hex: %s\n", hex);
@@ -102,7 +103,7 @@ static void example_record(void) {
     /* Add to builder and serialize */
     idl_builder_arg(&builder, record_type, record_value);
 
-    char *hex;
+    char  *hex;
     size_t hex_len;
     if (idl_builder_serialize_hex(&builder, &hex, &hex_len) == IDL_STATUS_OK) {
         printf("Record encoded: %s\n", hex);
@@ -118,22 +119,20 @@ static void example_decode(void) {
 
     /* Pre-encoded: ("hello", 42) */
     const uint8_t encoded[] = {
-        0x44, 0x49, 0x44, 0x4c, /* DIDL magic */
-        0x00,                   /* type table count = 0 */
-        0x02,                   /* arg count = 2 */
-        0x71,                   /* text type */
-        0x7c,                   /* int type */
-        0x05,                   /* text length = 5 */
-        'h', 'e', 'l', 'l', 'o',
-        0x2a                    /* int value = 42 (SLEB128) */
+        0x44, 0x49, 0x44, 0x4c,           /* DIDL magic */
+        0x00,                             /* type table count = 0 */
+        0x02,                             /* arg count = 2 */
+        0x71,                             /* text type */
+        0x7c,                             /* int type */
+        0x05,                             /* text length = 5 */
+        'h',  'e',  'l',  'l',  'o', 0x2a /* int value = 42 (SLEB128) */
     };
 
     idl_arena arena;
     idl_arena_init(&arena, 4096);
 
     idl_deserializer *de = NULL;
-    if (idl_deserializer_new(encoded, sizeof(encoded), &arena, &de) !=
-        IDL_STATUS_OK) {
+    if (idl_deserializer_new(encoded, sizeof(encoded), &arena, &de) != IDL_STATUS_OK) {
         printf("Failed to parse header\n");
         idl_arena_destroy(&arena);
         return;
@@ -142,7 +141,7 @@ static void example_decode(void) {
     printf("Decoded values:\n");
     int index = 0;
     while (!idl_deserializer_is_done(de)) {
-        idl_type *type;
+        idl_type  *type;
         idl_value *value;
         if (idl_deserializer_get_value(de, &type, &value) != IDL_STATUS_OK) {
             printf("  Failed to decode value %d\n", index);
@@ -152,8 +151,7 @@ static void example_decode(void) {
         printf("  [%d] kind=%d", index, value->kind);
         switch (value->kind) {
         case IDL_VALUE_TEXT:
-            printf(" text=\"%.*s\"", (int)value->data.text.len,
-                   value->data.text.data);
+            printf(" text=\"%.*s\"", (int)value->data.text.len, value->data.text.data);
             break;
         case IDL_VALUE_INT:
             printf(" int (bignum, %zu bytes)", value->data.bignum.len);
@@ -189,7 +187,7 @@ static void example_roundtrip(void) {
     idl_builder_arg_nat64(&builder, 12345);
 
     uint8_t *bytes;
-    size_t len;
+    size_t   len;
     idl_builder_serialize(&builder, &bytes, &len);
     printf("Encoded %zu bytes\n", len);
 
@@ -198,16 +196,14 @@ static void example_roundtrip(void) {
     idl_deserializer_new(bytes, len, &arena, &de);
 
     while (!idl_deserializer_is_done(de)) {
-        idl_type *type;
+        idl_type  *type;
         idl_value *value;
         idl_deserializer_get_value(de, &type, &value);
 
         if (value->kind == IDL_VALUE_TEXT) {
-            printf("Decoded text: \"%.*s\"\n", (int)value->data.text.len,
-                   value->data.text.data);
+            printf("Decoded text: \"%.*s\"\n", (int)value->data.text.len, value->data.text.data);
         } else if (value->kind == IDL_VALUE_NAT64) {
-            printf("Decoded nat64: %lu\n",
-                   (unsigned long)value->data.nat64_val);
+            printf("Decoded nat64: %lu\n", (unsigned long)value->data.nat64_val);
         }
     }
 
@@ -224,4 +220,3 @@ int main(void) {
     printf("All examples completed!\n");
     return 0;
 }
-

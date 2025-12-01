@@ -24,5 +24,3 @@ const char *idl_status_message(idl_status status);
 #endif
 
 #endif /* IDL_BASE_H */
-
-

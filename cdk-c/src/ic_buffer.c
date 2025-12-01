@@ -29,12 +29,11 @@ ic_result_t ic_buffer_reserve(ic_buffer_t *buf, size_t capacity) {
     }
 
     // Round up to next power of 2 for better performance
-    size_t new_capacity =
-        buf->capacity == 0 ? IC_BUFFER_INITIAL_CAPACITY : buf->capacity;
+    size_t new_capacity = buf->capacity == 0 ? IC_BUFFER_INITIAL_CAPACITY : buf->capacity;
     while (new_capacity < capacity) {
         new_capacity *= 2;
         if (new_capacity < buf->capacity) {
-            return IC_ERR_OUT_OF_MEMORY;  // Overflow
+            return IC_ERR_OUT_OF_MEMORY; // Overflow
         }
     }
 
@@ -49,8 +48,7 @@ ic_result_t ic_buffer_reserve(ic_buffer_t *buf, size_t capacity) {
     return IC_OK;
 }
 
-ic_result_t ic_buffer_append(ic_buffer_t *buf, const uint8_t *data,
-                             size_t len) {
+ic_result_t ic_buffer_append(ic_buffer_t *buf, const uint8_t *data, size_t len) {
     if (buf == NULL || data == NULL) {
         return IC_ERR_INVALID_ARG;
     }
@@ -64,7 +62,7 @@ ic_result_t ic_buffer_append(ic_buffer_t *buf, const uint8_t *data,
         return IC_ERR_BUFFER_OVERFLOW;
     }
 
-    size_t new_size = buf->size + len;
+    size_t      new_size = buf->size + len;
     ic_result_t result = ic_buffer_reserve(buf, new_size);
     if (result != IC_OK) {
         return result;

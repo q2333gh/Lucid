@@ -13,21 +13,20 @@
 
 struct ic_api {
     ic_entry_type_t entry_type;
-    const char* calling_function;
-    ic_buffer_t input_buffer;
-    ic_buffer_t output_buffer;
-    ic_principal_t caller;
-    ic_principal_t canister_self;
-    bool debug_print;
-    bool called_from_wire;
-    bool called_to_wire;
+    const char     *calling_function;
+    ic_buffer_t     input_buffer;
+    ic_buffer_t     output_buffer;
+    ic_principal_t  caller;
+    ic_principal_t  canister_self;
+    bool            debug_print;
+    bool            called_from_wire;
+    bool            called_to_wire;
 
     idl_arena arena;
 };
 
-ic_api_t* ic_api_init(ic_entry_type_t entry_type, const char* func_name,
-                      bool debug) {
-    ic_api_t* api = (ic_api_t*)malloc(sizeof(ic_api_t));
+ic_api_t *ic_api_init(ic_entry_type_t entry_type, const char *func_name, bool debug) {
+    ic_api_t *api = (ic_api_t *)malloc(sizeof(ic_api_t));
     if (api == NULL) {
         return NULL;
     }
@@ -65,7 +64,7 @@ ic_api_t* ic_api_init(ic_entry_type_t entry_type, const char* func_name,
             free(api);
             return NULL;
         }
-        uint8_t* temp_buf = (uint8_t*)malloc(arg_size);
+        uint8_t *temp_buf = (uint8_t *)malloc(arg_size);
         if (temp_buf == NULL) {
             ic_buffer_free(&api->input_buffer);
             ic_buffer_free(&api->output_buffer);
@@ -100,8 +99,7 @@ ic_api_t* ic_api_init(ic_entry_type_t entry_type, const char* func_name,
     if (debug) {
         ic_api_debug_print("\n--");
         char caller_text[IC_PRINCIPAL_MAX_LEN * 2 + 1];
-        if (ic_principal_to_text(&api->caller, caller_text,
-                                 sizeof(caller_text)) > 0) {
+        if (ic_principal_to_text(&api->caller, caller_text, sizeof(caller_text)) > 0) {
             char msg[256];
             // snprintf(msg, sizeof(msg), "cdk-c: caller principal = %s",
             //          caller_text);
@@ -111,7 +109,7 @@ ic_api_t* ic_api_init(ic_entry_type_t entry_type, const char* func_name,
     return api;
 }
 
-void ic_api_free(ic_api_t* api) {
+void ic_api_free(ic_api_t *api) {
     if (api != NULL) {
         ic_buffer_free(&api->input_buffer);
         ic_buffer_free(&api->output_buffer);
@@ -120,7 +118,7 @@ void ic_api_free(ic_api_t* api) {
     }
 }
 
-ic_principal_t ic_api_get_caller(const ic_api_t* api) {
+ic_principal_t ic_api_get_caller(const ic_api_t *api) {
     if (api == NULL) {
         ic_principal_t empty = {0};
         return empty;
@@ -128,7 +126,7 @@ ic_principal_t ic_api_get_caller(const ic_api_t* api) {
     return api->caller;
 }
 
-ic_principal_t ic_api_get_canister_self(const ic_api_t* api) {
+ic_principal_t ic_api_get_canister_self(const ic_api_t *api) {
     if (api == NULL) {
         ic_principal_t empty = {0};
         return empty;
@@ -136,9 +134,9 @@ ic_principal_t ic_api_get_canister_self(const ic_api_t* api) {
     return api->canister_self;
 }
 
-ic_result_t ic_api_get_canister_cycle_balance(const ic_api_t* api,
-                                              uint64_t* balance_high,
-                                              uint64_t* balance_low) {
+ic_result_t ic_api_get_canister_cycle_balance(const ic_api_t *api,
+                                              uint64_t       *balance_high,
+                                              uint64_t       *balance_low) {
     if (api == NULL || balance_high == NULL || balance_low == NULL) {
         return IC_ERR_INVALID_ARG;
     }
@@ -154,19 +152,17 @@ ic_result_t ic_api_get_canister_cycle_balance(const ic_api_t* api,
     return IC_OK;
 }
 
-bool ic_api_is_controller(const ic_api_t* api,
-                          const ic_principal_t* principal) {
+bool ic_api_is_controller(const ic_api_t *api, const ic_principal_t *principal) {
     if (api == NULL || principal == NULL || !ic_principal_is_valid(principal)) {
         return false;
     }
-    uint32_t result = ic0_is_controller((uintptr_t)principal->bytes,
-                                        (uint32_t)principal->len);
+    uint32_t result = ic0_is_controller((uintptr_t)principal->bytes, (uint32_t)principal->len);
     return result == 1;
 }
 
 int64_t ic_api_time(void) { return ic0_time(); }
 
-void ic_api_debug_print(const char* msg) {
+void ic_api_debug_print(const char *msg) {
     if (msg == NULL) {
         return;
     }
@@ -177,7 +173,7 @@ void ic_api_debug_print(const char* msg) {
     ic0_debug_print((uintptr_t)msg, (uint32_t)len);
 }
 
-void ic_api_trap(const char* msg) {
+void ic_api_trap(const char *msg) {
     if (msg == NULL) {
         msg = "Execution aborted";
     }
@@ -190,79 +186,78 @@ void ic_api_trap(const char* msg) {
     ic0_trap((uintptr_t)msg, (uint32_t)len);
 }
 
-const ic_buffer_t* ic_api_get_input_buffer(const ic_api_t* api) {
+const ic_buffer_t *ic_api_get_input_buffer(const ic_api_t *api) {
     if (api == NULL) {
         return NULL;
     }
     return &api->input_buffer;
 }
 
-const ic_buffer_t* ic_api_get_output_buffer(const ic_api_t* api) {
+const ic_buffer_t *ic_api_get_output_buffer(const ic_api_t *api) {
     if (api == NULL) {
         return NULL;
     }
     return &api->output_buffer;
 }
 
-bool ic_api_has_called_from_wire(const ic_api_t* api) {
+bool ic_api_has_called_from_wire(const ic_api_t *api) {
     return api != NULL && api->called_from_wire;
 }
 
-bool ic_api_has_called_to_wire(const ic_api_t* api) {
-    return api != NULL && api->called_to_wire;
-}
+bool ic_api_has_called_to_wire(const ic_api_t *api) { return api != NULL && api->called_to_wire; }
 
-ic_entry_type_t ic_api_get_entry_type(const ic_api_t* api) {
+ic_entry_type_t ic_api_get_entry_type(const ic_api_t *api) {
     if (api == NULL) {
-        return IC_ENTRY_QUERY;  // Safe default
+        return IC_ENTRY_QUERY; // Safe default
     }
     return api->entry_type;
 }
 
 // Candid deserialization routines
 
-static ic_result_t ic_api_from_wire_generic(ic_api_t* api,
-                                            idl_value** out_val) {
-    if (api == NULL || out_val == NULL) return IC_ERR_INVALID_ARG;
+static ic_result_t ic_api_from_wire_generic(ic_api_t *api, idl_value **out_val) {
+    if (api == NULL || out_val == NULL)
+        return IC_ERR_INVALID_ARG;
 
     if (api->called_from_wire) {
-        ic_api_trap(
-            "cdk-c: ic_api_from_wire() may only be called once per message");
+        ic_api_trap("cdk-c: ic_api_from_wire() may only be called once per message");
     }
     api->called_from_wire = true;
 
-    const uint8_t* data = ic_buffer_data(&api->input_buffer);
-    size_t len = ic_buffer_size(&api->input_buffer);
+    const uint8_t *data = ic_buffer_data(&api->input_buffer);
+    size_t         len = ic_buffer_size(&api->input_buffer);
 
-    idl_deserializer* de = NULL;
+    idl_deserializer *de = NULL;
     if (idl_deserializer_new(data, len, &api->arena, &de) != IDL_STATUS_OK) {
         return IC_ERR_INVALID_ARG;
     }
 
-    idl_type* type;
+    idl_type *type;
     if (idl_deserializer_get_value(de, &type, out_val) != IDL_STATUS_OK) {
         return IC_ERR_INVALID_ARG;
     }
     return IC_OK;
 }
 
-ic_result_t ic_api_from_wire_text(ic_api_t* api, char** text,
-                                  size_t* text_len) {
-    idl_value* val;
+ic_result_t ic_api_from_wire_text(ic_api_t *api, char **text, size_t *text_len) {
+    idl_value  *val;
     ic_result_t res = ic_api_from_wire_generic(api, &val);
-    if (res != IC_OK) return res;
+    if (res != IC_OK)
+        return res;
 
-    if (val->kind != IDL_VALUE_TEXT) return IC_ERR_INVALID_ARG;
+    if (val->kind != IDL_VALUE_TEXT)
+        return IC_ERR_INVALID_ARG;
 
-    *text = (char*)val->data.text.data;
+    *text = (char *)val->data.text.data;
     *text_len = val->data.text.len;
     return IC_OK;
 }
 
-ic_result_t ic_api_from_wire_nat(ic_api_t* api, uint64_t* value) {
-    idl_value* val;
+ic_result_t ic_api_from_wire_nat(ic_api_t *api, uint64_t *value) {
+    idl_value  *val;
     ic_result_t res = ic_api_from_wire_generic(api, &val);
-    if (res != IC_OK) return res;
+    if (res != IC_OK)
+        return res;
 
     if (val->kind == IDL_VALUE_NAT64) {
         *value = val->data.nat64_val;
@@ -279,9 +274,9 @@ ic_result_t ic_api_from_wire_nat(ic_api_t* api, uint64_t* value) {
     } else if (val->kind == IDL_VALUE_NAT) {
         // Try to decode LEB128
         size_t consumed;
-        if (idl_uleb128_decode(val->data.bignum.data, val->data.bignum.len,
-                               &consumed, value) != IDL_STATUS_OK) {
-            return IC_ERR_INVALID_ARG;  // Overflow or invalid
+        if (idl_uleb128_decode(val->data.bignum.data, val->data.bignum.len, &consumed, value) !=
+            IDL_STATUS_OK) {
+            return IC_ERR_INVALID_ARG; // Overflow or invalid
         }
         return IC_OK;
     }
@@ -289,10 +284,11 @@ ic_result_t ic_api_from_wire_nat(ic_api_t* api, uint64_t* value) {
     return IC_ERR_INVALID_ARG;
 }
 
-ic_result_t ic_api_from_wire_int(ic_api_t* api, int64_t* value) {
-    idl_value* val;
+ic_result_t ic_api_from_wire_int(ic_api_t *api, int64_t *value) {
+    idl_value  *val;
     ic_result_t res = ic_api_from_wire_generic(api, &val);
-    if (res != IC_OK) return res;
+    if (res != IC_OK)
+        return res;
 
     if (val->kind == IDL_VALUE_INT64) {
         *value = val->data.int64_val;
@@ -308,8 +304,8 @@ ic_result_t ic_api_from_wire_int(ic_api_t* api, int64_t* value) {
         return IC_OK;
     } else if (val->kind == IDL_VALUE_INT) {
         size_t consumed;
-        if (idl_sleb128_decode(val->data.bignum.data, val->data.bignum.len,
-                               &consumed, value) != IDL_STATUS_OK) {
+        if (idl_sleb128_decode(val->data.bignum.data, val->data.bignum.len, &consumed, value) !=
+            IDL_STATUS_OK) {
             return IC_ERR_INVALID_ARG;
         }
         return IC_OK;
@@ -318,14 +314,14 @@ ic_result_t ic_api_from_wire_int(ic_api_t* api, int64_t* value) {
     return IC_ERR_INVALID_ARG;
 }
 
-ic_result_t ic_api_from_wire_blob(ic_api_t* api, uint8_t** blob,
-                                  size_t* blob_len) {
-    idl_value* val;
+ic_result_t ic_api_from_wire_blob(ic_api_t *api, uint8_t **blob, size_t *blob_len) {
+    idl_value  *val;
     ic_result_t res = ic_api_from_wire_generic(api, &val);
-    if (res != IC_OK) return res;
+    if (res != IC_OK)
+        return res;
 
     if (val->kind == IDL_VALUE_BLOB) {
-        *blob = (uint8_t*)val->data.blob.data;
+        *blob = (uint8_t *)val->data.blob.data;
         *blob_len = val->data.blob.len;
         return IC_OK;
     }
@@ -333,11 +329,11 @@ ic_result_t ic_api_from_wire_blob(ic_api_t* api, uint8_t** blob,
     return IC_ERR_INVALID_ARG;
 }
 
-ic_result_t ic_api_from_wire_principal(ic_api_t* api,
-                                       ic_principal_t* principal) {
-    idl_value* val;
+ic_result_t ic_api_from_wire_principal(ic_api_t *api, ic_principal_t *principal) {
+    idl_value  *val;
     ic_result_t res = ic_api_from_wire_generic(api, &val);
-    if (res != IC_OK) return res;
+    if (res != IC_OK)
+        return res;
 
     if (val->kind == IDL_VALUE_PRINCIPAL) {
         return ic_principal_from_bytes(principal, val->data.principal.data,
@@ -347,9 +343,9 @@ ic_result_t ic_api_from_wire_principal(ic_api_t* api,
 }
 
 // Helper for sending reply
-static ic_result_t ic_api_reply_builder(ic_api_t* api, idl_builder* builder) {
-    uint8_t* bytes;
-    size_t len;
+static ic_result_t ic_api_reply_builder(ic_api_t *api, idl_builder *builder) {
+    uint8_t *bytes;
+    size_t   len;
     if (idl_builder_serialize(builder, &bytes, &len) != IDL_STATUS_OK) {
         return IC_ERR_INVALID_ARG;
     }
@@ -361,8 +357,9 @@ static ic_result_t ic_api_reply_builder(ic_api_t* api, idl_builder* builder) {
     return ic_api_msg_reply(api);
 }
 
-ic_result_t ic_api_to_wire_text(ic_api_t* api, const char* text) {
-    if (api == NULL || text == NULL) return IC_ERR_INVALID_ARG;
+ic_result_t ic_api_to_wire_text(ic_api_t *api, const char *text) {
+    if (api == NULL || text == NULL)
+        return IC_ERR_INVALID_ARG;
     if (api->called_to_wire)
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
     if (!ic_entry_can_reply(api->entry_type))
@@ -376,8 +373,9 @@ ic_result_t ic_api_to_wire_text(ic_api_t* api, const char* text) {
     return ic_api_reply_builder(api, &builder);
 }
 
-ic_result_t ic_api_to_wire_nat(ic_api_t* api, uint64_t value) {
-    if (api == NULL) return IC_ERR_INVALID_ARG;
+ic_result_t ic_api_to_wire_nat(ic_api_t *api, uint64_t value) {
+    if (api == NULL)
+        return IC_ERR_INVALID_ARG;
     if (api->called_to_wire)
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
     if (!ic_entry_can_reply(api->entry_type))
@@ -391,8 +389,9 @@ ic_result_t ic_api_to_wire_nat(ic_api_t* api, uint64_t value) {
     return ic_api_reply_builder(api, &builder);
 }
 
-ic_result_t ic_api_to_wire_int(ic_api_t* api, int64_t value) {
-    if (api == NULL) return IC_ERR_INVALID_ARG;
+ic_result_t ic_api_to_wire_int(ic_api_t *api, int64_t value) {
+    if (api == NULL)
+        return IC_ERR_INVALID_ARG;
     if (api->called_to_wire)
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
     if (!ic_entry_can_reply(api->entry_type))
@@ -406,9 +405,9 @@ ic_result_t ic_api_to_wire_int(ic_api_t* api, int64_t value) {
     return ic_api_reply_builder(api, &builder);
 }
 
-ic_result_t ic_api_to_wire_blob(ic_api_t* api, const uint8_t* blob,
-                                size_t blob_len) {
-    if (api == NULL || blob == NULL) return IC_ERR_INVALID_ARG;
+ic_result_t ic_api_to_wire_blob(ic_api_t *api, const uint8_t *blob, size_t blob_len) {
+    if (api == NULL || blob == NULL)
+        return IC_ERR_INVALID_ARG;
     if (api->called_to_wire)
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
     if (!ic_entry_can_reply(api->entry_type))
@@ -422,9 +421,9 @@ ic_result_t ic_api_to_wire_blob(ic_api_t* api, const uint8_t* blob,
     return ic_api_reply_builder(api, &builder);
 }
 
-ic_result_t ic_api_to_wire_principal(ic_api_t* api,
-                                     const ic_principal_t* principal) {
-    if (api == NULL || principal == NULL) return IC_ERR_INVALID_ARG;
+ic_result_t ic_api_to_wire_principal(ic_api_t *api, const ic_principal_t *principal) {
+    if (api == NULL || principal == NULL)
+        return IC_ERR_INVALID_ARG;
     if (api->called_to_wire)
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
     if (!ic_entry_can_reply(api->entry_type))
@@ -438,8 +437,9 @@ ic_result_t ic_api_to_wire_principal(ic_api_t* api,
     return ic_api_reply_builder(api, &builder);
 }
 
-ic_result_t ic_api_to_wire_empty(ic_api_t* api) {
-    if (api == NULL) return IC_ERR_INVALID_ARG;
+ic_result_t ic_api_to_wire_empty(ic_api_t *api) {
+    if (api == NULL)
+        return IC_ERR_INVALID_ARG;
     if (api->called_to_wire)
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
     if (!ic_entry_can_reply(api->entry_type))
@@ -453,13 +453,13 @@ ic_result_t ic_api_to_wire_empty(ic_api_t* api) {
     return ic_api_reply_builder(api, &builder);
 }
 
-ic_result_t ic_api_msg_reply(ic_api_t* api) {
+ic_result_t ic_api_msg_reply(ic_api_t *api) {
     if (api == NULL) {
         return IC_ERR_INVALID_ARG;
     }
 
-    const uint8_t* data = ic_buffer_data(&api->output_buffer);
-    size_t size = ic_buffer_size(&api->output_buffer);
+    const uint8_t *data = ic_buffer_data(&api->output_buffer);
+    size_t         size = ic_buffer_size(&api->output_buffer);
 
     // Note: c_candid handles the header generation, so we just send what's in
     // buffer. The original code checked for CANDID_MAGIC. We assume

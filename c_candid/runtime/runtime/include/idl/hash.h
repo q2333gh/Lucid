@@ -15,7 +15,7 @@ uint32_t idl_hash(const char *text);
 
 typedef struct idl_field_id {
     uint32_t id;
-    size_t index;
+    size_t   index;
 } idl_field_id;
 
 /**
@@ -34,5 +34,3 @@ idl_status idl_field_id_verify_unique(const idl_field_id *fields, size_t len);
 #endif
 
 #endif /* IDL_HASH_H */
-
-

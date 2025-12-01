@@ -40,7 +40,7 @@
 // Query function: greet_no_arg (no input, returns hello)
 IC_EXPORT_QUERY(greet_no_arg) {
     // Initialize IC API for a query function
-    ic_api_t* api = ic_api_init(IC_ENTRY_QUERY, __func__, true);
+    ic_api_t *api = ic_api_init(IC_ENTRY_QUERY, __func__, true);
     if (api == NULL) {
         ic_api_trap("Failed to initialize IC API");
     }
@@ -53,12 +53,12 @@ IC_EXPORT_QUERY(greet_no_arg) {
     CandidBuilderInit(&builder, &arena);
 
     // Add return argument: "hello world from cdk-c"
-    const char* msg = "hello world from cdk-c";
+    const char *msg = "hello world from cdk-c.";
     CandidBuilderArgText(&builder, msg, strlen(msg));
 
     // Serialize to bytes
-    uint8_t* bytes;
-    size_t len;
+    uint8_t *bytes;
+    size_t   len;
     if (CandidBuilderSerialize(&builder, &bytes, &len) == CANDID_OK) {
         // Send raw response using system API
         ic0_msg_reply_data_append((uintptr_t)bytes, (uint32_t)len);

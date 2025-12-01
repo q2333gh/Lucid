@@ -23,9 +23,9 @@ extern "C" {
  * Parsed DIDL header result.
  */
 typedef struct idl_header {
-  idl_type_env env;     /* type environment with table entries */
-  idl_type **arg_types; /* argument type sequence */
-  size_t arg_count;
+    idl_type_env env;       /* type environment with table entries */
+    idl_type   **arg_types; /* argument type sequence */
+    size_t       arg_count;
 } idl_header;
 
 /*
@@ -37,9 +37,8 @@ typedef struct idl_header {
  * @param header    Output header structure.
  * @param consumed  Number of bytes consumed (header only, not values).
  */
-idl_status idl_header_parse(const uint8_t *data, size_t data_len,
-                            idl_arena *arena, idl_header *header,
-                            size_t *consumed);
+idl_status idl_header_parse(
+    const uint8_t *data, size_t data_len, idl_arena *arena, idl_header *header, size_t *consumed);
 
 /*
  * Write a DIDL header to a buffer.
@@ -49,8 +48,8 @@ idl_status idl_header_parse(const uint8_t *data, size_t data_len,
  * @param out       Output buffer (allocated from arena).
  * @param out_len   Length of output.
  */
-idl_status idl_header_write(idl_type_table_builder *builder, idl_arena *arena,
-                            uint8_t **out, size_t *out_len);
+idl_status
+idl_header_write(idl_type_table_builder *builder, idl_arena *arena, uint8_t **out, size_t *out_len);
 
 #ifdef __cplusplus
 }

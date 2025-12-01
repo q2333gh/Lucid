@@ -36,8 +36,7 @@ Test(ic_buffer, append_and_clear_preserve_capacity) {
     const uint8_t payload_b[] = {5, 6, 7};
     cr_expect_eq(ic_buffer_append(&buf, payload_b, sizeof(payload_b)), IC_OK);
     cr_expect_eq(buf.size, sizeof(payload_a) + sizeof(payload_b));
-    cr_expect_eq(
-        memcmp(buf.data + sizeof(payload_a), payload_b, sizeof(payload_b)), 0);
+    cr_expect_eq(memcmp(buf.data + sizeof(payload_a), payload_b, sizeof(payload_b)), 0);
 
     size_t previous_capacity = buf.capacity;
     ic_buffer_clear(&buf);
@@ -81,7 +80,7 @@ Test(ic_buffer, detects_size_overflow_before_allocating) {
     ic_buffer_t buf;
     cr_expect_eq(ic_buffer_init(&buf), IC_OK);
 
-    buf.size = SIZE_MAX - 1;  // Simulate pathological state
+    buf.size = SIZE_MAX - 1; // Simulate pathological state
     uint8_t value = 0xFF;
     cr_expect_eq(ic_buffer_append(&buf, &value, 16), IC_ERR_BUFFER_OVERFLOW);
 

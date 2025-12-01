@@ -20,5 +20,5 @@ typedef enum {
 
 typedef struct {
     uint8_t bytes[IC_PRINCIPAL_MAX_LEN];
-    size_t len;
+    size_t  len;
 } ic_principal_t;

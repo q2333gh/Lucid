@@ -13,9 +13,9 @@ extern "C" {
  * Type environment entry: maps a name to a type.
  */
 typedef struct idl_type_env_entry {
-  const char *name;
-  idl_type *type;
-  struct idl_type_env_entry *next; /* for hash collision chaining */
+    const char                *name;
+    idl_type                  *type;
+    struct idl_type_env_entry *next; /* for hash collision chaining */
 } idl_type_env_entry;
 
 /*
@@ -23,10 +23,10 @@ typedef struct idl_type_env_entry {
  * Uses a simple hash table with chaining.
  */
 typedef struct idl_type_env {
-  idl_arena *arena;
-  idl_type_env_entry **buckets;
-  size_t bucket_count;
-  size_t count;
+    idl_arena           *arena;
+    idl_type_env_entry **buckets;
+    size_t               bucket_count;
+    size_t               count;
 } idl_type_env;
 
 /*
@@ -38,8 +38,7 @@ idl_status idl_type_env_init(idl_type_env *env, idl_arena *arena);
  * Insert a type binding. Returns error if name already exists with different
  * type.
  */
-idl_status idl_type_env_insert(idl_type_env *env, const char *name,
-                               idl_type *type);
+idl_status idl_type_env_insert(idl_type_env *env, const char *name, idl_type *type);
 
 /*
  * Find a type by name. Returns NULL if not found.

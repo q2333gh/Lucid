@@ -14,18 +14,18 @@ extern "C" {
  * Subtype checking result.
  */
 typedef enum idl_subtype_result {
-  IDL_SUBTYPE_OK = 0,
-  IDL_SUBTYPE_FAIL,
-  IDL_SUBTYPE_OPT_SPECIAL, /* special opt rule applied */
+    IDL_SUBTYPE_OK = 0,
+    IDL_SUBTYPE_FAIL,
+    IDL_SUBTYPE_OPT_SPECIAL, /* special opt rule applied */
 } idl_subtype_result;
 
 /*
  * Error reporting style for the special opt rule.
  */
 typedef enum idl_opt_report {
-  IDL_OPT_SILENCE,
-  IDL_OPT_WARNING,
-  IDL_OPT_ERROR,
+    IDL_OPT_SILENCE,
+    IDL_OPT_WARNING,
+    IDL_OPT_ERROR,
 } idl_opt_report;
 
 /*
@@ -33,16 +33,16 @@ typedef enum idl_opt_report {
  * Uses a simple hash set with chaining.
  */
 typedef struct idl_gamma_entry {
-  const idl_type *t1;
-  const idl_type *t2;
-  struct idl_gamma_entry *next;
+    const idl_type         *t1;
+    const idl_type         *t2;
+    struct idl_gamma_entry *next;
 } idl_gamma_entry;
 
 typedef struct idl_gamma {
-  idl_arena *arena;
-  idl_gamma_entry **buckets;
-  size_t bucket_count;
-  size_t count;
+    idl_arena        *arena;
+    idl_gamma_entry **buckets;
+    size_t            bucket_count;
+    size_t            count;
 } idl_gamma;
 
 /*
@@ -53,8 +53,7 @@ idl_status idl_gamma_init(idl_gamma *gamma, idl_arena *arena);
 /*
  * Check if a pair is in the Gamma cache.
  */
-int idl_gamma_contains(const idl_gamma *gamma, const idl_type *t1,
-                       const idl_type *t2);
+int idl_gamma_contains(const idl_gamma *gamma, const idl_type *t1, const idl_type *t2);
 
 /*
  * Insert a pair into the Gamma cache. Returns 1 if newly inserted, 0 if
@@ -76,15 +75,17 @@ void idl_gamma_remove(idl_gamma *gamma, const idl_type *t1, const idl_type *t2);
  * @param t1      The wire type (what we have).
  * @param t2      The expected type (what we want).
  */
-idl_subtype_result idl_subtype_check(idl_opt_report report, idl_gamma *gamma,
+idl_subtype_result idl_subtype_check(idl_opt_report      report,
+                                     idl_gamma          *gamma,
                                      const idl_type_env *env,
-                                     const idl_type *t1, const idl_type *t2);
+                                     const idl_type     *t1,
+                                     const idl_type     *t2);
 
 /*
  * Simplified subtype check (uses default settings).
  */
-idl_subtype_result idl_subtype(const idl_type_env *env, const idl_type *t1,
-                               const idl_type *t2, idl_arena *arena);
+idl_subtype_result
+idl_subtype(const idl_type_env *env, const idl_type *t1, const idl_type *t2, idl_arena *arena);
 
 /*
  * Check if a type is "optional-like" (opt, null, or reserved).

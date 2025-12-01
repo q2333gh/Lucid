@@ -30,6 +30,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake clang lld ninja-build binaryen libcriterion-dev
 
+      - name: Install Python requirements
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
       - name: Cache WASI SDK
         id: cache-wasi
         uses: actions/cache@v4

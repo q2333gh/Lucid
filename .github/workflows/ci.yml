@@ -28,7 +28,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake clang lld ninja-build binaryen
+          sudo apt-get install -y cmake clang lld ninja-build binaryen libcriterion-dev
 
       - name: Cache WASI SDK
         id: cache-wasi

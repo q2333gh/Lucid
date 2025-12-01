@@ -1,5 +1,5 @@
 > **⚠️ Under Heavy Development**  
-> This project is currently under active development. Many features are still in development and APIs may change without notice. 
+> This project is currently under active development. Many features are still in development and APIs may change without notice. Documentation updates may lag behind the latest features—please expect some information to be incomplete or outdated for now.
 ---
 
 # Lucid : Internet Computer Canister development kit for C, focused on clarity, simplicity, and ease of understanding.

@@ -63,25 +63,30 @@ def setup_pocketic_binary():
 
 
 def get_wasm_path():
-    """Get the path to greet.wasm file from build directory"""
+    """
+    Get the path to build-wasi/bin/hello_lucid_ic.wasm 
+    (relative to git repo root; path is always from git repo root)
+    """
+    # Search upward for repo root (has a ".git" directory)
     script_dir = Path(__file__).parent.resolve()
-    project_root = find_project_root(script_dir)
-    build_dir = project_root / "build"
-    
-    # Try optimized version first, fallback to original
-    wasm_path = build_dir / "greet_optimized.wasm"
-    if not wasm_path.exists():
-        wasm_path = build_dir / "greet.wasm"
-    
+    current = script_dir
+    repo_root = None
+    for parent in [current] + list(current.parents):
+        if (parent / ".git").exists() and (parent / ".git").is_dir():
+            repo_root = parent
+            break
+    if repo_root is None:
+        raise FileNotFoundError("Could not find git repository root (no .git directory found upward from script location)")
+
+    # Always use path from git repo root
+    wasm_path = repo_root / "build-wasi" / "bin" / "hello_lucid_ic.wasm"
+
     if not wasm_path.exists():
         raise FileNotFoundError(
-            f"greet.wasm not found in build directory: {build_dir}\n"
-            f"Expected: {build_dir / 'greet.wasm'} or {build_dir / 'greet_optimized.wasm'}"
+            f"hello_lucid_ic.wasm not found at expected path: {wasm_path}\n(Expected path is relative to git repo root: 'build-wasi/bin/hello_lucid_ic.wasm')"
         )
-    
+
     return wasm_path
-
-
 def get_did_path():
     """Get the path to greet.did file"""
     script_dir = Path(__file__).parent.resolve()

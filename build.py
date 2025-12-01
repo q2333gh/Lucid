@@ -105,6 +105,7 @@ def build(wasi=False):
     if wasi:
         print(" Targeting WASI/WASM...")
         cmake_args.append("-DBUILD_WASI=ON")
+        cmake_args.append("-DCMAKE_BUILD_TYPE=MinSizeRel")
 
         # 1. Setup WASI SDK
         sdk_path, toolchain_file = ensure_wasi_sdk()

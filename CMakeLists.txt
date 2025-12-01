@@ -13,3 +13,17 @@ add_subdirectory(c_candid)     # C candid serde lib
 add_subdirectory(cdk-c)        # CDK main lib 
 add_subdirectory(examples)     # User code examples 
 
+# Global Optimization Flags for WASM/WASI
+if(CMAKE_SYSTEM_NAME STREQUAL "WASI")
+    message(STATUS "Applying WASM size optimizations...")
+    add_compile_options(
+        -Oz                                  # Aggressive size optimization
+        -flto                                # Link Time Optimization
+        -fno-exceptions                      # Disable exceptions
+        -fno-unwind-tables                   # Disable unwind tables
+        -fno-asynchronous-unwind-tables      # Disable async unwind tables
+        -ffunction-sections                  # Place each function in its own section
+        -fdata-sections                      # Place each data item in its own section
+        -DNDEBUG                             # Disable assertions
+    )
+endif()

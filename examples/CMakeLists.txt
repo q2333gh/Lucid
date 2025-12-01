@@ -29,6 +29,9 @@ if (BUILD_TARGET_WASI)
         "-Wl,--export-dynamic"       # Export symbols for the runtime
         "-Wl,--stack-first"          # Move stack to start of memory (good practice)
         "-Wl,--import-undefined"     # Allow importing symbols from host (IC system calls)
+        "-Wl,--gc-sections"          # Garbage collect unused sections
+        "-flto"                      # Enable LTO during linking
+        "-Wl,--strip-debug"          # Strip debug information
     )
     
     # Rename output to .wasm explicitly if needed, or rely on suffix

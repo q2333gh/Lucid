@@ -1,5 +1,7 @@
 name: Build
 
+# TODO github CI wasi2ic and polyfill library build.
+# TODO consider save cdk-c and c_candid .a lib as github release assets.
 on:
   push:
     branches: ["main", "master"]

@@ -17,7 +17,7 @@ pocket-ic
 *.o
 *.out
 *.tmp
-*.log
+
 *.a
 *.so
 *.dylib

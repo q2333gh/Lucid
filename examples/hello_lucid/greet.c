@@ -53,7 +53,7 @@ IC_EXPORT_QUERY(greet_no_arg) {
     CandidBuilderInit(&builder, &arena);
 
     // Add return argument: "hello world from cdk-c"
-    const char *msg = "hello world from cdk-c.";
+    const char *msg = "hello world from cdk-c";
     CandidBuilderArgText(&builder, msg, strlen(msg));
 
     // Serialize to bytes

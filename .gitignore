@@ -22,6 +22,9 @@ compile_commands.json
 src/c_canister_dev_kit/cdk-c-ic-syscall/examples/test/pocket-ic
 pocket-ic
 
+# IDEs
+.cursorignore
+
 ####
 ## Other common ignores
 .env

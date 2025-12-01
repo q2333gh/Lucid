@@ -4,9 +4,11 @@ name: Build
 # TODO consider save cdk-c and c_candid .a lib as github release assets.
 on:
   push:
-    branches: ["main", "master"]
-  pull_request:
-    branches: ["main", "master"]
+  #   branches: ["main", "master"]
+  # pull_request:
+  #   branches: ["main", "master"]
+    tags:
+      - "*"  # run only when a tag is pushed
 
 jobs:
   build:

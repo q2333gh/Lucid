@@ -207,8 +207,14 @@ ic_result_t candid_deserialize_text(
         return IC_ERR_INVALID_ARG;
     }
 
-    *text = strdup(val->data.text.data); // Copy because arena will die
     *text_len = val->data.text.len;
+    *text = (char *)malloc(*text_len + 1);
+    if (*text == NULL) {
+        idl_arena_destroy(&arena);
+        return IC_ERR_OUT_OF_MEMORY;
+    }
+    memcpy(*text, val->data.text.data, *text_len);
+    (*text)[*text_len] = '\0';
 
     idl_arena_destroy(&arena);
     return IC_OK;

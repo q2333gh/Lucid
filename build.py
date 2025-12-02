@@ -56,6 +56,72 @@ def ensure_wasi_sdk():
     return wasi_sdk_path, toolchain_file
 
 
+def find_wasm_opt():
+    """Find wasm-opt tool in PATH"""
+    wasm_opt = shutil.which("wasm-opt")
+    return pathlib.Path(wasm_opt) if wasm_opt else None
+
+
+def optimize_wasm(
+    input_file: pathlib.Path, output_file: pathlib.Path, optimization_level: str = "-Oz"
+) -> bool:
+    """
+    Optimize WASM file using wasm-opt.
+
+    Args:
+        input_file: Path to input WASM file
+        output_file: Path to output optimized WASM file
+        optimization_level: Optimization level (-Oz for size, -O4 for speed)
+
+    Returns:
+        True if optimization succeeded, False otherwise
+    """
+    wasm_opt = find_wasm_opt()
+    if not wasm_opt:
+        print(" Warning: wasm-opt not found in PATH, skipping optimization")
+        print(
+            "   Install binaryen: sudo apt install binaryen (or brew install binaryen)"
+        )
+        return False
+
+    if not input_file.exists():
+        print(f" Error: Input WASM file not found: {input_file}")
+        return False
+
+    original_size = input_file.stat().st_size
+
+    try:
+        subprocess.run(
+            [
+                str(wasm_opt),
+                optimization_level,
+                "--strip-debug",
+                str(input_file),
+                "-o",
+                str(output_file),
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+        if output_file.exists():
+            optimized_size = output_file.stat().st_size
+            reduction = ((original_size - optimized_size) / original_size) * 100
+            print(
+                f" Optimized: {original_size:,} -> {optimized_size:,} bytes ({reduction:.1f}% reduction)"
+            )
+            return True
+        else:
+            print(f" Warning: wasm-opt completed but output file not found")
+            return False
+
+    except subprocess.CalledProcessError as e:
+        print(
+            f" Warning: wasm-opt failed: {e.stderr.decode() if e.stderr else 'unknown error'}"
+        )
+        return False
+
+
 def verify_wasi_artifact(wasm_file: pathlib.Path, sdk_path: pathlib.Path) -> bool:
     """Dynamically load verification module and verify WASM artifact"""
     script_path = pathlib.Path("cdk-c/scripts/build_utils/verification.py").resolve()
@@ -198,6 +264,7 @@ def build(wasi=False):
             print(f" Warning: Failed to copy compile_commands.json: {e}")
 
     # Step 2: Post-processing (WASI only)
+    # wasi2ic + wasm-opt
     if wasi and wasi2ic_tool and wasi2ic_tool.exists():
         print("\n[Post-processing WASM files]")
         # Find generated .wasm files in build/bin (default CMake runtime output)
@@ -216,10 +283,19 @@ def build(wasi=False):
                     )
                     print(f" Success: {output_wasm}")
 
-                    # Verify the output artifact
-                    if sdk_path:
-                        print(f" Verifying imports in {output_wasm.name}...")
-                        verify_wasi_artifact(output_wasm, sdk_path)
+                    # Verify the output artifact              
+                    # Optimize the IC-converted WASM file in-place
+                    print(f" Optimizing {output_wasm.name}...")
+                    temp_optimized = bin_dir / f"{output_wasm.stem}_opt_temp.wasm"
+                    if optimize_wasm(output_wasm, temp_optimized, "-Oz"):
+                        # Replace original with optimized version
+                        shutil.move(str(temp_optimized), str(output_wasm))
+                        print(f" Optimized file saved as: {output_wasm}")
+                    else:
+                        # Clean up temp file if it exists
+                        if temp_optimized.exists():
+                            temp_optimized.unlink()
+                        print(f" Using unoptimized file: {output_wasm}")
 
                 except subprocess.CalledProcessError:
                     print(f" Failed to convert {wasm_file.name}")

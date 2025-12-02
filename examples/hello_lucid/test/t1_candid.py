@@ -118,7 +118,12 @@ def main():
     wasm_path = get_wasm_path()
     did_path = get_did_path()
     
+    import os
+    import datetime
+
     print(f"WASM file: {wasm_path}")
+    wasmpath_mtime = datetime.datetime.fromtimestamp(os.path.getmtime(wasm_path))
+    print(f"  (Last modified: {wasmpath_mtime})")
     print(f"DID file: {did_path}")
     
     # Initialize PocketIC

@@ -1,4 +1,5 @@
 #include "idl/arena.h"
+#include "idl/cdk_alloc.h"
 
 #include <stdlib.h>
 #include <string.h>

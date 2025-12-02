@@ -9,6 +9,7 @@
 
 #include "ic_entry_points.h"
 #include "idl/candid.h"
+#include "idl/cdk_alloc.h"
 #include "idl/leb128.h"
 
 struct ic_api {

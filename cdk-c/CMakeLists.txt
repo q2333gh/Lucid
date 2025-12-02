@@ -22,6 +22,8 @@ if(TARGET candid_runtime)
     target_include_directories(cdk_c PUBLIC "${CANDID_RUNTIME_SOURCE_DIR}/runtime/runtime/include")
 endif()
 
+target_link_libraries(cdk_c PUBLIC cdk_alloc)
+
 target_include_directories(cdk_c PUBLIC include)
 
 # Enforce C11 standard for the library

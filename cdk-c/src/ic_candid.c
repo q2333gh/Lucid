@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "idl/candid.h"
+#include "idl/cdk_alloc.h"
 #include "idl/leb128.h"
 
 // Implementation of ic_candid.h functions using c_candid library

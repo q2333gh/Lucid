@@ -1,6 +1,7 @@
 // Byte buffer management implementation
 #include "ic_buffer.h"
 
+#include "idl/cdk_alloc.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

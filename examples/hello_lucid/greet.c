@@ -16,34 +16,6 @@ IC_CANDID_EXPORT_DID()
 
 // =============================================================================
 
-// Undefine macros from ic_c_sdk.h that conflict with
-// idl/candid.h
-#undef CANDID_TYPE_NULL
-#undef CANDID_TYPE_BOOL
-#undef CANDID_TYPE_NAT
-#undef CANDID_TYPE_INT
-#undef CANDID_TYPE_NAT8
-#undef CANDID_TYPE_INT8
-#undef CANDID_TYPE_NAT16
-#undef CANDID_TYPE_INT16
-#undef CANDID_TYPE_NAT32
-#undef CANDID_TYPE_INT32
-#undef CANDID_TYPE_NAT64
-#undef CANDID_TYPE_INT64
-#undef CANDID_TYPE_FLOAT32
-#undef CANDID_TYPE_FLOAT64
-#undef CANDID_TYPE_TEXT
-#undef CANDID_TYPE_RESERVED
-#undef CANDID_TYPE_EMPTY
-#undef CANDID_TYPE_OPT
-#undef CANDID_TYPE_VEC
-#undef CANDID_TYPE_BLOB
-#undef CANDID_TYPE_RECORD
-#undef CANDID_TYPE_VARIANT
-#undef CANDID_TYPE_FUNC
-#undef CANDID_TYPE_SERVICE
-#undef CANDID_TYPE_PRINCIPAL
-
 #include "idl/candid.h"
 
 // =============================================================================

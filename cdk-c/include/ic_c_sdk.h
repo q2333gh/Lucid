@@ -18,6 +18,7 @@
 
 // Candid serialization
 #include "ic_candid.h"
+#include "ic_candid_did.h"
 
 // High-level API
 #include "ic_api.h"

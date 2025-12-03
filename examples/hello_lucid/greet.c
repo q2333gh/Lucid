@@ -7,6 +7,15 @@
 
 #include "ic_c_sdk.h"
 
+// =============================================================================
+// Candid Interface Description
+// =============================================================================
+IC_CANDID_INTERFACE("service : {\n"
+                    "    greet_no_arg : () -> (text) query;\n"
+                    "}");
+
+// =============================================================================
+
 // Undefine macros from ic_c_sdk.h that conflict with
 // idl/candid.h
 #undef CANDID_TYPE_NULL

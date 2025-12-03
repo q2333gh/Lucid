@@ -35,6 +35,12 @@ if (BUILD_TARGET_WASI)
 
         "-mexec-model=reactor"
 
+        # Export linear "memory" for IC canister exclusive 
+        "-Wl,--export-memory"
+
+        # Export candid interface pointer function for candid-extractor
+        "-Wl,--export=get_candid_pointer"
+
         "-Wl,--export=__ic_wasi_polyfill_start" # C symbol for start
 
         # CRITICAL: Explicitly export polyfill functions to prevent LTO from stripping them

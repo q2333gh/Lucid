@@ -12,6 +12,13 @@ int                __ic_candid_method_count = 0;
 // Static buffer for generated DID string
 static char __ic_did_buffer[IC_CANDID_DID_BUFFER_SIZE];
 
+// Flag to track if constructors have been called
+static int __ic_ctors_called = 0;
+
+// WASM constructor initializer (provided by compiler runtime)
+// This function calls all __attribute__((constructor)) functions
+extern void __wasm_call_ctors(void);
+
 // =============================================================================
 // Helper: copy string and return pointer to end
 // =============================================================================
@@ -27,6 +34,12 @@ static char *str_copy(char *dst, char *end, const char *src) {
 // =============================================================================
 
 const char *ic_candid_generate_did(void) {
+    // Ensure constructors have been called (registers all methods)
+    if (!__ic_ctors_called) {
+        __wasm_call_ctors();
+        __ic_ctors_called = 1;
+    }
+
     char *p = __ic_did_buffer;
     char *end = __ic_did_buffer + IC_CANDID_DID_BUFFER_SIZE - 1;
 
@@ -37,10 +50,10 @@ const char *ic_candid_generate_did(void) {
     for (int i = 0; i < __ic_candid_method_count && p < end; i++) {
         const ic_candid_method_t *method = &__ic_candid_methods[i];
 
-        // Format: "    method_name : signature annotation;\n"
-        p = str_copy(p, end, "    ");
+        // Format: "    \"method_name\": signature annotation;\n"
+        p = str_copy(p, end, "    \"");
         p = str_copy(p, end, method->name);
-        p = str_copy(p, end, " : ");
+        p = str_copy(p, end, "\": ");
         p = str_copy(p, end, method->signature);
 
         // Add query annotation if needed

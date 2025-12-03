@@ -157,7 +157,20 @@ def build(wasi=False):
     BUILD_DIR.mkdir(exist_ok=True)
     BUILD_LIB_DIR.mkdir(exist_ok=True)
 
+    # Check if Ninja is available
+    use_ninja = check_command("ninja")
+    if use_ninja:
+        print(" Using Ninja build system (faster parallel builds)")
+    else:
+        print(" Warning: Ninja not found, falling back to default generator")
+        print("   Install with: sudo apt install ninja-build")
+
     cmake_args = ["cmake", "..", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
+
+    # Use Ninja generator if available
+    if use_ninja:
+        cmake_args.append("-G")
+        cmake_args.append("Ninja")
 
     if not wasi:
         # Enable tests for native build
@@ -245,7 +258,15 @@ def build(wasi=False):
     subprocess.run(cmake_args, cwd=BUILD_DIR, check=True)
 
     print("\n[Building Project]")
-    subprocess.run(["cmake", "--build", "."], cwd=BUILD_DIR, check=True)
+    # Use ninja directly if available (faster), otherwise use cmake --build
+    if use_ninja:
+        # Use all CPU cores for parallel build
+        import multiprocessing
+
+        jobs = multiprocessing.cpu_count()
+        subprocess.run(["ninja", "-j", str(jobs)], cwd=BUILD_DIR, check=True)
+    else:
+        subprocess.run(["cmake", "--build", "."], cwd=BUILD_DIR, check=True)
 
     if not wasi:
         print("\n[Running Tests]")
@@ -283,7 +304,7 @@ def build(wasi=False):
                     )
                     print(f" Success: {output_wasm}")
 
-                    # Verify the output artifact              
+                    # Verify the output artifact
                     # Optimize the IC-converted WASM file in-place
                     print(f" Optimizing {output_wasm.name}...")
                     temp_optimized = bin_dir / f"{output_wasm.stem}_opt_temp.wasm"

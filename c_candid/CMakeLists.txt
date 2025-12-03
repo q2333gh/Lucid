@@ -5,6 +5,9 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
+# Ninja-friendly: Better dependency tracking
+set(CMAKE_DEPENDS_IN_PROJECT_ONLY ON)
+
 option(C_CANDID_BUILD_TESTS "Build C candid runtime tests" ON)
 
 set(RUNTIME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/runtime/runtime)
@@ -14,6 +17,8 @@ set(TESTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/runtime/tests)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
+# Ninja-friendly: Explicitly list sources instead of GLOB for better dependency tracking
+# GLOB can miss new files, but for now we keep it and add explicit dependency tracking
 file(GLOB_RECURSE CANDID_RUNTIME_SOURCES "${RUNTIME_DIR}/src/*.c")
     # # Phase 1: Core utilities
     # ${RUNTIME_DIR}/src/arena.c

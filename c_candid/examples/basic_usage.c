@@ -132,7 +132,8 @@ static void example_decode(void) {
     idl_arena_init(&arena, 4096);
 
     idl_deserializer *de = NULL;
-    if (idl_deserializer_new(encoded, sizeof(encoded), &arena, &de) != IDL_STATUS_OK) {
+    if (idl_deserializer_new(encoded, sizeof(encoded), &arena, &de) !=
+        IDL_STATUS_OK) {
         printf("Failed to parse header\n");
         idl_arena_destroy(&arena);
         return;
@@ -151,7 +152,8 @@ static void example_decode(void) {
         printf("  [%d] kind=%d", index, value->kind);
         switch (value->kind) {
         case IDL_VALUE_TEXT:
-            printf(" text=\"%.*s\"", (int)value->data.text.len, value->data.text.data);
+            printf(" text=\"%.*s\"", (int)value->data.text.len,
+                   value->data.text.data);
             break;
         case IDL_VALUE_INT:
             printf(" int (bignum, %zu bytes)", value->data.bignum.len);
@@ -201,9 +203,11 @@ static void example_roundtrip(void) {
         idl_deserializer_get_value(de, &type, &value);
 
         if (value->kind == IDL_VALUE_TEXT) {
-            printf("Decoded text: \"%.*s\"\n", (int)value->data.text.len, value->data.text.data);
+            printf("Decoded text: \"%.*s\"\n", (int)value->data.text.len,
+                   value->data.text.data);
         } else if (value->kind == IDL_VALUE_NAT64) {
-            printf("Decoded nat64: %lu\n", (unsigned long)value->data.nat64_val);
+            printf("Decoded nat64: %lu\n",
+                   (unsigned long)value->data.nat64_val);
         }
     }
 

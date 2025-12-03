@@ -137,7 +137,8 @@ static int parse_number(parser_t *p, idl_builder *builder) {
         } else if ((c == 'e' || c == 'E') && has_dot) {
             buf[len++] = c;
             p->pos++;
-            if (p->pos < p->len && (p->input[p->pos] == '+' || p->input[p->pos] == '-')) {
+            if (p->pos < p->len &&
+                (p->input[p->pos] == '+' || p->input[p->pos] == '-')) {
                 buf[len++] = p->input[p->pos++];
             }
         } else {

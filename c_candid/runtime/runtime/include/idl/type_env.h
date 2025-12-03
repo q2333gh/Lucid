@@ -38,7 +38,8 @@ idl_status idl_type_env_init(idl_type_env *env, idl_arena *arena);
  * Insert a type binding. Returns error if name already exists with different
  * type.
  */
-idl_status idl_type_env_insert(idl_type_env *env, const char *name, idl_type *type);
+idl_status
+idl_type_env_insert(idl_type_env *env, const char *name, idl_type *type);
 
 /*
  * Find a type by name. Returns NULL if not found.

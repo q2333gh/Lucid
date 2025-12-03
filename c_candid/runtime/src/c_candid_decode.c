@@ -16,7 +16,8 @@
 #define MAX_INPUT 65536
 
 /* Convert hex string to bytes */
-static int hex_to_bytes(const char *hex, size_t hex_len, uint8_t *out, size_t *out_len) {
+static int
+hex_to_bytes(const char *hex, size_t hex_len, uint8_t *out, size_t *out_len) {
     size_t j = 0;
     for (size_t i = 0; i < hex_len; i += 2) {
         if (i + 1 >= hex_len) {
@@ -87,8 +88,8 @@ static void print_value(const idl_value *v, int in_tuple) {
         if (v->data.bignum.len > 0) {
             uint64_t val = 0;
             size_t   consumed = 0;
-            if (idl_uleb128_decode(v->data.bignum.data, v->data.bignum.len, &consumed, &val) ==
-                IDL_STATUS_OK) {
+            if (idl_uleb128_decode(v->data.bignum.data, v->data.bignum.len,
+                                   &consumed, &val) == IDL_STATUS_OK) {
                 printf("%lu", (unsigned long)val);
             } else {
                 printf("<nat>");
@@ -119,8 +120,8 @@ static void print_value(const idl_value *v, int in_tuple) {
         if (v->data.bignum.len > 0) {
             int64_t val = 0;
             size_t  consumed = 0;
-            if (idl_sleb128_decode(v->data.bignum.data, v->data.bignum.len, &consumed, &val) ==
-                IDL_STATUS_OK) {
+            if (idl_sleb128_decode(v->data.bignum.data, v->data.bignum.len,
+                                   &consumed, &val) == IDL_STATUS_OK) {
                 printf("%ld : int", (long)val);
             } else {
                 printf("<int>");

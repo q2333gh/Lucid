@@ -30,10 +30,16 @@ void ic_buffer_clear(ic_buffer_t *buf);
 void ic_buffer_free(ic_buffer_t *buf);
 
 // Get buffer data pointer
-static inline const uint8_t *ic_buffer_data(const ic_buffer_t *buf) { return buf->data; }
+static inline const uint8_t *ic_buffer_data(const ic_buffer_t *buf) {
+    return buf->data;
+}
 
 // Get buffer size
-static inline size_t ic_buffer_size(const ic_buffer_t *buf) { return buf->size; }
+static inline size_t ic_buffer_size(const ic_buffer_t *buf) {
+    return buf->size;
+}
 
 // Check if buffer is empty
-static inline bool ic_buffer_empty(const ic_buffer_t *buf) { return buf->size == 0; }
+static inline bool ic_buffer_empty(const ic_buffer_t *buf) {
+    return buf->size == 0;
+}

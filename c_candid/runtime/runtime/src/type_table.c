@@ -8,7 +8,8 @@
 #define MAX_LEB128_SIZE 10
 
 /* Grow a dynamic array */
-static idl_status grow_array(idl_arena *arena, void **arr, size_t *cap, size_t elem_size) {
+static idl_status
+grow_array(idl_arena *arena, void **arr, size_t *cap, size_t elem_size) {
     size_t new_cap = (*cap == 0) ? INITIAL_CAPACITY : (*cap * 2);
     void  *new_arr = idl_arena_alloc(arena, new_cap * elem_size);
     if (!new_arr) {
@@ -22,8 +23,9 @@ static idl_status grow_array(idl_arena *arena, void **arr, size_t *cap, size_t e
     return IDL_STATUS_OK;
 }
 
-idl_status
-idl_type_table_builder_init(idl_type_table_builder *builder, idl_arena *arena, idl_type_env *env) {
+idl_status idl_type_table_builder_init(idl_type_table_builder *builder,
+                                       idl_arena              *arena,
+                                       idl_type_env           *env) {
     if (!builder || !arena) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -36,8 +38,9 @@ idl_type_table_builder_init(idl_type_table_builder *builder, idl_arena *arena, i
 }
 
 /* Find type in the type map */
-static int
-find_type_index(const idl_type_table_builder *builder, const idl_type *type, int32_t *out) {
+static int find_type_index(const idl_type_table_builder *builder,
+                           const idl_type               *type,
+                           int32_t                      *out) {
     for (size_t i = 0; i < builder->type_map_count; i++) {
         if (builder->type_keys[i] == type) {
             *out = builder->type_indices[i];
@@ -48,22 +51,25 @@ find_type_index(const idl_type_table_builder *builder, const idl_type *type, int
 }
 
 /* Add type to the type map */
-static idl_status add_type_mapping(idl_type_table_builder *builder, idl_type *type, int32_t index) {
+static idl_status add_type_mapping(idl_type_table_builder *builder,
+                                   idl_type               *type,
+                                   int32_t                 index) {
     if (builder->type_map_count >= builder->type_map_capacity) {
         idl_status st;
-        st = grow_array(builder->arena, (void **)&builder->type_keys, &builder->type_map_capacity,
-                        sizeof(idl_type *));
+        st = grow_array(builder->arena, (void **)&builder->type_keys,
+                        &builder->type_map_capacity, sizeof(idl_type *));
         if (st != IDL_STATUS_OK)
             return st;
 
         /* Also grow indices array to match */
         size_t   old_cap = builder->type_map_capacity / 2;
-        int32_t *new_indices =
-            idl_arena_alloc(builder->arena, builder->type_map_capacity * sizeof(int32_t));
+        int32_t *new_indices = idl_arena_alloc(
+            builder->arena, builder->type_map_capacity * sizeof(int32_t));
         if (!new_indices)
             return IDL_STATUS_ERR_ALLOC;
         if (builder->type_indices && old_cap > 0) {
-            memcpy(new_indices, builder->type_indices, old_cap * sizeof(int32_t));
+            memcpy(new_indices, builder->type_indices,
+                   old_cap * sizeof(int32_t));
         }
         builder->type_indices = new_indices;
     }
@@ -76,8 +82,8 @@ static idl_status add_type_mapping(idl_type_table_builder *builder, idl_type *ty
 }
 
 /* Write SLEB128 to a dynamic buffer */
-static idl_status
-write_sleb128(idl_arena *arena, uint8_t **buf, size_t *len, size_t *cap, int64_t value) {
+static idl_status write_sleb128(
+    idl_arena *arena, uint8_t **buf, size_t *len, size_t *cap, int64_t value) {
     uint8_t    tmp[MAX_LEB128_SIZE];
     size_t     written;
     idl_status st = idl_sleb128_encode(value, tmp, sizeof(tmp), &written);
@@ -102,8 +108,8 @@ write_sleb128(idl_arena *arena, uint8_t **buf, size_t *len, size_t *cap, int64_t
 }
 
 /* Write ULEB128 to a dynamic buffer */
-static idl_status
-write_uleb128(idl_arena *arena, uint8_t **buf, size_t *len, size_t *cap, uint64_t value) {
+static idl_status write_uleb128(
+    idl_arena *arena, uint8_t **buf, size_t *len, size_t *cap, uint64_t value) {
     uint8_t    tmp[MAX_LEB128_SIZE];
     size_t     written;
     idl_status st = idl_uleb128_encode(value, tmp, sizeof(tmp), &written);
@@ -143,7 +149,8 @@ static idl_status encode_type_ref(const idl_type_table_builder *builder,
 
     if (type->kind == IDL_KIND_VAR && builder->env) {
         /* Look up the VAR in the environment and get its index */
-        idl_type *resolved = idl_type_env_find(builder->env, type->data.var_name);
+        idl_type *resolved =
+            idl_type_env_find(builder->env, type->data.var_name);
         if (resolved && find_type_index(builder, resolved, &index)) {
             return write_sleb128(arena, buf, len, cap, index);
         }
@@ -163,7 +170,7 @@ static idl_status encode_type_ref(const idl_type_table_builder *builder,
 
 idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
                                              idl_type               *type,
-                                             int32_t                *out_index) {
+                                             int32_t *out_index) {
     if (!builder || !type) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -202,17 +209,18 @@ idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
 
     /* Grow entries array if needed */
     if (builder->entries_count >= builder->entries_capacity) {
-        st = grow_array(builder->arena, (void **)&builder->entries, &builder->entries_capacity,
-                        sizeof(uint8_t *));
+        st = grow_array(builder->arena, (void **)&builder->entries,
+                        &builder->entries_capacity, sizeof(uint8_t *));
         if (st != IDL_STATUS_OK)
             return st;
 
-        size_t *new_lens =
-            idl_arena_alloc(builder->arena, builder->entries_capacity * sizeof(size_t));
+        size_t *new_lens = idl_arena_alloc(
+            builder->arena, builder->entries_capacity * sizeof(size_t));
         if (!new_lens)
             return IDL_STATUS_ERR_ALLOC;
         if (builder->entry_lens) {
-            memcpy(new_lens, builder->entry_lens, (builder->entries_capacity / 2) * sizeof(size_t));
+            memcpy(new_lens, builder->entry_lens,
+                   (builder->entries_capacity / 2) * sizeof(size_t));
         }
         builder->entry_lens = new_lens;
     }
@@ -226,27 +234,31 @@ idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
     switch (actual_type->kind) {
     case IDL_KIND_OPT:
         /* Recursively build inner type first */
-        st = idl_type_table_builder_build_type(builder, actual_type->data.inner, NULL);
+        st = idl_type_table_builder_build_type(builder, actual_type->data.inner,
+                                               NULL);
         if (st != IDL_STATUS_OK)
             return st;
 
         st = write_sleb128(builder->arena, &buf, &len, &cap, IDL_TYPE_OPT);
         if (st != IDL_STATUS_OK)
             return st;
-        st = encode_type_ref(builder, builder->arena, &buf, &len, &cap, actual_type->data.inner);
+        st = encode_type_ref(builder, builder->arena, &buf, &len, &cap,
+                             actual_type->data.inner);
         if (st != IDL_STATUS_OK)
             return st;
         break;
 
     case IDL_KIND_VEC:
-        st = idl_type_table_builder_build_type(builder, actual_type->data.inner, NULL);
+        st = idl_type_table_builder_build_type(builder, actual_type->data.inner,
+                                               NULL);
         if (st != IDL_STATUS_OK)
             return st;
 
         st = write_sleb128(builder->arena, &buf, &len, &cap, IDL_TYPE_VEC);
         if (st != IDL_STATUS_OK)
             return st;
-        st = encode_type_ref(builder, builder->arena, &buf, &len, &cap, actual_type->data.inner);
+        st = encode_type_ref(builder, builder->arena, &buf, &len, &cap,
+                             actual_type->data.inner);
         if (st != IDL_STATUS_OK)
             return st;
         break;
@@ -255,20 +267,22 @@ idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
     case IDL_KIND_VARIANT: {
         /* Build field types first */
         for (size_t i = 0; i < actual_type->data.record.fields_len; i++) {
-            st = idl_type_table_builder_build_type(builder, actual_type->data.record.fields[i].type,
-                                                   NULL);
+            st = idl_type_table_builder_build_type(
+                builder, actual_type->data.record.fields[i].type, NULL);
             if (st != IDL_STATUS_OK)
                 return st;
         }
 
-        int64_t opcode =
-            (actual_type->kind == IDL_KIND_RECORD) ? IDL_TYPE_RECORD : IDL_TYPE_VARIANT;
+        int64_t opcode = (actual_type->kind == IDL_KIND_RECORD)
+                             ? IDL_TYPE_RECORD
+                             : IDL_TYPE_VARIANT;
         st = write_sleb128(builder->arena, &buf, &len, &cap, opcode);
         if (st != IDL_STATUS_OK)
             return st;
 
         /* Field count */
-        st = write_uleb128(builder->arena, &buf, &len, &cap, actual_type->data.record.fields_len);
+        st = write_uleb128(builder->arena, &buf, &len, &cap,
+                           actual_type->data.record.fields_len);
         if (st != IDL_STATUS_OK)
             return st;
 
@@ -278,7 +292,8 @@ idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
             st = write_uleb128(builder->arena, &buf, &len, &cap, f->label.id);
             if (st != IDL_STATUS_OK)
                 return st;
-            st = encode_type_ref(builder, builder->arena, &buf, &len, &cap, f->type);
+            st = encode_type_ref(builder, builder->arena, &buf, &len, &cap,
+                                 f->type);
             if (st != IDL_STATUS_OK)
                 return st;
         }
@@ -288,12 +303,14 @@ idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
     case IDL_KIND_FUNC: {
         /* Build arg and ret types */
         for (size_t i = 0; i < actual_type->data.func.args_len; i++) {
-            st = idl_type_table_builder_build_type(builder, actual_type->data.func.args[i], NULL);
+            st = idl_type_table_builder_build_type(
+                builder, actual_type->data.func.args[i], NULL);
             if (st != IDL_STATUS_OK)
                 return st;
         }
         for (size_t i = 0; i < actual_type->data.func.rets_len; i++) {
-            st = idl_type_table_builder_build_type(builder, actual_type->data.func.rets[i], NULL);
+            st = idl_type_table_builder_build_type(
+                builder, actual_type->data.func.rets[i], NULL);
             if (st != IDL_STATUS_OK)
                 return st;
         }
@@ -303,7 +320,8 @@ idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
             return st;
 
         /* Args */
-        st = write_uleb128(builder->arena, &buf, &len, &cap, actual_type->data.func.args_len);
+        st = write_uleb128(builder->arena, &buf, &len, &cap,
+                           actual_type->data.func.args_len);
         if (st != IDL_STATUS_OK)
             return st;
         for (size_t i = 0; i < actual_type->data.func.args_len; i++) {
@@ -314,7 +332,8 @@ idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
         }
 
         /* Rets */
-        st = write_uleb128(builder->arena, &buf, &len, &cap, actual_type->data.func.rets_len);
+        st = write_uleb128(builder->arena, &buf, &len, &cap,
+                           actual_type->data.func.rets_len);
         if (st != IDL_STATUS_OK)
             return st;
         for (size_t i = 0; i < actual_type->data.func.rets_len; i++) {
@@ -325,11 +344,13 @@ idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
         }
 
         /* Modes */
-        st = write_uleb128(builder->arena, &buf, &len, &cap, actual_type->data.func.modes_len);
+        st = write_uleb128(builder->arena, &buf, &len, &cap,
+                           actual_type->data.func.modes_len);
         if (st != IDL_STATUS_OK)
             return st;
         for (size_t i = 0; i < actual_type->data.func.modes_len; i++) {
-            st = write_sleb128(builder->arena, &buf, &len, &cap, actual_type->data.func.modes[i]);
+            st = write_sleb128(builder->arena, &buf, &len, &cap,
+                               actual_type->data.func.modes[i]);
             if (st != IDL_STATUS_OK)
                 return st;
         }
@@ -339,8 +360,8 @@ idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
     case IDL_KIND_SERVICE: {
         /* Build method types */
         for (size_t i = 0; i < actual_type->data.service.methods_len; i++) {
-            st = idl_type_table_builder_build_type(builder,
-                                                   actual_type->data.service.methods[i].type, NULL);
+            st = idl_type_table_builder_build_type(
+                builder, actual_type->data.service.methods[i].type, NULL);
             if (st != IDL_STATUS_OK)
                 return st;
         }
@@ -349,7 +370,8 @@ idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
         if (st != IDL_STATUS_OK)
             return st;
 
-        st = write_uleb128(builder->arena, &buf, &len, &cap, actual_type->data.service.methods_len);
+        st = write_uleb128(builder->arena, &buf, &len, &cap,
+                           actual_type->data.service.methods_len);
         if (st != IDL_STATUS_OK)
             return st;
 
@@ -375,7 +397,8 @@ idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
             memcpy(buf + len, m->name, name_len);
             len += name_len;
 
-            st = encode_type_ref(builder, builder->arena, &buf, &len, &cap, m->type);
+            st = encode_type_ref(builder, builder->arena, &buf, &len, &cap,
+                                 m->type);
             if (st != IDL_STATUS_OK)
                 return st;
         }
@@ -395,7 +418,8 @@ idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
     return IDL_STATUS_OK;
 }
 
-idl_status idl_type_table_builder_push_arg(idl_type_table_builder *builder, idl_type *type) {
+idl_status idl_type_table_builder_push_arg(idl_type_table_builder *builder,
+                                           idl_type               *type) {
     if (!builder || !type) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -407,8 +431,8 @@ idl_status idl_type_table_builder_push_arg(idl_type_table_builder *builder, idl_
 
     /* Add to args list */
     if (builder->args_count >= builder->args_capacity) {
-        st = grow_array(builder->arena, (void **)&builder->args, &builder->args_capacity,
-                        sizeof(idl_type *));
+        st = grow_array(builder->arena, (void **)&builder->args,
+                        &builder->args_capacity, sizeof(idl_type *));
         if (st != IDL_STATUS_OK)
             return st;
     }
@@ -417,8 +441,9 @@ idl_status idl_type_table_builder_push_arg(idl_type_table_builder *builder, idl_
     return IDL_STATUS_OK;
 }
 
-idl_status
-idl_type_table_builder_serialize(idl_type_table_builder *builder, uint8_t **out, size_t *out_len) {
+idl_status idl_type_table_builder_serialize(idl_type_table_builder *builder,
+                                            uint8_t               **out,
+                                            size_t                 *out_len) {
     if (!builder || !out || !out_len) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -428,7 +453,8 @@ idl_type_table_builder_serialize(idl_type_table_builder *builder, uint8_t **out,
     idl_status st;
 
     /* Type table count */
-    st = write_uleb128(builder->arena, &buf, &len, &cap, builder->entries_count);
+    st =
+        write_uleb128(builder->arena, &buf, &len, &cap, builder->entries_count);
     if (st != IDL_STATUS_OK)
         return st;
 
@@ -456,7 +482,8 @@ idl_type_table_builder_serialize(idl_type_table_builder *builder, uint8_t **out,
 
     /* Arg type references */
     for (size_t i = 0; i < builder->args_count; i++) {
-        st = encode_type_ref(builder, builder->arena, &buf, &len, &cap, builder->args[i]);
+        st = encode_type_ref(builder, builder->arena, &buf, &len, &cap,
+                             builder->args[i]);
         if (st != IDL_STATUS_OK)
             return st;
     }
@@ -466,9 +493,10 @@ idl_type_table_builder_serialize(idl_type_table_builder *builder, uint8_t **out,
     return IDL_STATUS_OK;
 }
 
-idl_status idl_type_table_builder_encode_type(const idl_type_table_builder *builder,
-                                              const idl_type               *type,
-                                              int32_t                      *out_index) {
+idl_status
+idl_type_table_builder_encode_type(const idl_type_table_builder *builder,
+                                   const idl_type               *type,
+                                   int32_t                      *out_index) {
     if (!builder || !type || !out_index) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }

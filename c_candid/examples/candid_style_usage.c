@@ -142,7 +142,8 @@ static void example_decode(void) {
     CandidArenaInit(&arena, 4096);
 
     CandidDeserializer *de = NULL;
-    if (CandidDeserializerNew(encoded, sizeof(encoded), &arena, &de) != CANDID_OK) {
+    if (CandidDeserializerNew(encoded, sizeof(encoded), &arena, &de) !=
+        CANDID_OK) {
         printf("Failed to parse\n");
         CandidArenaDestroy(&arena);
         return;
@@ -156,7 +157,8 @@ static void example_decode(void) {
 
         switch (value->kind) {
         case CANDID_VALUE_TEXT:
-            printf("  text: \"%.*s\"\n", (int)value->data.text.len, value->data.text.data);
+            printf("  text: \"%.*s\"\n", (int)value->data.text.len,
+                   value->data.text.data);
             break;
         case CANDID_VALUE_INT:
             printf("  int: (bignum)\n");

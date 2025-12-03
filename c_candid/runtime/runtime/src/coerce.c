@@ -13,7 +13,8 @@ static idl_status coerce_impl(idl_arena          *arena,
                               idl_value         **out);
 
 /* Resolve VAR types */
-static const idl_type *resolve_type(const idl_type_env *env, const idl_type *type) {
+static const idl_type *resolve_type(const idl_type_env *env,
+                                    const idl_type     *type) {
     if (!type) {
         return NULL;
     }
@@ -83,8 +84,9 @@ static idl_status coerce_impl(idl_arena          *arena,
         if (value->kind == IDL_VALUE_OPT && value->data.opt != NULL) {
             /* Coerce inner value */
             idl_value *coerced_inner;
-            idl_status st = coerce_impl(arena, env, wt->data.inner, et->data.inner, value->data.opt,
-                                        &coerced_inner);
+            idl_status st =
+                coerce_impl(arena, env, wt->data.inner, et->data.inner,
+                            value->data.opt, &coerced_inner);
             if (st != IDL_STATUS_OK) {
                 return st;
             }
@@ -99,7 +101,8 @@ static idl_status coerce_impl(idl_arena          *arena,
         if (inner_et && !idl_type_is_optional_like(env, inner_et)) {
             /* Try to coerce value to inner type */
             idl_value *coerced_inner;
-            idl_status st = coerce_impl(arena, env, wt, et->data.inner, value, &coerced_inner);
+            idl_status st = coerce_impl(arena, env, wt, et->data.inner, value,
+                                        &coerced_inner);
             if (st == IDL_STATUS_OK) {
                 *out = idl_value_opt_some(arena, coerced_inner);
                 return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
@@ -121,7 +124,8 @@ static idl_status coerce_impl(idl_arena          *arena,
                 return IDL_STATUS_OK;
             }
             /* Otherwise, need to convert blob to vec */
-            idl_value **items = idl_arena_alloc(arena, sizeof(idl_value *) * value->data.blob.len);
+            idl_value **items = idl_arena_alloc(
+                arena, sizeof(idl_value *) * value->data.blob.len);
             if (!items && value->data.blob.len > 0) {
                 return IDL_STATUS_ERR_ALLOC;
             }
@@ -136,14 +140,16 @@ static idl_status coerce_impl(idl_arena          *arena,
         }
 
         if (value->kind == IDL_VALUE_VEC) {
-            idl_value **items = idl_arena_alloc(arena, sizeof(idl_value *) * value->data.vec.len);
+            idl_value **items = idl_arena_alloc(arena, sizeof(idl_value *) *
+                                                           value->data.vec.len);
             if (!items && value->data.vec.len > 0) {
                 return IDL_STATUS_ERR_ALLOC;
             }
 
             for (size_t i = 0; i < value->data.vec.len; i++) {
-                idl_status st = coerce_impl(arena, env, wt->data.inner, et->data.inner,
-                                            value->data.vec.items[i], &items[i]);
+                idl_status st =
+                    coerce_impl(arena, env, wt->data.inner, et->data.inner,
+                                value->data.vec.items[i], &items[i]);
                 if (st != IDL_STATUS_OK) {
                     return st;
                 }
@@ -161,7 +167,8 @@ static idl_status coerce_impl(idl_arena          *arena,
         }
 
         size_t           expected_count = et->data.record.fields_len;
-        idl_value_field *fields = idl_arena_alloc(arena, sizeof(idl_value_field) * expected_count);
+        idl_value_field *fields =
+            idl_arena_alloc(arena, sizeof(idl_value_field) * expected_count);
         if (!fields && expected_count > 0) {
             return IDL_STATUS_ERR_ALLOC;
         }
@@ -177,7 +184,8 @@ static idl_status coerce_impl(idl_arena          *arena,
                     /* Find matching type in wire type */
                     const idl_type *wire_field_type = NULL;
                     for (size_t k = 0; k < wt->data.record.fields_len; k++) {
-                        if (wt->data.record.fields[k].label.id == ef->label.id) {
+                        if (wt->data.record.fields[k].label.id ==
+                            ef->label.id) {
                             wire_field_type = wt->data.record.fields[k].type;
                             break;
                         }
@@ -186,7 +194,8 @@ static idl_status coerce_impl(idl_arena          *arena,
                     if (wire_field_type) {
                         idl_status st =
                             coerce_impl(arena, env, wire_field_type, ef->type,
-                                        value->data.record.fields[j].value, &fields[i].value);
+                                        value->data.record.fields[j].value,
+                                        &fields[i].value);
                         if (st != IDL_STATUS_OK) {
                             return st;
                         }
@@ -247,9 +256,9 @@ static idl_status coerce_impl(idl_arena          *arena,
                 idl_value_field field;
                 field.label = et->data.record.fields[i].label;
 
-                idl_status st =
-                    coerce_impl(arena, env, wire_field_type, et->data.record.fields[i].type,
-                                value->data.record.fields[0].value, &field.value);
+                idl_status st = coerce_impl(
+                    arena, env, wire_field_type, et->data.record.fields[i].type,
+                    value->data.record.fields[0].value, &field.value);
                 if (st != IDL_STATUS_OK) {
                     return st;
                 }
@@ -364,7 +373,8 @@ idl_status idl_skip_value(const uint8_t      *data,
 
         uint64_t   len;
         size_t     consumed;
-        idl_status st = idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, &len);
+        idl_status st =
+            idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, &len);
         if (st != IDL_STATUS_OK)
             return st;
         *pos += consumed;
@@ -381,8 +391,8 @@ idl_status idl_skip_value(const uint8_t      *data,
         uint8_t flag = data[(*pos)++];
         if (flag == 1) {
             size_t     inner_skipped;
-            idl_status st =
-                idl_skip_value(data, data_len, pos, env, wt->data.inner, &inner_skipped);
+            idl_status st = idl_skip_value(data, data_len, pos, env,
+                                           wt->data.inner, &inner_skipped);
             if (st != IDL_STATUS_OK)
                 return st;
         }
@@ -392,7 +402,8 @@ idl_status idl_skip_value(const uint8_t      *data,
     case IDL_KIND_VEC: {
         uint64_t   len;
         size_t     consumed;
-        idl_status st = idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, &len);
+        idl_status st =
+            idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, &len);
         if (st != IDL_STATUS_OK)
             return st;
         *pos += consumed;
@@ -406,7 +417,8 @@ idl_status idl_skip_value(const uint8_t      *data,
         } else {
             for (uint64_t i = 0; i < len; i++) {
                 size_t elem_skipped;
-                st = idl_skip_value(data, data_len, pos, env, wt->data.inner, &elem_skipped);
+                st = idl_skip_value(data, data_len, pos, env, wt->data.inner,
+                                    &elem_skipped);
                 if (st != IDL_STATUS_OK)
                     return st;
             }
@@ -417,8 +429,9 @@ idl_status idl_skip_value(const uint8_t      *data,
     case IDL_KIND_RECORD: {
         for (size_t i = 0; i < wt->data.record.fields_len; i++) {
             size_t     field_skipped;
-            idl_status st = idl_skip_value(data, data_len, pos, env, wt->data.record.fields[i].type,
-                                           &field_skipped);
+            idl_status st =
+                idl_skip_value(data, data_len, pos, env,
+                               wt->data.record.fields[i].type, &field_skipped);
             if (st != IDL_STATUS_OK)
                 return st;
         }
@@ -428,7 +441,8 @@ idl_status idl_skip_value(const uint8_t      *data,
     case IDL_KIND_VARIANT: {
         uint64_t   index;
         size_t     consumed;
-        idl_status st = idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, &index);
+        idl_status st =
+            idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, &index);
         if (st != IDL_STATUS_OK)
             return st;
         *pos += consumed;
@@ -437,8 +451,8 @@ idl_status idl_skip_value(const uint8_t      *data,
             return IDL_STATUS_ERR_INVALID_ARG;
 
         size_t field_skipped;
-        st = idl_skip_value(data, data_len, pos, env, wt->data.record.fields[index].type,
-                            &field_skipped);
+        st = idl_skip_value(data, data_len, pos, env,
+                            wt->data.record.fields[index].type, &field_skipped);
         if (st != IDL_STATUS_OK)
             return st;
         break;

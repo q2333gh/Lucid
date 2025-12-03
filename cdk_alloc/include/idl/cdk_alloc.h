@@ -13,7 +13,8 @@ void *cdk_realloc(void *ptr, size_t size);
 void *cdk_reallocarray(void *ptr, size_t nmemb, size_t size);
 void  cdk_free(void *ptr);
 
-#if (defined(__wasm32__) || defined(__wasm32_wasi__)) && !defined(CDK_ALLOC_IMPLEMENTATION)
+#if (defined(__wasm32__) || defined(__wasm32_wasi__)) &&                       \
+    !defined(CDK_ALLOC_IMPLEMENTATION)
 /* Redirect standard memory functions to CDK implementation for WASM builds */
 #define malloc cdk_malloc
 #define calloc cdk_calloc

@@ -36,7 +36,8 @@ Test(ic_buffer, append_and_clear_preserve_capacity) {
     const uint8_t payload_b[] = {5, 6, 7};
     cr_expect_eq(ic_buffer_append(&buf, payload_b, sizeof(payload_b)), IC_OK);
     cr_expect_eq(buf.size, sizeof(payload_a) + sizeof(payload_b));
-    cr_expect_eq(memcmp(buf.data + sizeof(payload_a), payload_b, sizeof(payload_b)), 0);
+    cr_expect_eq(
+        memcmp(buf.data + sizeof(payload_a), payload_b, sizeof(payload_b)), 0);
 
     size_t previous_capacity = buf.capacity;
     ic_buffer_clear(&buf);

@@ -30,7 +30,8 @@ ic_result_t ic_buffer_reserve(ic_buffer_t *buf, size_t capacity) {
     }
 
     // Round up to next power of 2 for better performance
-    size_t new_capacity = buf->capacity == 0 ? IC_BUFFER_INITIAL_CAPACITY : buf->capacity;
+    size_t new_capacity =
+        buf->capacity == 0 ? IC_BUFFER_INITIAL_CAPACITY : buf->capacity;
     while (new_capacity < capacity) {
         new_capacity *= 2;
         if (new_capacity < buf->capacity) {
@@ -49,7 +50,8 @@ ic_result_t ic_buffer_reserve(ic_buffer_t *buf, size_t capacity) {
     return IC_OK;
 }
 
-ic_result_t ic_buffer_append(ic_buffer_t *buf, const uint8_t *data, size_t len) {
+ic_result_t
+ic_buffer_append(ic_buffer_t *buf, const uint8_t *data, size_t len) {
     if (buf == NULL || data == NULL) {
         return IC_ERR_INVALID_ARG;
     }

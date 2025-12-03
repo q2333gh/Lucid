@@ -106,41 +106,77 @@ static idl_type *alloc_type(idl_arena *arena, idl_type_kind kind) {
 }
 
 /* Primitive type constructors */
-idl_type *idl_type_null(idl_arena *arena) { return alloc_type(arena, IDL_KIND_NULL); }
+idl_type *idl_type_null(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_NULL);
+}
 
-idl_type *idl_type_bool(idl_arena *arena) { return alloc_type(arena, IDL_KIND_BOOL); }
+idl_type *idl_type_bool(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_BOOL);
+}
 
-idl_type *idl_type_nat(idl_arena *arena) { return alloc_type(arena, IDL_KIND_NAT); }
+idl_type *idl_type_nat(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_NAT);
+}
 
-idl_type *idl_type_int(idl_arena *arena) { return alloc_type(arena, IDL_KIND_INT); }
+idl_type *idl_type_int(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_INT);
+}
 
-idl_type *idl_type_nat8(idl_arena *arena) { return alloc_type(arena, IDL_KIND_NAT8); }
+idl_type *idl_type_nat8(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_NAT8);
+}
 
-idl_type *idl_type_nat16(idl_arena *arena) { return alloc_type(arena, IDL_KIND_NAT16); }
+idl_type *idl_type_nat16(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_NAT16);
+}
 
-idl_type *idl_type_nat32(idl_arena *arena) { return alloc_type(arena, IDL_KIND_NAT32); }
+idl_type *idl_type_nat32(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_NAT32);
+}
 
-idl_type *idl_type_nat64(idl_arena *arena) { return alloc_type(arena, IDL_KIND_NAT64); }
+idl_type *idl_type_nat64(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_NAT64);
+}
 
-idl_type *idl_type_int8(idl_arena *arena) { return alloc_type(arena, IDL_KIND_INT8); }
+idl_type *idl_type_int8(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_INT8);
+}
 
-idl_type *idl_type_int16(idl_arena *arena) { return alloc_type(arena, IDL_KIND_INT16); }
+idl_type *idl_type_int16(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_INT16);
+}
 
-idl_type *idl_type_int32(idl_arena *arena) { return alloc_type(arena, IDL_KIND_INT32); }
+idl_type *idl_type_int32(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_INT32);
+}
 
-idl_type *idl_type_int64(idl_arena *arena) { return alloc_type(arena, IDL_KIND_INT64); }
+idl_type *idl_type_int64(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_INT64);
+}
 
-idl_type *idl_type_float32(idl_arena *arena) { return alloc_type(arena, IDL_KIND_FLOAT32); }
+idl_type *idl_type_float32(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_FLOAT32);
+}
 
-idl_type *idl_type_float64(idl_arena *arena) { return alloc_type(arena, IDL_KIND_FLOAT64); }
+idl_type *idl_type_float64(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_FLOAT64);
+}
 
-idl_type *idl_type_text(idl_arena *arena) { return alloc_type(arena, IDL_KIND_TEXT); }
+idl_type *idl_type_text(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_TEXT);
+}
 
-idl_type *idl_type_reserved(idl_arena *arena) { return alloc_type(arena, IDL_KIND_RESERVED); }
+idl_type *idl_type_reserved(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_RESERVED);
+}
 
-idl_type *idl_type_empty(idl_arena *arena) { return alloc_type(arena, IDL_KIND_EMPTY); }
+idl_type *idl_type_empty(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_EMPTY);
+}
 
-idl_type *idl_type_principal(idl_arena *arena) { return alloc_type(arena, IDL_KIND_PRINCIPAL); }
+idl_type *idl_type_principal(idl_arena *arena) {
+    return alloc_type(arena, IDL_KIND_PRINCIPAL);
+}
 
 /* Composite type constructors */
 idl_type *idl_type_opt(idl_arena *arena, idl_type *inner) {

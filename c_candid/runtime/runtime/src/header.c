@@ -6,9 +6,13 @@
 #include <string.h>
 
 /* Helper to read ULEB128 from buffer */
-static idl_status read_uleb128(const uint8_t *data, size_t data_len, size_t *pos, uint64_t *value) {
+static idl_status read_uleb128(const uint8_t *data,
+                               size_t         data_len,
+                               size_t        *pos,
+                               uint64_t      *value) {
     size_t     consumed;
-    idl_status st = idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, value);
+    idl_status st =
+        idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, value);
     if (st != IDL_STATUS_OK)
         return st;
     *pos += consumed;
@@ -16,9 +20,13 @@ static idl_status read_uleb128(const uint8_t *data, size_t data_len, size_t *pos
 }
 
 /* Helper to read SLEB128 from buffer */
-static idl_status read_sleb128(const uint8_t *data, size_t data_len, size_t *pos, int64_t *value) {
+static idl_status read_sleb128(const uint8_t *data,
+                               size_t         data_len,
+                               size_t        *pos,
+                               int64_t       *value) {
     size_t     consumed;
-    idl_status st = idl_sleb128_decode(data + *pos, data_len - *pos, &consumed, value);
+    idl_status st =
+        idl_sleb128_decode(data + *pos, data_len - *pos, &consumed, value);
     if (st != IDL_STATUS_OK)
         return st;
     *pos += consumed;
@@ -65,8 +73,10 @@ static const char *make_table_var(idl_arena *arena, int64_t index) {
 }
 
 /* Convert wire index to type */
-static idl_status
-index_to_type(idl_arena *arena, int64_t index, uint64_t table_len, idl_type **out) {
+static idl_status index_to_type(idl_arena *arena,
+                                int64_t    index,
+                                uint64_t   table_len,
+                                idl_type **out) {
     if (index >= 0) {
         /* Reference to type table entry */
         if ((uint64_t)index >= table_len) {
@@ -189,7 +199,8 @@ static idl_status parse_cons_type(const uint8_t *data,
         if (st != IDL_STATUS_OK)
             return st;
 
-        idl_field *fields = idl_arena_alloc(arena, sizeof(idl_field) * field_count);
+        idl_field *fields =
+            idl_arena_alloc(arena, sizeof(idl_field) * field_count);
         if (!fields && field_count > 0)
             return IDL_STATUS_ERR_ALLOC;
 
@@ -237,7 +248,8 @@ static idl_status parse_cons_type(const uint8_t *data,
         if (st != IDL_STATUS_OK)
             return st;
 
-        idl_type **args = idl_arena_alloc(arena, sizeof(idl_type *) * arg_count);
+        idl_type **args =
+            idl_arena_alloc(arena, sizeof(idl_type *) * arg_count);
         if (!args && arg_count > 0)
             return IDL_STATUS_ERR_ALLOC;
 
@@ -257,7 +269,8 @@ static idl_status parse_cons_type(const uint8_t *data,
         if (st != IDL_STATUS_OK)
             return st;
 
-        idl_type **rets = idl_arena_alloc(arena, sizeof(idl_type *) * ret_count);
+        idl_type **rets =
+            idl_arena_alloc(arena, sizeof(idl_type *) * ret_count);
         if (!rets && ret_count > 0)
             return IDL_STATUS_ERR_ALLOC;
 
@@ -318,7 +331,8 @@ static idl_status parse_cons_type(const uint8_t *data,
         if (st != IDL_STATUS_OK)
             return st;
 
-        idl_method *methods = idl_arena_alloc(arena, sizeof(idl_method) * method_count);
+        idl_method *methods =
+            idl_arena_alloc(arena, sizeof(idl_method) * method_count);
         if (!methods && method_count > 0)
             return IDL_STATUS_ERR_ALLOC;
 
@@ -391,8 +405,11 @@ static idl_status parse_cons_type(const uint8_t *data,
     return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
 }
 
-idl_status idl_header_parse(
-    const uint8_t *data, size_t data_len, idl_arena *arena, idl_header *header, size_t *consumed) {
+idl_status idl_header_parse(const uint8_t *data,
+                            size_t         data_len,
+                            idl_arena     *arena,
+                            idl_header    *header,
+                            size_t        *consumed) {
     if (!data || !arena || !header) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -403,8 +420,8 @@ idl_status idl_header_parse(
     if (data_len < 4) {
         return IDL_STATUS_ERR_TRUNCATED;
     }
-    if (data[0] != IDL_MAGIC_0 || data[1] != IDL_MAGIC_1 || data[2] != IDL_MAGIC_2 ||
-        data[3] != IDL_MAGIC_3) {
+    if (data[0] != IDL_MAGIC_0 || data[1] != IDL_MAGIC_1 ||
+        data[2] != IDL_MAGIC_2 || data[3] != IDL_MAGIC_3) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
     pos = 4;
@@ -478,7 +495,8 @@ idl_status idl_header_write(idl_type_table_builder *builder,
     /* Serialize type table and args */
     uint8_t   *type_data;
     size_t     type_len;
-    idl_status st = idl_type_table_builder_serialize(builder, &type_data, &type_len);
+    idl_status st =
+        idl_type_table_builder_serialize(builder, &type_data, &type_len);
     if (st != IDL_STATUS_OK)
         return st;
 

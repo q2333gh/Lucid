@@ -16,7 +16,8 @@ idl_status idl_builder_init(idl_builder *builder, idl_arena *arena) {
         return st;
     }
 
-    st = idl_type_table_builder_init(&builder->type_builder, arena, &builder->env);
+    st = idl_type_table_builder_init(&builder->type_builder, arena,
+                                     &builder->env);
     if (st != IDL_STATUS_OK) {
         return st;
     }
@@ -29,13 +30,15 @@ idl_status idl_builder_init(idl_builder *builder, idl_arena *arena) {
     return IDL_STATUS_OK;
 }
 
-idl_status idl_builder_arg(idl_builder *builder, idl_type *type, const idl_value *value) {
+idl_status
+idl_builder_arg(idl_builder *builder, idl_type *type, const idl_value *value) {
     if (!builder || !type || !value) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
 
     /* Register the type */
-    idl_status st = idl_type_table_builder_push_arg(&builder->type_builder, type);
+    idl_status st =
+        idl_type_table_builder_push_arg(&builder->type_builder, type);
     if (st != IDL_STATUS_OK) {
         return st;
     }
@@ -219,7 +222,8 @@ idl_status idl_builder_arg_float64(idl_builder *builder, double v) {
     return idl_builder_arg(builder, type, value);
 }
 
-idl_status idl_builder_arg_text(idl_builder *builder, const char *s, size_t len) {
+idl_status
+idl_builder_arg_text(idl_builder *builder, const char *s, size_t len) {
     if (!builder) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -238,7 +242,8 @@ idl_status idl_builder_arg_text_cstr(idl_builder *builder, const char *s) {
     return idl_builder_arg_text(builder, s, strlen(s));
 }
 
-idl_status idl_builder_arg_blob(idl_builder *builder, const uint8_t *data, size_t len) {
+idl_status
+idl_builder_arg_blob(idl_builder *builder, const uint8_t *data, size_t len) {
     if (!builder) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -254,7 +259,9 @@ idl_status idl_builder_arg_blob(idl_builder *builder, const uint8_t *data, size_
     return idl_builder_arg(builder, type, value);
 }
 
-idl_status idl_builder_arg_principal(idl_builder *builder, const uint8_t *data, size_t len) {
+idl_status idl_builder_arg_principal(idl_builder   *builder,
+                                     const uint8_t *data,
+                                     size_t         len) {
     if (!builder) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -268,7 +275,8 @@ idl_status idl_builder_arg_principal(idl_builder *builder, const uint8_t *data, 
     return idl_builder_arg(builder, type, value);
 }
 
-idl_status idl_builder_serialize(idl_builder *builder, uint8_t **out, size_t *out_len) {
+idl_status
+idl_builder_serialize(idl_builder *builder, uint8_t **out, size_t *out_len) {
     if (!builder || !out || !out_len) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -276,8 +284,8 @@ idl_status idl_builder_serialize(idl_builder *builder, uint8_t **out, size_t *ou
     /* Get header (DIDL + type table + arg types) */
     uint8_t   *header_data;
     size_t     header_len;
-    idl_status st =
-        idl_header_write(&builder->type_builder, builder->arena, &header_data, &header_len);
+    idl_status st = idl_header_write(&builder->type_builder, builder->arena,
+                                     &header_data, &header_len);
     if (st != IDL_STATUS_OK) {
         return st;
     }
@@ -303,7 +311,8 @@ idl_status idl_builder_serialize(idl_builder *builder, uint8_t **out, size_t *ou
     return IDL_STATUS_OK;
 }
 
-idl_status idl_builder_serialize_hex(idl_builder *builder, char **out, size_t *out_len) {
+idl_status
+idl_builder_serialize_hex(idl_builder *builder, char **out, size_t *out_len) {
     if (!builder || !out || !out_len) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }

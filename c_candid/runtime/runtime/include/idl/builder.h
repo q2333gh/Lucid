@@ -32,7 +32,8 @@ idl_status idl_builder_init(idl_builder *builder, idl_arena *arena);
 /*
  * Add an argument with explicit type and value.
  */
-idl_status idl_builder_arg(idl_builder *builder, idl_type *type, const idl_value *value);
+idl_status
+idl_builder_arg(idl_builder *builder, idl_type *type, const idl_value *value);
 
 /*
  * Convenience: add primitive arguments directly.
@@ -49,21 +50,27 @@ idl_status idl_builder_arg_int32(idl_builder *builder, int32_t v);
 idl_status idl_builder_arg_int64(idl_builder *builder, int64_t v);
 idl_status idl_builder_arg_float32(idl_builder *builder, float v);
 idl_status idl_builder_arg_float64(idl_builder *builder, double v);
-idl_status idl_builder_arg_text(idl_builder *builder, const char *s, size_t len);
+idl_status
+idl_builder_arg_text(idl_builder *builder, const char *s, size_t len);
 idl_status idl_builder_arg_text_cstr(idl_builder *builder, const char *s);
-idl_status idl_builder_arg_blob(idl_builder *builder, const uint8_t *data, size_t len);
-idl_status idl_builder_arg_principal(idl_builder *builder, const uint8_t *data, size_t len);
+idl_status
+idl_builder_arg_blob(idl_builder *builder, const uint8_t *data, size_t len);
+idl_status idl_builder_arg_principal(idl_builder   *builder,
+                                     const uint8_t *data,
+                                     size_t         len);
 
 /*
  * Serialize the complete DIDL message.
  * Output: "DIDL" + type_table + arg_types + values
  */
-idl_status idl_builder_serialize(idl_builder *builder, uint8_t **out, size_t *out_len);
+idl_status
+idl_builder_serialize(idl_builder *builder, uint8_t **out, size_t *out_len);
 
 /*
  * Serialize to hex string (for debugging/testing).
  */
-idl_status idl_builder_serialize_hex(idl_builder *builder, char **out, size_t *out_len);
+idl_status
+idl_builder_serialize_hex(idl_builder *builder, char **out, size_t *out_len);
 
 #ifdef __cplusplus
 }

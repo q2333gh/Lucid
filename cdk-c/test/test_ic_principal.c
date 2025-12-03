@@ -26,11 +26,15 @@ Test(ic_principal, from_bytes_validates_input) {
     ic_principal_t principal = {0};
     uint8_t        oversized[IC_PRINCIPAL_MAX_LEN + 1] = {0};
 
-    cr_expect_eq(ic_principal_from_bytes(&principal, NULL, 1), IC_ERR_INVALID_ARG);
-    cr_expect_eq(ic_principal_from_bytes(NULL, oversized, 1), IC_ERR_INVALID_ARG);
-    cr_expect_eq(ic_principal_from_bytes(&principal, oversized, 0), IC_ERR_INVALID_ARG);
-    cr_expect_eq(ic_principal_from_bytes(&principal, oversized, sizeof(oversized)),
+    cr_expect_eq(ic_principal_from_bytes(&principal, NULL, 1),
                  IC_ERR_INVALID_ARG);
+    cr_expect_eq(ic_principal_from_bytes(NULL, oversized, 1),
+                 IC_ERR_INVALID_ARG);
+    cr_expect_eq(ic_principal_from_bytes(&principal, oversized, 0),
+                 IC_ERR_INVALID_ARG);
+    cr_expect_eq(
+        ic_principal_from_bytes(&principal, oversized, sizeof(oversized)),
+        IC_ERR_INVALID_ARG);
 }
 
 // Encoding should yield the stable, expected base32 output for known fixtures.

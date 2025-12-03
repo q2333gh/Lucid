@@ -10,8 +10,10 @@ static void test_uleb128_roundtrip(uint64_t value) {
     size_t   written = 0;
     uint64_t decoded = 0;
     size_t   consumed = 0;
-    assert(idl_uleb128_encode(value, buf, sizeof(buf), &written) == IDL_STATUS_OK);
-    assert(idl_uleb128_decode(buf, written, &consumed, &decoded) == IDL_STATUS_OK);
+    assert(idl_uleb128_encode(value, buf, sizeof(buf), &written) ==
+           IDL_STATUS_OK);
+    assert(idl_uleb128_decode(buf, written, &consumed, &decoded) ==
+           IDL_STATUS_OK);
     assert(consumed == written);
     assert(decoded == value);
 }
@@ -21,17 +23,21 @@ static void test_sleb128_roundtrip(int64_t value) {
     size_t  written = 0;
     int64_t decoded = 0;
     size_t  consumed = 0;
-    assert(idl_sleb128_encode(value, buf, sizeof(buf), &written) == IDL_STATUS_OK);
-    assert(idl_sleb128_decode(buf, written, &consumed, &decoded) == IDL_STATUS_OK);
+    assert(idl_sleb128_encode(value, buf, sizeof(buf), &written) ==
+           IDL_STATUS_OK);
+    assert(idl_sleb128_decode(buf, written, &consumed, &decoded) ==
+           IDL_STATUS_OK);
     assert(consumed == written);
     assert(decoded == value);
 }
 
 static void test_uleb128_overflow(void) {
-    uint8_t  buf[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x02};
+    uint8_t  buf[] = {0xff, 0xff, 0xff, 0xff, 0xff,
+                      0xff, 0xff, 0xff, 0xff, 0x02};
     uint64_t out = 0;
     size_t   consumed = 0;
-    assert(idl_uleb128_decode(buf, sizeof(buf), &consumed, &out) == IDL_STATUS_ERR_OVERFLOW);
+    assert(idl_uleb128_decode(buf, sizeof(buf), &consumed, &out) ==
+           IDL_STATUS_ERR_OVERFLOW);
 }
 
 static void test_hash(void) {
@@ -154,7 +160,8 @@ static void test_type_env(void) {
     assert(idl_type_env_insert(&env, "MyNat", t_nat64) == IDL_STATUS_OK);
 
     /* Duplicate insert with different type should fail */
-    assert(idl_type_env_insert(&env, "MyNat", t_text) == IDL_STATUS_ERR_INVALID_ARG);
+    assert(idl_type_env_insert(&env, "MyNat", t_text) ==
+           IDL_STATUS_ERR_INVALID_ARG);
 
     idl_arena_destroy(&arena);
 }
@@ -164,7 +171,8 @@ static void test_type_table_builder(void) {
     assert(idl_arena_init(&arena, 4096) == IDL_STATUS_OK);
 
     idl_type_table_builder builder;
-    assert(idl_type_table_builder_init(&builder, &arena, NULL) == IDL_STATUS_OK);
+    assert(idl_type_table_builder_init(&builder, &arena, NULL) ==
+           IDL_STATUS_OK);
 
     /* Push primitive types (should not add to type table) */
     idl_type *t_nat64 = idl_type_nat64(&arena);
@@ -184,7 +192,8 @@ static void test_type_table_builder(void) {
     /* Serialize */
     uint8_t *data;
     size_t   len;
-    assert(idl_type_table_builder_serialize(&builder, &data, &len) == IDL_STATUS_OK);
+    assert(idl_type_table_builder_serialize(&builder, &data, &len) ==
+           IDL_STATUS_OK);
     assert(data != NULL);
     assert(len > 0);
 
@@ -216,7 +225,8 @@ static void test_header_parse(void) {
 
     idl_header header;
     size_t     consumed;
-    assert(idl_header_parse(data, sizeof(data), &arena, &header, &consumed) == IDL_STATUS_OK);
+    assert(idl_header_parse(data, sizeof(data), &arena, &header, &consumed) ==
+           IDL_STATUS_OK);
 
     assert(header.arg_count == 2);
     assert(header.arg_types[0]->kind == IDL_KIND_TEXT);
@@ -247,7 +257,8 @@ static void test_header_with_type_table(void) {
 
     idl_header header;
     size_t     consumed;
-    assert(idl_header_parse(data, sizeof(data), &arena, &header, &consumed) == IDL_STATUS_OK);
+    assert(idl_header_parse(data, sizeof(data), &arena, &header, &consumed) ==
+           IDL_STATUS_OK);
 
     assert(header.arg_count == 1);
     /* Arg type is a VAR referencing table0 */
@@ -325,17 +336,21 @@ static void test_value_serializer(void) {
     /* Serialize a nat64 (0x0102030405060708 in little-endian) */
     idl_value_serializer ser2;
     assert(idl_value_serializer_init(&ser2, &arena) == IDL_STATUS_OK);
-    assert(idl_value_serializer_write_nat64(&ser2, 0x0807060504030201ULL) == IDL_STATUS_OK);
+    assert(idl_value_serializer_write_nat64(&ser2, 0x0807060504030201ULL) ==
+           IDL_STATUS_OK);
     assert(idl_value_serializer_len(&ser2) == 8);
     const uint8_t *data = idl_value_serializer_data(&ser2);
-    assert(data[0] == 0x01 && data[1] == 0x02 && data[2] == 0x03 && data[3] == 0x04);
-    assert(data[4] == 0x05 && data[5] == 0x06 && data[6] == 0x07 && data[7] == 0x08);
+    assert(data[0] == 0x01 && data[1] == 0x02 && data[2] == 0x03 &&
+           data[3] == 0x04);
+    assert(data[4] == 0x05 && data[5] == 0x06 && data[6] == 0x07 &&
+           data[7] == 0x08);
 
     /* Serialize text */
     idl_value_serializer ser3;
     assert(idl_value_serializer_init(&ser3, &arena) == IDL_STATUS_OK);
     assert(idl_value_serializer_write_text(&ser3, "hi", 2) == IDL_STATUS_OK);
-    assert(idl_value_serializer_len(&ser3) == 3); /* 1 byte LEB128 len + 2 bytes */
+    assert(idl_value_serializer_len(&ser3) ==
+           3); /* 1 byte LEB128 len + 2 bytes */
     data = idl_value_serializer_data(&ser3);
     assert(data[0] == 2); /* length */
     assert(data[1] == 'h' && data[2] == 'i');
@@ -359,7 +374,8 @@ static void test_builder_primitives(void) {
 
     /* Should start with DIDL magic */
     assert(len >= 4);
-    assert(data[0] == 'D' && data[1] == 'I' && data[2] == 'D' && data[3] == 'L');
+    assert(data[0] == 'D' && data[1] == 'I' && data[2] == 'D' &&
+           data[3] == 'L');
 
     idl_arena_destroy(&arena);
 }
@@ -382,7 +398,8 @@ static void test_builder_text_int(void) {
 
     char  *hex;
     size_t hex_len;
-    assert(idl_builder_serialize_hex(&builder, &hex, &hex_len) == IDL_STATUS_OK);
+    assert(idl_builder_serialize_hex(&builder, &hex, &hex_len) ==
+           IDL_STATUS_OK);
 
     /*
      * Expected: 4449444c0002717c0568656c6c6f2a
@@ -423,7 +440,8 @@ static void test_builder_vec(void) {
     assert(idl_builder_serialize(&builder, &data, &len) == IDL_STATUS_OK);
 
     /* Verify DIDL magic */
-    assert(data[0] == 'D' && data[1] == 'I' && data[2] == 'D' && data[3] == 'L');
+    assert(data[0] == 'D' && data[1] == 'I' && data[2] == 'D' &&
+           data[3] == 'L');
 
     idl_arena_destroy(&arena);
 }
@@ -478,7 +496,8 @@ static void test_builder_record(void) {
     assert(idl_builder_serialize(&builder, &data, &len) == IDL_STATUS_OK);
 
     /* Verify DIDL magic */
-    assert(data[0] == 'D' && data[1] == 'I' && data[2] == 'D' && data[3] == 'L');
+    assert(data[0] == 'D' && data[1] == 'I' && data[2] == 'D' &&
+           data[3] == 'L');
 
     idl_arena_destroy(&arena);
 }
@@ -502,7 +521,8 @@ static void test_deserializer_primitives(void) {
     };
 
     idl_deserializer *de;
-    assert(idl_deserializer_new(data, sizeof(data), &arena, &de) == IDL_STATUS_OK);
+    assert(idl_deserializer_new(data, sizeof(data), &arena, &de) ==
+           IDL_STATUS_OK);
 
     assert(!idl_deserializer_is_done(de));
 
@@ -531,7 +551,8 @@ static void test_deserializer_text_int(void) {
                       0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x2a};
 
     idl_deserializer *de;
-    assert(idl_deserializer_new(data, sizeof(data), &arena, &de) == IDL_STATUS_OK);
+    assert(idl_deserializer_new(data, sizeof(data), &arena, &de) ==
+           IDL_STATUS_OK);
 
     /* First arg: text */
     idl_type  *type1;
@@ -699,7 +720,8 @@ static void test_subtype_opt(void) {
     assert(idl_subtype(NULL, t_null, t_opt_nat64, &arena) == IDL_SUBTYPE_OK);
 
     /* opt T <: opt T */
-    assert(idl_subtype(NULL, t_opt_nat64, t_opt_nat64, &arena) == IDL_SUBTYPE_OK);
+    assert(idl_subtype(NULL, t_opt_nat64, t_opt_nat64, &arena) ==
+           IDL_SUBTYPE_OK);
 
     /* T <: opt T (if T is not null/reserved/opt) */
     assert(idl_subtype(NULL, t_nat64, t_opt_nat64, &arena) == IDL_SUBTYPE_OK);
@@ -760,14 +782,15 @@ static void test_coerce_opt(void) {
     /* Coerce null to opt nat64 -> None */
     idl_value *v_null = idl_value_null(&arena);
     idl_value *coerced;
-    assert(idl_coerce_value(&arena, NULL, t_null, t_opt_nat64, v_null, &coerced) == IDL_STATUS_OK);
+    assert(idl_coerce_value(&arena, NULL, t_null, t_opt_nat64, v_null,
+                            &coerced) == IDL_STATUS_OK);
     assert(coerced->kind == IDL_VALUE_OPT);
     assert(coerced->data.opt == NULL);
 
     /* Coerce nat64 to opt nat64 -> Some(nat64) */
     idl_value *v_nat64 = idl_value_nat64(&arena, 42);
-    assert(idl_coerce_value(&arena, NULL, t_nat64, t_opt_nat64, v_nat64, &coerced) ==
-           IDL_STATUS_OK);
+    assert(idl_coerce_value(&arena, NULL, t_nat64, t_opt_nat64, v_nat64,
+                            &coerced) == IDL_STATUS_OK);
     assert(coerced->kind == IDL_VALUE_OPT);
     assert(coerced->data.opt != NULL);
     assert(coerced->data.opt->kind == IDL_VALUE_NAT64);
@@ -808,7 +831,8 @@ static void test_coerce_record(void) {
 
     /* Coerce to expected type (should drop field b) */
     idl_value *coerced;
-    assert(idl_coerce_value(&arena, NULL, t_wire, t_expected, v_wire, &coerced) == IDL_STATUS_OK);
+    assert(idl_coerce_value(&arena, NULL, t_wire, t_expected, v_wire,
+                            &coerced) == IDL_STATUS_OK);
     assert(coerced->kind == IDL_VALUE_RECORD);
     assert(coerced->data.record.len == 1);
     assert(coerced->data.record.fields[0].label.id == idl_hash("a"));
@@ -824,7 +848,8 @@ static void test_coerce_record(void) {
     idl_type *t_expected2 = idl_type_record(&arena, exp_fields2, 2);
 
     /* Coerce to expected type (should fill missing c with None) */
-    assert(idl_coerce_value(&arena, NULL, t_wire, t_expected2, v_wire, &coerced) == IDL_STATUS_OK);
+    assert(idl_coerce_value(&arena, NULL, t_wire, t_expected2, v_wire,
+                            &coerced) == IDL_STATUS_OK);
     assert(coerced->kind == IDL_VALUE_RECORD);
     assert(coerced->data.record.len == 2);
 
@@ -850,8 +875,8 @@ static void test_decoder_quota(void) {
     idl_decoder_config_set_decoding_quota(&config, 1000);
 
     idl_deserializer *de;
-    assert(idl_deserializer_new_with_config(data, sizeof(data), &arena, &config, &de) ==
-           IDL_STATUS_OK);
+    assert(idl_deserializer_new_with_config(data, sizeof(data), &arena, &config,
+                                            &de) == IDL_STATUS_OK);
 
     idl_type  *type;
     idl_value *value;
@@ -865,8 +890,9 @@ static void test_decoder_quota(void) {
 
     idl_deserializer *de2;
     /* Header parsing costs 8 * 4 = 32, so quota of 1 should fail */
-    assert(idl_deserializer_new_with_config(data, sizeof(data), &arena, &config2, &de2) ==
-           IDL_STATUS_ERR_OVERFLOW);
+    assert(idl_deserializer_new_with_config(data, sizeof(data), &arena,
+                                            &config2,
+                                            &de2) == IDL_STATUS_ERR_OVERFLOW);
 
     idl_arena_destroy(&arena);
 }

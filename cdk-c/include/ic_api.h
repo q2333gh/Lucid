@@ -20,7 +20,8 @@ typedef struct ic_api ic_api_t;
 // entry_type: entry point classification (IC_ENTRY_QUERY, IC_ENTRY_UPDATE,
 // etc.) func_name: function identifier for diagnostic purposes debug: whether
 // to enable diagnostic output
-ic_api_t *ic_api_init(ic_entry_type_t entry_type, const char *func_name, bool debug);
+ic_api_t *
+ic_api_init(ic_entry_type_t entry_type, const char *func_name, bool debug);
 
 // Release API context and associated resources
 void ic_api_free(ic_api_t *api);
@@ -72,15 +73,19 @@ ic_entry_type_t ic_api_get_entry_type(const ic_api_t *api);
 ic_result_t ic_api_from_wire_text(ic_api_t *api, char **text, size_t *text_len);
 ic_result_t ic_api_from_wire_nat(ic_api_t *api, uint64_t *value);
 ic_result_t ic_api_from_wire_int(ic_api_t *api, int64_t *value);
-ic_result_t ic_api_from_wire_blob(ic_api_t *api, uint8_t **blob, size_t *blob_len);
-ic_result_t ic_api_from_wire_principal(ic_api_t *api, ic_principal_t *principal);
+ic_result_t
+ic_api_from_wire_blob(ic_api_t *api, uint8_t **blob, size_t *blob_len);
+ic_result_t ic_api_from_wire_principal(ic_api_t       *api,
+                                       ic_principal_t *principal);
 
 // Serialize outgoing Candid data
 ic_result_t ic_api_to_wire_text(ic_api_t *api, const char *text);
 ic_result_t ic_api_to_wire_nat(ic_api_t *api, uint64_t value);
 ic_result_t ic_api_to_wire_int(ic_api_t *api, int64_t value);
-ic_result_t ic_api_to_wire_blob(ic_api_t *api, const uint8_t *blob, size_t blob_len);
-ic_result_t ic_api_to_wire_principal(ic_api_t *api, const ic_principal_t *principal);
+ic_result_t
+ic_api_to_wire_blob(ic_api_t *api, const uint8_t *blob, size_t blob_len);
+ic_result_t ic_api_to_wire_principal(ic_api_t             *api,
+                                     const ic_principal_t *principal);
 ic_result_t ic_api_to_wire_empty(ic_api_t *api); // Return empty result
 
 // Low-level reply dispatch (invoked automatically by serialization functions)

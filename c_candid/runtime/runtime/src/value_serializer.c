@@ -8,7 +8,8 @@
 #define MAX_LEB128_SIZE 10
 
 /* Ensure capacity for additional bytes */
-static idl_status ensure_capacity(idl_value_serializer *ser, size_t additional) {
+static idl_status ensure_capacity(idl_value_serializer *ser,
+                                  size_t                additional) {
     size_t needed = ser->len + additional;
     if (needed <= ser->capacity) {
         return IDL_STATUS_OK;
@@ -33,7 +34,8 @@ static idl_status ensure_capacity(idl_value_serializer *ser, size_t additional) 
     return IDL_STATUS_OK;
 }
 
-idl_status idl_value_serializer_init(idl_value_serializer *ser, idl_arena *arena) {
+idl_status idl_value_serializer_init(idl_value_serializer *ser,
+                                     idl_arena            *arena) {
     if (!ser || !arena) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -50,9 +52,13 @@ const uint8_t *idl_value_serializer_data(const idl_value_serializer *ser) {
     return ser ? ser->data : NULL;
 }
 
-size_t idl_value_serializer_len(const idl_value_serializer *ser) { return ser ? ser->len : 0; }
+size_t idl_value_serializer_len(const idl_value_serializer *ser) {
+    return ser ? ser->len : 0;
+}
 
-idl_status idl_value_serializer_write(idl_value_serializer *ser, const uint8_t *data, size_t len) {
+idl_status idl_value_serializer_write(idl_value_serializer *ser,
+                                      const uint8_t        *data,
+                                      size_t                len) {
     if (!ser) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -70,11 +76,13 @@ idl_status idl_value_serializer_write(idl_value_serializer *ser, const uint8_t *
     return IDL_STATUS_OK;
 }
 
-idl_status idl_value_serializer_write_byte(idl_value_serializer *ser, uint8_t byte) {
+idl_status idl_value_serializer_write_byte(idl_value_serializer *ser,
+                                           uint8_t               byte) {
     return idl_value_serializer_write(ser, &byte, 1);
 }
 
-idl_status idl_value_serializer_write_leb128(idl_value_serializer *ser, uint64_t value) {
+idl_status idl_value_serializer_write_leb128(idl_value_serializer *ser,
+                                             uint64_t              value) {
     uint8_t    buf[MAX_LEB128_SIZE];
     size_t     written;
     idl_status st = idl_uleb128_encode(value, buf, sizeof(buf), &written);
@@ -84,7 +92,8 @@ idl_status idl_value_serializer_write_leb128(idl_value_serializer *ser, uint64_t
     return idl_value_serializer_write(ser, buf, written);
 }
 
-idl_status idl_value_serializer_write_sleb128(idl_value_serializer *ser, int64_t value) {
+idl_status idl_value_serializer_write_sleb128(idl_value_serializer *ser,
+                                              int64_t               value) {
     uint8_t    buf[MAX_LEB128_SIZE];
     size_t     written;
     idl_status st = idl_sleb128_encode(value, buf, sizeof(buf), &written);
@@ -107,11 +116,13 @@ idl_status idl_value_serializer_write_bool(idl_value_serializer *ser, int v) {
     return idl_value_serializer_write_byte(ser, byte);
 }
 
-idl_status idl_value_serializer_write_nat8(idl_value_serializer *ser, uint8_t v) {
+idl_status idl_value_serializer_write_nat8(idl_value_serializer *ser,
+                                           uint8_t               v) {
     return idl_value_serializer_write_byte(ser, v);
 }
 
-idl_status idl_value_serializer_write_nat16(idl_value_serializer *ser, uint16_t v) {
+idl_status idl_value_serializer_write_nat16(idl_value_serializer *ser,
+                                            uint16_t              v) {
     /* Little-endian */
     uint8_t buf[2];
     buf[0] = (uint8_t)(v & 0xFF);
@@ -119,7 +130,8 @@ idl_status idl_value_serializer_write_nat16(idl_value_serializer *ser, uint16_t 
     return idl_value_serializer_write(ser, buf, 2);
 }
 
-idl_status idl_value_serializer_write_nat32(idl_value_serializer *ser, uint32_t v) {
+idl_status idl_value_serializer_write_nat32(idl_value_serializer *ser,
+                                            uint32_t              v) {
     uint8_t buf[4];
     buf[0] = (uint8_t)(v & 0xFF);
     buf[1] = (uint8_t)((v >> 8) & 0xFF);
@@ -128,7 +140,8 @@ idl_status idl_value_serializer_write_nat32(idl_value_serializer *ser, uint32_t 
     return idl_value_serializer_write(ser, buf, 4);
 }
 
-idl_status idl_value_serializer_write_nat64(idl_value_serializer *ser, uint64_t v) {
+idl_status idl_value_serializer_write_nat64(idl_value_serializer *ser,
+                                            uint64_t              v) {
     uint8_t buf[8];
     for (int i = 0; i < 8; i++) {
         buf[i] = (uint8_t)((v >> (i * 8)) & 0xFF);
@@ -136,23 +149,28 @@ idl_status idl_value_serializer_write_nat64(idl_value_serializer *ser, uint64_t 
     return idl_value_serializer_write(ser, buf, 8);
 }
 
-idl_status idl_value_serializer_write_int8(idl_value_serializer *ser, int8_t v) {
+idl_status idl_value_serializer_write_int8(idl_value_serializer *ser,
+                                           int8_t                v) {
     return idl_value_serializer_write_byte(ser, (uint8_t)v);
 }
 
-idl_status idl_value_serializer_write_int16(idl_value_serializer *ser, int16_t v) {
+idl_status idl_value_serializer_write_int16(idl_value_serializer *ser,
+                                            int16_t               v) {
     return idl_value_serializer_write_nat16(ser, (uint16_t)v);
 }
 
-idl_status idl_value_serializer_write_int32(idl_value_serializer *ser, int32_t v) {
+idl_status idl_value_serializer_write_int32(idl_value_serializer *ser,
+                                            int32_t               v) {
     return idl_value_serializer_write_nat32(ser, (uint32_t)v);
 }
 
-idl_status idl_value_serializer_write_int64(idl_value_serializer *ser, int64_t v) {
+idl_status idl_value_serializer_write_int64(idl_value_serializer *ser,
+                                            int64_t               v) {
     return idl_value_serializer_write_nat64(ser, (uint64_t)v);
 }
 
-idl_status idl_value_serializer_write_float32(idl_value_serializer *ser, float v) {
+idl_status idl_value_serializer_write_float32(idl_value_serializer *ser,
+                                              float                 v) {
     union {
         float    f;
         uint32_t u;
@@ -162,7 +180,8 @@ idl_status idl_value_serializer_write_float32(idl_value_serializer *ser, float v
     return idl_value_serializer_write_nat32(ser, conv.u);
 }
 
-idl_status idl_value_serializer_write_float64(idl_value_serializer *ser, double v) {
+idl_status idl_value_serializer_write_float64(idl_value_serializer *ser,
+                                              double                v) {
     union {
         double   d;
         uint64_t u;
@@ -172,7 +191,9 @@ idl_status idl_value_serializer_write_float64(idl_value_serializer *ser, double 
     return idl_value_serializer_write_nat64(ser, conv.u);
 }
 
-idl_status idl_value_serializer_write_text(idl_value_serializer *ser, const char *s, size_t len) {
+idl_status idl_value_serializer_write_text(idl_value_serializer *ser,
+                                           const char           *s,
+                                           size_t                len) {
     idl_status st = idl_value_serializer_write_leb128(ser, len);
     if (st != IDL_STATUS_OK) {
         return st;
@@ -180,8 +201,9 @@ idl_status idl_value_serializer_write_text(idl_value_serializer *ser, const char
     return idl_value_serializer_write(ser, (const uint8_t *)s, len);
 }
 
-idl_status
-idl_value_serializer_write_blob(idl_value_serializer *ser, const uint8_t *data, size_t len) {
+idl_status idl_value_serializer_write_blob(idl_value_serializer *ser,
+                                           const uint8_t        *data,
+                                           size_t                len) {
     idl_status st = idl_value_serializer_write_leb128(ser, len);
     if (st != IDL_STATUS_OK) {
         return st;
@@ -189,8 +211,9 @@ idl_value_serializer_write_blob(idl_value_serializer *ser, const uint8_t *data, 
     return idl_value_serializer_write(ser, data, len);
 }
 
-idl_status
-idl_value_serializer_write_principal(idl_value_serializer *ser, const uint8_t *data, size_t len) {
+idl_status idl_value_serializer_write_principal(idl_value_serializer *ser,
+                                                const uint8_t        *data,
+                                                size_t                len) {
     /* Principal: 0x01 flag + length + bytes */
     idl_status st = idl_value_serializer_write_byte(ser, 1);
     if (st != IDL_STATUS_OK) {
@@ -219,29 +242,34 @@ idl_status idl_value_serializer_write_opt_some(idl_value_serializer *ser) {
     return idl_value_serializer_write_leb128(ser, 1);
 }
 
-idl_status idl_value_serializer_write_vec_len(idl_value_serializer *ser, size_t len) {
+idl_status idl_value_serializer_write_vec_len(idl_value_serializer *ser,
+                                              size_t                len) {
     return idl_value_serializer_write_leb128(ser, len);
 }
 
-idl_status idl_value_serializer_write_variant_index(idl_value_serializer *ser, uint64_t index) {
+idl_status idl_value_serializer_write_variant_index(idl_value_serializer *ser,
+                                                    uint64_t index) {
     return idl_value_serializer_write_leb128(ser, index);
 }
 
 /* Nat/Int arbitrary precision */
 
-idl_status
-idl_value_serializer_write_nat(idl_value_serializer *ser, const uint8_t *leb_data, size_t len) {
+idl_status idl_value_serializer_write_nat(idl_value_serializer *ser,
+                                          const uint8_t        *leb_data,
+                                          size_t                len) {
     return idl_value_serializer_write(ser, leb_data, len);
 }
 
-idl_status
-idl_value_serializer_write_int(idl_value_serializer *ser, const uint8_t *sleb_data, size_t len) {
+idl_status idl_value_serializer_write_int(idl_value_serializer *ser,
+                                          const uint8_t        *sleb_data,
+                                          size_t                len) {
     return idl_value_serializer_write(ser, sleb_data, len);
 }
 
 /* Recursive value serialization */
 
-idl_status idl_value_serializer_write_value(idl_value_serializer *ser, const idl_value *value) {
+idl_status idl_value_serializer_write_value(idl_value_serializer *ser,
+                                            const idl_value      *value) {
     if (!ser || !value) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -286,23 +314,27 @@ idl_status idl_value_serializer_write_value(idl_value_serializer *ser, const idl
         return idl_value_serializer_write_float64(ser, value->data.float64_val);
 
     case IDL_VALUE_TEXT:
-        return idl_value_serializer_write_text(ser, value->data.text.data, value->data.text.len);
+        return idl_value_serializer_write_text(ser, value->data.text.data,
+                                               value->data.text.len);
 
     case IDL_VALUE_BLOB:
-        return idl_value_serializer_write_blob(ser, value->data.blob.data, value->data.blob.len);
+        return idl_value_serializer_write_blob(ser, value->data.blob.data,
+                                               value->data.blob.len);
 
     case IDL_VALUE_RESERVED:
         return idl_value_serializer_write_reserved(ser);
 
     case IDL_VALUE_PRINCIPAL:
-        return idl_value_serializer_write_principal(ser, value->data.principal.data,
-                                                    value->data.principal.len);
+        return idl_value_serializer_write_principal(
+            ser, value->data.principal.data, value->data.principal.len);
 
     case IDL_VALUE_NAT:
-        return idl_value_serializer_write_nat(ser, value->data.bignum.data, value->data.bignum.len);
+        return idl_value_serializer_write_nat(ser, value->data.bignum.data,
+                                              value->data.bignum.len);
 
     case IDL_VALUE_INT:
-        return idl_value_serializer_write_int(ser, value->data.bignum.data, value->data.bignum.len);
+        return idl_value_serializer_write_int(ser, value->data.bignum.data,
+                                              value->data.bignum.len);
 
     case IDL_VALUE_OPT:
         if (value->data.opt == NULL) {
@@ -321,7 +353,8 @@ idl_status idl_value_serializer_write_value(idl_value_serializer *ser, const idl
             return st;
         }
         for (size_t i = 0; i < value->data.vec.len; i++) {
-            st = idl_value_serializer_write_value(ser, value->data.vec.items[i]);
+            st =
+                idl_value_serializer_write_value(ser, value->data.vec.items[i]);
             if (st != IDL_STATUS_OK) {
                 return st;
             }
@@ -331,7 +364,8 @@ idl_status idl_value_serializer_write_value(idl_value_serializer *ser, const idl
     case IDL_VALUE_RECORD:
         /* Record fields are already sorted; just serialize each value */
         for (size_t i = 0; i < value->data.record.len; i++) {
-            st = idl_value_serializer_write_value(ser, value->data.record.fields[i].value);
+            st = idl_value_serializer_write_value(
+                ser, value->data.record.fields[i].value);
             if (st != IDL_STATUS_OK) {
                 return st;
             }
@@ -340,12 +374,14 @@ idl_status idl_value_serializer_write_value(idl_value_serializer *ser, const idl
 
     case IDL_VALUE_VARIANT:
         /* Variant: write index then the single field value */
-        st = idl_value_serializer_write_variant_index(ser, value->data.record.variant_index);
+        st = idl_value_serializer_write_variant_index(
+            ser, value->data.record.variant_index);
         if (st != IDL_STATUS_OK) {
             return st;
         }
         if (value->data.record.len > 0) {
-            return idl_value_serializer_write_value(ser, value->data.record.fields[0].value);
+            return idl_value_serializer_write_value(
+                ser, value->data.record.fields[0].value);
         }
         return IDL_STATUS_OK;
 

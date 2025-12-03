@@ -53,7 +53,9 @@ idl_status idl_gamma_init(idl_gamma *gamma, idl_arena *arena);
 /*
  * Check if a pair is in the Gamma cache.
  */
-int idl_gamma_contains(const idl_gamma *gamma, const idl_type *t1, const idl_type *t2);
+int idl_gamma_contains(const idl_gamma *gamma,
+                       const idl_type  *t1,
+                       const idl_type  *t2);
 
 /*
  * Insert a pair into the Gamma cache. Returns 1 if newly inserted, 0 if
@@ -84,8 +86,10 @@ idl_subtype_result idl_subtype_check(idl_opt_report      report,
 /*
  * Simplified subtype check (uses default settings).
  */
-idl_subtype_result
-idl_subtype(const idl_type_env *env, const idl_type *t1, const idl_type *t2, idl_arena *arena);
+idl_subtype_result idl_subtype(const idl_type_env *env,
+                               const idl_type     *t1,
+                               const idl_type     *t2,
+                               idl_arena          *arena);
 
 /*
  * Check if a type is "optional-like" (opt, null, or reserved).

@@ -15,8 +15,8 @@ static bool g_initialized = false;
 // WASI polyfill initialization entry point
 // Exported as "start" symbol, invoked by WASM runtime during module load
 // Prevent LTO from dropping it by marking it as used and externally visible
-__attribute__((export_name("start"))) __attribute__((visibility("default"))) __attribute__((used))
-__attribute__((noinline)) void
+__attribute__((export_name("start"))) __attribute__((visibility("default")))
+__attribute__((used)) __attribute__((noinline)) void
 __ic_wasi_polyfill_start(void) {
     // Ensure single initialization
     // raw_init function imported from libic_wasi_polyfill.a library

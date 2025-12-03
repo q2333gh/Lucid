@@ -22,7 +22,8 @@ idl_status idl_type_env_init(idl_type_env *env, idl_arena *arena) {
     env->arena = arena;
     env->bucket_count = INITIAL_BUCKET_COUNT;
     env->count = 0;
-    env->buckets = idl_arena_alloc_zeroed(arena, sizeof(idl_type_env_entry *) * env->bucket_count);
+    env->buckets = idl_arena_alloc_zeroed(arena, sizeof(idl_type_env_entry *) *
+                                                     env->bucket_count);
 
     if (!env->buckets) {
         return IDL_STATUS_ERR_ALLOC;
@@ -31,7 +32,8 @@ idl_status idl_type_env_init(idl_type_env *env, idl_arena *arena) {
     return IDL_STATUS_OK;
 }
 
-idl_status idl_type_env_insert(idl_type_env *env, const char *name, idl_type *type) {
+idl_status
+idl_type_env_insert(idl_type_env *env, const char *name, idl_type *type) {
     if (!env || !name || !type) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -50,7 +52,8 @@ idl_status idl_type_env_insert(idl_type_env *env, const char *name, idl_type *ty
     }
 
     /* Create new entry */
-    idl_type_env_entry *entry = idl_arena_alloc(env->arena, sizeof(idl_type_env_entry));
+    idl_type_env_entry *entry =
+        idl_arena_alloc(env->arena, sizeof(idl_type_env_entry));
     if (!entry) {
         return IDL_STATUS_ERR_ALLOC;
     }
@@ -115,4 +118,6 @@ idl_type *idl_type_env_trace(const idl_type_env *env, const idl_type *type) {
     return (idl_type *)type;
 }
 
-size_t idl_type_env_count(const idl_type_env *env) { return env ? env->count : 0; }
+size_t idl_type_env_count(const idl_type_env *env) {
+    return env ? env->count : 0;
+}

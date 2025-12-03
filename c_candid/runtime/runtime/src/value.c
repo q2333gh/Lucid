@@ -13,7 +13,9 @@ static idl_value *alloc_value(idl_arena *arena, idl_value_kind kind) {
     return v;
 }
 
-idl_value *idl_value_null(idl_arena *arena) { return alloc_value(arena, IDL_VALUE_NULL); }
+idl_value *idl_value_null(idl_arena *arena) {
+    return alloc_value(arena, IDL_VALUE_NULL);
+}
 
 idl_value *idl_value_bool(idl_arena *arena, int v) {
     idl_value *val = alloc_value(arena, IDL_VALUE_BOOL);
@@ -138,9 +140,12 @@ idl_value *idl_value_blob(idl_arena *arena, const uint8_t *data, size_t len) {
     return val;
 }
 
-idl_value *idl_value_reserved(idl_arena *arena) { return alloc_value(arena, IDL_VALUE_RESERVED); }
+idl_value *idl_value_reserved(idl_arena *arena) {
+    return alloc_value(arena, IDL_VALUE_RESERVED);
+}
 
-idl_value *idl_value_principal(idl_arena *arena, const uint8_t *data, size_t len) {
+idl_value *
+idl_value_principal(idl_arena *arena, const uint8_t *data, size_t len) {
     idl_value *val = alloc_value(arena, IDL_VALUE_PRINCIPAL);
     if (val) {
         uint8_t *copy = idl_arena_alloc(arena, len);
@@ -188,10 +193,12 @@ idl_value *idl_value_vec(idl_arena *arena, idl_value **items, size_t len) {
     return val;
 }
 
-idl_value *idl_value_record(idl_arena *arena, idl_value_field *fields, size_t len) {
+idl_value *
+idl_value_record(idl_arena *arena, idl_value_field *fields, size_t len) {
     idl_value *val = alloc_value(arena, IDL_VALUE_RECORD);
     if (val) {
-        idl_value_field *copy = idl_arena_alloc(arena, len * sizeof(idl_value_field));
+        idl_value_field *copy =
+            idl_arena_alloc(arena, len * sizeof(idl_value_field));
         if (!copy && len > 0) {
             return NULL;
         }
@@ -205,7 +212,8 @@ idl_value *idl_value_record(idl_arena *arena, idl_value_field *fields, size_t le
     return val;
 }
 
-idl_value *idl_value_variant(idl_arena *arena, uint64_t index, idl_value_field *field) {
+idl_value *
+idl_value_variant(idl_arena *arena, uint64_t index, idl_value_field *field) {
     idl_value *val = alloc_value(arena, IDL_VALUE_VARIANT);
     if (val) {
         idl_value_field *copy = idl_arena_alloc(arena, sizeof(idl_value_field));
@@ -220,7 +228,8 @@ idl_value *idl_value_variant(idl_arena *arena, uint64_t index, idl_value_field *
     return val;
 }
 
-idl_value *idl_value_nat_bytes(idl_arena *arena, const uint8_t *leb_data, size_t len) {
+idl_value *
+idl_value_nat_bytes(idl_arena *arena, const uint8_t *leb_data, size_t len) {
     idl_value *val = alloc_value(arena, IDL_VALUE_NAT);
     if (val) {
         uint8_t *copy = idl_arena_alloc(arena, len);
@@ -236,7 +245,8 @@ idl_value *idl_value_nat_bytes(idl_arena *arena, const uint8_t *leb_data, size_t
     return val;
 }
 
-idl_value *idl_value_int_bytes(idl_arena *arena, const uint8_t *sleb_data, size_t len) {
+idl_value *
+idl_value_int_bytes(idl_arena *arena, const uint8_t *sleb_data, size_t len) {
     idl_value *val = alloc_value(arena, IDL_VALUE_INT);
     if (val) {
         uint8_t *copy = idl_arena_alloc(arena, len);

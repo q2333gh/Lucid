@@ -26,7 +26,8 @@ struct ic_api {
     idl_arena arena;
 };
 
-ic_api_t *ic_api_init(ic_entry_type_t entry_type, const char *func_name, bool debug) {
+ic_api_t *
+ic_api_init(ic_entry_type_t entry_type, const char *func_name, bool debug) {
     ic_api_t *api = (ic_api_t *)malloc(sizeof(ic_api_t));
     if (api == NULL) {
         return NULL;
@@ -100,7 +101,8 @@ ic_api_t *ic_api_init(ic_entry_type_t entry_type, const char *func_name, bool de
     if (debug) {
         ic_api_debug_print("\n--");
         char caller_text[IC_PRINCIPAL_MAX_LEN * 2 + 1];
-        if (ic_principal_to_text(&api->caller, caller_text, sizeof(caller_text)) > 0) {
+        if (ic_principal_to_text(&api->caller, caller_text,
+                                 sizeof(caller_text)) > 0) {
             char msg[256];
             // snprintf(msg, sizeof(msg), "cdk-c: caller principal = %s",
             //          caller_text);
@@ -153,11 +155,13 @@ ic_result_t ic_api_get_canister_cycle_balance(const ic_api_t *api,
     return IC_OK;
 }
 
-bool ic_api_is_controller(const ic_api_t *api, const ic_principal_t *principal) {
+bool ic_api_is_controller(const ic_api_t       *api,
+                          const ic_principal_t *principal) {
     if (api == NULL || principal == NULL || !ic_principal_is_valid(principal)) {
         return false;
     }
-    uint32_t result = ic0_is_controller((uintptr_t)principal->bytes, (uint32_t)principal->len);
+    uint32_t result = ic0_is_controller((uintptr_t)principal->bytes,
+                                        (uint32_t)principal->len);
     return result == 1;
 }
 
@@ -205,7 +209,9 @@ bool ic_api_has_called_from_wire(const ic_api_t *api) {
     return api != NULL && api->called_from_wire;
 }
 
-bool ic_api_has_called_to_wire(const ic_api_t *api) { return api != NULL && api->called_to_wire; }
+bool ic_api_has_called_to_wire(const ic_api_t *api) {
+    return api != NULL && api->called_to_wire;
+}
 
 ic_entry_type_t ic_api_get_entry_type(const ic_api_t *api) {
     if (api == NULL) {
@@ -216,12 +222,14 @@ ic_entry_type_t ic_api_get_entry_type(const ic_api_t *api) {
 
 // Candid deserialization routines
 
-static ic_result_t ic_api_from_wire_generic(ic_api_t *api, idl_value **out_val) {
+static ic_result_t ic_api_from_wire_generic(ic_api_t   *api,
+                                            idl_value **out_val) {
     if (api == NULL || out_val == NULL)
         return IC_ERR_INVALID_ARG;
 
     if (api->called_from_wire) {
-        ic_api_trap("cdk-c: ic_api_from_wire() may only be called once per message");
+        ic_api_trap(
+            "cdk-c: ic_api_from_wire() may only be called once per message");
     }
     api->called_from_wire = true;
 
@@ -240,7 +248,8 @@ static ic_result_t ic_api_from_wire_generic(ic_api_t *api, idl_value **out_val) 
     return IC_OK;
 }
 
-ic_result_t ic_api_from_wire_text(ic_api_t *api, char **text, size_t *text_len) {
+ic_result_t
+ic_api_from_wire_text(ic_api_t *api, char **text, size_t *text_len) {
     idl_value  *val;
     ic_result_t res = ic_api_from_wire_generic(api, &val);
     if (res != IC_OK)
@@ -275,8 +284,8 @@ ic_result_t ic_api_from_wire_nat(ic_api_t *api, uint64_t *value) {
     } else if (val->kind == IDL_VALUE_NAT) {
         // Try to decode LEB128
         size_t consumed;
-        if (idl_uleb128_decode(val->data.bignum.data, val->data.bignum.len, &consumed, value) !=
-            IDL_STATUS_OK) {
+        if (idl_uleb128_decode(val->data.bignum.data, val->data.bignum.len,
+                               &consumed, value) != IDL_STATUS_OK) {
             return IC_ERR_INVALID_ARG; // Overflow or invalid
         }
         return IC_OK;
@@ -305,8 +314,8 @@ ic_result_t ic_api_from_wire_int(ic_api_t *api, int64_t *value) {
         return IC_OK;
     } else if (val->kind == IDL_VALUE_INT) {
         size_t consumed;
-        if (idl_sleb128_decode(val->data.bignum.data, val->data.bignum.len, &consumed, value) !=
-            IDL_STATUS_OK) {
+        if (idl_sleb128_decode(val->data.bignum.data, val->data.bignum.len,
+                               &consumed, value) != IDL_STATUS_OK) {
             return IC_ERR_INVALID_ARG;
         }
         return IC_OK;
@@ -315,7 +324,8 @@ ic_result_t ic_api_from_wire_int(ic_api_t *api, int64_t *value) {
     return IC_ERR_INVALID_ARG;
 }
 
-ic_result_t ic_api_from_wire_blob(ic_api_t *api, uint8_t **blob, size_t *blob_len) {
+ic_result_t
+ic_api_from_wire_blob(ic_api_t *api, uint8_t **blob, size_t *blob_len) {
     idl_value  *val;
     ic_result_t res = ic_api_from_wire_generic(api, &val);
     if (res != IC_OK)
@@ -330,7 +340,8 @@ ic_result_t ic_api_from_wire_blob(ic_api_t *api, uint8_t **blob, size_t *blob_le
     return IC_ERR_INVALID_ARG;
 }
 
-ic_result_t ic_api_from_wire_principal(ic_api_t *api, ic_principal_t *principal) {
+ic_result_t ic_api_from_wire_principal(ic_api_t       *api,
+                                       ic_principal_t *principal) {
     idl_value  *val;
     ic_result_t res = ic_api_from_wire_generic(api, &val);
     if (res != IC_OK)
@@ -406,7 +417,8 @@ ic_result_t ic_api_to_wire_int(ic_api_t *api, int64_t value) {
     return ic_api_reply_builder(api, &builder);
 }
 
-ic_result_t ic_api_to_wire_blob(ic_api_t *api, const uint8_t *blob, size_t blob_len) {
+ic_result_t
+ic_api_to_wire_blob(ic_api_t *api, const uint8_t *blob, size_t blob_len) {
     if (api == NULL || blob == NULL)
         return IC_ERR_INVALID_ARG;
     if (api->called_to_wire)
@@ -422,7 +434,8 @@ ic_result_t ic_api_to_wire_blob(ic_api_t *api, const uint8_t *blob, size_t blob_
     return ic_api_reply_builder(api, &builder);
 }
 
-ic_result_t ic_api_to_wire_principal(ic_api_t *api, const ic_principal_t *principal) {
+ic_result_t ic_api_to_wire_principal(ic_api_t             *api,
+                                     const ic_principal_t *principal) {
     if (api == NULL || principal == NULL)
         return IC_ERR_INVALID_ARG;
     if (api->called_to_wire)

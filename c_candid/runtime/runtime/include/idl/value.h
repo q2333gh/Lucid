@@ -107,7 +107,8 @@ typedef struct idl_value {
         struct {
             idl_value_field *fields;
             size_t           len;
-            uint64_t         variant_index; /* only for variant: which field is active */
+            uint64_t
+                variant_index; /* only for variant: which field is active */
         } record;
     } data;
 } idl_value;
@@ -131,16 +132,21 @@ idl_value *idl_value_text(idl_arena *arena, const char *s, size_t len);
 idl_value *idl_value_text_cstr(idl_arena *arena, const char *s);
 idl_value *idl_value_blob(idl_arena *arena, const uint8_t *data, size_t len);
 idl_value *idl_value_reserved(idl_arena *arena);
-idl_value *idl_value_principal(idl_arena *arena, const uint8_t *data, size_t len);
+idl_value *
+idl_value_principal(idl_arena *arena, const uint8_t *data, size_t len);
 idl_value *idl_value_opt_none(idl_arena *arena);
 idl_value *idl_value_opt_some(idl_arena *arena, idl_value *inner);
 idl_value *idl_value_vec(idl_arena *arena, idl_value **items, size_t len);
-idl_value *idl_value_record(idl_arena *arena, idl_value_field *fields, size_t len);
-idl_value *idl_value_variant(idl_arena *arena, uint64_t index, idl_value_field *field);
+idl_value *
+idl_value_record(idl_arena *arena, idl_value_field *fields, size_t len);
+idl_value *
+idl_value_variant(idl_arena *arena, uint64_t index, idl_value_field *field);
 
 /* Nat/Int with arbitrary precision (LEB128 encoded bytes) */
-idl_value *idl_value_nat_bytes(idl_arena *arena, const uint8_t *leb_data, size_t len);
-idl_value *idl_value_int_bytes(idl_arena *arena, const uint8_t *sleb_data, size_t len);
+idl_value *
+idl_value_nat_bytes(idl_arena *arena, const uint8_t *leb_data, size_t len);
+idl_value *
+idl_value_int_bytes(idl_arena *arena, const uint8_t *sleb_data, size_t len);
 
 /* Convenience: Nat/Int from uint64/int64 (will be LEB128 encoded) */
 idl_value *idl_value_nat_u64(idl_arena *arena, uint64_t v);

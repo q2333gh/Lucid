@@ -97,7 +97,8 @@ ic_result_t candid_serialize_int(ic_buffer_t *buf, int64_t value) {
     return IC_OK;
 }
 
-ic_result_t candid_serialize_blob(ic_buffer_t *buf, const uint8_t *data, size_t len) {
+ic_result_t
+candid_serialize_blob(ic_buffer_t *buf, const uint8_t *data, size_t len) {
     idl_arena arena;
     idl_arena_init(&arena, 512 + len);
 
@@ -117,7 +118,8 @@ ic_result_t candid_serialize_blob(ic_buffer_t *buf, const uint8_t *data, size_t 
     return IC_OK;
 }
 
-ic_result_t candid_serialize_principal(ic_buffer_t *buf, const ic_principal_t *principal) {
+ic_result_t candid_serialize_principal(ic_buffer_t          *buf,
+                                       const ic_principal_t *principal) {
     // Check if principal is valid if strictly required, but ic_candid.h says
     // nothing about NULL safety. The test passes invalid principal {0} and
     // expects IC_ERR_INVALID_ARG. ic_principal_t invalid = {0};
@@ -148,8 +150,11 @@ ic_result_t candid_serialize_principal(ic_buffer_t *buf, const ic_principal_t *p
 }
 
 // Deserialization helpers
-static ic_result_t deserialize_generic(
-    const uint8_t *data, size_t len, size_t *offset, idl_value **val, idl_arena *arena) {
+static ic_result_t deserialize_generic(const uint8_t *data,
+                                       size_t         len,
+                                       size_t        *offset,
+                                       idl_value    **val,
+                                       idl_arena     *arena) {
     // Note: We assume data points to full message, offset handles position?
     // c_candid deserializer takes full buffer and manages position internally
     // if we use deserializer object. But here we are stateless functions. The
@@ -187,8 +192,11 @@ static ic_result_t deserialize_generic(
     return IC_OK;
 }
 
-ic_result_t candid_deserialize_text(
-    const uint8_t *data, size_t len, size_t *offset, char **text, size_t *text_len) {
+ic_result_t candid_deserialize_text(const uint8_t *data,
+                                    size_t         len,
+                                    size_t        *offset,
+                                    char         **text,
+                                    size_t        *text_len) {
     idl_arena arena;
     idl_arena_init(&arena, 4096); // Needs to be large enough or persistent?
     // Problem: return value points to arena memory. If we destroy arena, we
@@ -220,8 +228,10 @@ ic_result_t candid_deserialize_text(
     return IC_OK;
 }
 
-ic_result_t
-candid_deserialize_nat(const uint8_t *data, size_t len, size_t *offset, uint64_t *value) {
+ic_result_t candid_deserialize_nat(const uint8_t *data,
+                                   size_t         len,
+                                   size_t        *offset,
+                                   uint64_t      *value) {
     idl_arena arena;
     idl_arena_init(&arena, 1024);
 
@@ -242,8 +252,8 @@ candid_deserialize_nat(const uint8_t *data, size_t len, size_t *offset, uint64_t
         *value = val->data.nat8_val;
     else if (val->kind == IDL_VALUE_NAT) {
         size_t consumed;
-        if (idl_uleb128_decode(val->data.bignum.data, val->data.bignum.len, &consumed, value) !=
-            IDL_STATUS_OK)
+        if (idl_uleb128_decode(val->data.bignum.data, val->data.bignum.len,
+                               &consumed, value) != IDL_STATUS_OK)
             res = IC_ERR_INVALID_ARG;
     } else
         res = IC_ERR_INVALID_ARG;
@@ -252,8 +262,10 @@ candid_deserialize_nat(const uint8_t *data, size_t len, size_t *offset, uint64_t
     return res;
 }
 
-ic_result_t
-candid_deserialize_int(const uint8_t *data, size_t len, size_t *offset, int64_t *value) {
+ic_result_t candid_deserialize_int(const uint8_t *data,
+                                   size_t         len,
+                                   size_t        *offset,
+                                   int64_t       *value) {
     idl_arena arena;
     idl_arena_init(&arena, 1024);
 
@@ -274,8 +286,8 @@ candid_deserialize_int(const uint8_t *data, size_t len, size_t *offset, int64_t 
         *value = val->data.int8_val;
     else if (val->kind == IDL_VALUE_INT) {
         size_t consumed;
-        if (idl_sleb128_decode(val->data.bignum.data, val->data.bignum.len, &consumed, value) !=
-            IDL_STATUS_OK)
+        if (idl_sleb128_decode(val->data.bignum.data, val->data.bignum.len,
+                               &consumed, value) != IDL_STATUS_OK)
             res = IC_ERR_INVALID_ARG;
     } else
         res = IC_ERR_INVALID_ARG;
@@ -284,8 +296,11 @@ candid_deserialize_int(const uint8_t *data, size_t len, size_t *offset, int64_t 
     return res;
 }
 
-ic_result_t candid_deserialize_blob(
-    const uint8_t *data, size_t len, size_t *offset, uint8_t **blob, size_t *blob_len) {
+ic_result_t candid_deserialize_blob(const uint8_t *data,
+                                    size_t         len,
+                                    size_t        *offset,
+                                    uint8_t      **blob,
+                                    size_t        *blob_len) {
     idl_arena arena;
     idl_arena_init(&arena, 4096);
 
@@ -322,7 +337,8 @@ ic_result_t candid_deserialize_principal(const uint8_t  *data,
     }
 
     if (val->kind == IDL_VALUE_PRINCIPAL) {
-        ic_principal_from_bytes(principal, val->data.principal.data, val->data.principal.len);
+        ic_principal_from_bytes(principal, val->data.principal.data,
+                                val->data.principal.len);
     } else {
         idl_arena_destroy(&arena);
         return IC_ERR_INVALID_ARG;
@@ -337,29 +353,38 @@ ic_result_t candid_write_leb128(ic_buffer_t *buf, uint64_t value) {
         return IC_ERR_INVALID_ARG; // Fix: Check for NULL buffer
     uint8_t tmp[10];               // Max for uint64
     size_t  written;
-    if (idl_uleb128_encode(value, tmp, sizeof(tmp), &written) == IDL_STATUS_OK) {
+    if (idl_uleb128_encode(value, tmp, sizeof(tmp), &written) ==
+        IDL_STATUS_OK) {
         ic_buffer_append(buf, tmp, written);
         return IC_OK;
     }
     return IC_ERR_INVALID_ARG;
 }
 
-ic_result_t candid_read_leb128(const uint8_t *data, size_t len, size_t *offset, uint64_t *value) {
+ic_result_t candid_read_leb128(const uint8_t *data,
+                               size_t         len,
+                               size_t        *offset,
+                               uint64_t      *value) {
     if (data == NULL)
         return IC_ERR_INVALID_ARG;
     size_t consumed;
-    if (idl_uleb128_decode(data + *offset, len - *offset, &consumed, value) == IDL_STATUS_OK) {
+    if (idl_uleb128_decode(data + *offset, len - *offset, &consumed, value) ==
+        IDL_STATUS_OK) {
         *offset += consumed;
         return IC_OK;
     }
     return IC_ERR_INVALID_ARG;
 }
 
-ic_result_t candid_read_sleb128(const uint8_t *data, size_t len, size_t *offset, int64_t *value) {
+ic_result_t candid_read_sleb128(const uint8_t *data,
+                                size_t         len,
+                                size_t        *offset,
+                                int64_t       *value) {
     if (data == NULL)
         return IC_ERR_INVALID_ARG;
     size_t consumed;
-    if (idl_sleb128_decode(data + *offset, len - *offset, &consumed, value) == IDL_STATUS_OK) {
+    if (idl_sleb128_decode(data + *offset, len - *offset, &consumed, value) ==
+        IDL_STATUS_OK) {
         *offset += consumed;
         return IC_OK;
     }

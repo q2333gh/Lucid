@@ -45,17 +45,30 @@ static const uint8_t CANDID_MAGIC[] = {'D', 'I', 'D', 'L'};
 ic_result_t candid_serialize_text(ic_buffer_t *buf, const char *text);
 ic_result_t candid_serialize_nat(ic_buffer_t *buf, uint64_t value);
 ic_result_t candid_serialize_int(ic_buffer_t *buf, int64_t value);
-ic_result_t candid_serialize_blob(ic_buffer_t *buf, const uint8_t *data, size_t len);
-ic_result_t candid_serialize_principal(ic_buffer_t *buf, const ic_principal_t *principal);
+ic_result_t
+candid_serialize_blob(ic_buffer_t *buf, const uint8_t *data, size_t len);
+ic_result_t candid_serialize_principal(ic_buffer_t          *buf,
+                                       const ic_principal_t *principal);
 
 // Decoding functions (convert Candid binary to C values)
-ic_result_t candid_deserialize_text(
-    const uint8_t *data, size_t len, size_t *offset, char **text, size_t *text_len);
-ic_result_t
-candid_deserialize_nat(const uint8_t *data, size_t len, size_t *offset, uint64_t *value);
-ic_result_t candid_deserialize_int(const uint8_t *data, size_t len, size_t *offset, int64_t *value);
-ic_result_t candid_deserialize_blob(
-    const uint8_t *data, size_t len, size_t *offset, uint8_t **blob, size_t *blob_len);
+ic_result_t candid_deserialize_text(const uint8_t *data,
+                                    size_t         len,
+                                    size_t        *offset,
+                                    char         **text,
+                                    size_t        *text_len);
+ic_result_t candid_deserialize_nat(const uint8_t *data,
+                                   size_t         len,
+                                   size_t        *offset,
+                                   uint64_t      *value);
+ic_result_t candid_deserialize_int(const uint8_t *data,
+                                   size_t         len,
+                                   size_t        *offset,
+                                   int64_t       *value);
+ic_result_t candid_deserialize_blob(const uint8_t *data,
+                                    size_t         len,
+                                    size_t        *offset,
+                                    uint8_t      **blob,
+                                    size_t        *blob_len);
 ic_result_t candid_deserialize_principal(const uint8_t  *data,
                                          size_t          len,
                                          size_t         *offset,
@@ -66,10 +79,16 @@ ic_result_t candid_deserialize_principal(const uint8_t  *data,
 ic_result_t candid_write_leb128(ic_buffer_t *buf, uint64_t value);
 
 // Decode unsigned integer from LEB128 format
-ic_result_t candid_read_leb128(const uint8_t *data, size_t len, size_t *offset, uint64_t *value);
+ic_result_t candid_read_leb128(const uint8_t *data,
+                               size_t         len,
+                               size_t        *offset,
+                               uint64_t      *value);
 
 // Decode signed integer from signed LEB128 format
-ic_result_t candid_read_sleb128(const uint8_t *data, size_t len, size_t *offset, int64_t *value);
+ic_result_t candid_read_sleb128(const uint8_t *data,
+                                size_t         len,
+                                size_t        *offset,
+                                int64_t       *value);
 
 // Validate Candid format header presence
 bool candid_check_magic(const uint8_t *data, size_t len);

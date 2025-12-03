@@ -11,7 +11,10 @@ static idl_status ensure_capacity(size_t needed, size_t available) {
     return needed <= available ? IDL_STATUS_OK : IDL_STATUS_ERR_TRUNCATED;
 }
 
-idl_status idl_uleb128_encode(uint64_t value, uint8_t *out, size_t out_len, size_t *written) {
+idl_status idl_uleb128_encode(uint64_t value,
+                              uint8_t *out,
+                              size_t   out_len,
+                              size_t  *written) {
     if (out == NULL) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -33,7 +36,10 @@ idl_status idl_uleb128_encode(uint64_t value, uint8_t *out, size_t out_len, size
     return IDL_STATUS_OK;
 }
 
-idl_status idl_sleb128_encode(int64_t value, uint8_t *out, size_t out_len, size_t *written) {
+idl_status idl_sleb128_encode(int64_t  value,
+                              uint8_t *out,
+                              size_t   out_len,
+                              size_t  *written) {
     if (out == NULL) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -61,8 +67,10 @@ idl_status idl_sleb128_encode(int64_t value, uint8_t *out, size_t out_len, size_
     return IDL_STATUS_OK;
 }
 
-idl_status
-idl_uleb128_decode(const uint8_t *input, size_t input_len, size_t *consumed, uint64_t *value) {
+idl_status idl_uleb128_decode(const uint8_t *input,
+                              size_t         input_len,
+                              size_t        *consumed,
+                              uint64_t      *value) {
     if (input == NULL || value == NULL) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -101,8 +109,10 @@ __extension__ typedef __int128 idl_i128;
 #error "Compiler must support __int128 for LEB128 decoding"
 #endif
 
-idl_status
-idl_sleb128_decode(const uint8_t *input, size_t input_len, size_t *consumed, int64_t *value) {
+idl_status idl_sleb128_decode(const uint8_t *input,
+                              size_t         input_len,
+                              size_t        *consumed,
+                              int64_t       *value) {
     if (input == NULL || value == NULL) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }

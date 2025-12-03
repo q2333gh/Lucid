@@ -17,9 +17,9 @@ typedef enum {
 // Method Registration Entry
 // =============================================================================
 typedef struct {
-    const char      *name;      // Method name (e.g., "greet")
-    const char      *signature; // Candid type signature (e.g., "(text) -> (text)")
-    ic_method_type_t type;      // Query or Update
+    const char *name;      // Method name (e.g., "greet")
+    const char *signature; // Candid type signature (e.g., "(text) -> (text)")
+    ic_method_type_t type; // Query or Update
 } ic_candid_method_t;
 
 // =============================================================================
@@ -49,26 +49,28 @@ extern int                __ic_candid_method_count;
 //   IC_CANDID_QUERY(greet, "(text) -> (text)")
 //   IC_CANDID_UPDATE(set_value, "(nat32) -> ()")
 
-#define IC_CANDID_QUERY(func_name, sig)                                                            \
-    __attribute__((constructor)) static void __ic_register_##func_name(void) {                     \
-        if (__ic_candid_method_count < IC_CANDID_MAX_METHODS) {                                    \
-            __ic_candid_methods[__ic_candid_method_count++] = (ic_candid_method_t){                \
-                .name = #func_name,                                                                \
-                .signature = sig,                                                                  \
-                .type = IC_METHOD_QUERY,                                                           \
-            };                                                                                     \
-        }                                                                                          \
+#define IC_CANDID_QUERY(func_name, sig)                                        \
+    __attribute__((constructor)) static void __ic_register_##func_name(void) { \
+        if (__ic_candid_method_count < IC_CANDID_MAX_METHODS) {                \
+            __ic_candid_methods[__ic_candid_method_count++] =                  \
+                (ic_candid_method_t){                                          \
+                    .name = #func_name,                                        \
+                    .signature = sig,                                          \
+                    .type = IC_METHOD_QUERY,                                   \
+                };                                                             \
+        }                                                                      \
     }
 
-#define IC_CANDID_UPDATE(func_name, sig)                                                           \
-    __attribute__((constructor)) static void __ic_register_##func_name(void) {                     \
-        if (__ic_candid_method_count < IC_CANDID_MAX_METHODS) {                                    \
-            __ic_candid_methods[__ic_candid_method_count++] = (ic_candid_method_t){                \
-                .name = #func_name,                                                                \
-                .signature = sig,                                                                  \
-                .type = IC_METHOD_UPDATE,                                                          \
-            };                                                                                     \
-        }                                                                                          \
+#define IC_CANDID_UPDATE(func_name, sig)                                       \
+    __attribute__((constructor)) static void __ic_register_##func_name(void) { \
+        if (__ic_candid_method_count < IC_CANDID_MAX_METHODS) {                \
+            __ic_candid_methods[__ic_candid_method_count++] =                  \
+                (ic_candid_method_t){                                          \
+                    .name = #func_name,                                        \
+                    .signature = sig,                                          \
+                    .type = IC_METHOD_UPDATE,                                  \
+                };                                                             \
+        }                                                                      \
     }
 
 // =============================================================================
@@ -86,16 +88,16 @@ extern int                __ic_candid_method_count;
 //   1. Registration of "greet" with signature "(text) -> (text)" as a query
 //   2. Export of the function as "canister_query greet"
 
-#define IC_QUERY(func_name, sig)                                                                   \
-    IC_CANDID_QUERY(func_name, sig)                                                                \
-    __attribute__((export_name("canister_query " #func_name)))                                     \
-    __attribute__((visibility("default"))) void                                                    \
+#define IC_QUERY(func_name, sig)                                               \
+    IC_CANDID_QUERY(func_name, sig)                                            \
+    __attribute__((export_name("canister_query " #func_name)))                 \
+    __attribute__((visibility("default"))) void                                \
     func_name(void)
 
-#define IC_UPDATE(func_name, sig)                                                                  \
-    IC_CANDID_UPDATE(func_name, sig)                                                               \
-    __attribute__((export_name("canister_update " #func_name)))                                    \
-    __attribute__((visibility("default"))) void                                                    \
+#define IC_UPDATE(func_name, sig)                                              \
+    IC_CANDID_UPDATE(func_name, sig)                                           \
+    __attribute__((export_name("canister_update " #func_name)))                \
+    __attribute__((visibility("default"))) void                                \
     func_name(void)
 
 // =============================================================================
@@ -123,9 +125,9 @@ const ic_candid_method_t *ic_candid_get_method(int index);
 // Example:
 //   IC_CANDID_EXPORT_DID()
 
-#define IC_CANDID_EXPORT_DID()                                                                     \
-    __attribute__((export_name("get_candid_pointer"))) __attribute__((visibility("default")))      \
-    const char *                                                                                   \
-    get_candid_pointer(void) {                                                                     \
-        return ic_candid_generate_did();                                                           \
+#define IC_CANDID_EXPORT_DID()                                                 \
+    __attribute__((export_name("get_candid_pointer")))                         \
+    __attribute__((visibility("default"))) const char *                        \
+    get_candid_pointer(void) {                                                 \
+        return ic_candid_generate_did();                                       \
     }

@@ -29,12 +29,14 @@ void idl_decoder_config_init(idl_decoder_config *config);
 /*
  * Set decoding quota (returns self for chaining).
  */
-idl_decoder_config *idl_decoder_config_set_decoding_quota(idl_decoder_config *config, size_t quota);
+idl_decoder_config *
+idl_decoder_config_set_decoding_quota(idl_decoder_config *config, size_t quota);
 
 /*
  * Set skipping quota (returns self for chaining).
  */
-idl_decoder_config *idl_decoder_config_set_skipping_quota(idl_decoder_config *config, size_t quota);
+idl_decoder_config *
+idl_decoder_config_set_skipping_quota(idl_decoder_config *config, size_t quota);
 
 /*
  * IDL deserializer: decodes DIDL binary to values.
@@ -62,8 +64,10 @@ typedef struct idl_deserializer {
 /*
  * Create a new deserializer from DIDL binary data.
  */
-idl_status
-idl_deserializer_new(const uint8_t *data, size_t len, idl_arena *arena, idl_deserializer **out);
+idl_status idl_deserializer_new(const uint8_t     *data,
+                                size_t             len,
+                                idl_arena         *arena,
+                                idl_deserializer **out);
 
 /*
  * Create a new deserializer with custom config.
@@ -78,8 +82,9 @@ idl_status idl_deserializer_new_with_config(const uint8_t            *data,
  * Get the next value from the deserializer.
  * Returns the wire type and decoded value.
  */
-idl_status
-idl_deserializer_get_value(idl_deserializer *de, idl_type **out_type, idl_value **out_value);
+idl_status idl_deserializer_get_value(idl_deserializer *de,
+                                      idl_type        **out_type,
+                                      idl_value       **out_value);
 
 /*
  * Get a value with expected type (for subtype coercion).
@@ -106,7 +111,9 @@ size_t idl_deserializer_remaining(const idl_deserializer *de);
 /*
  * Low-level read functions.
  */
-idl_status idl_deserializer_read_bytes(idl_deserializer *de, size_t len, const uint8_t **out);
+idl_status idl_deserializer_read_bytes(idl_deserializer *de,
+                                       size_t            len,
+                                       const uint8_t   **out);
 idl_status idl_deserializer_read_byte(idl_deserializer *de, uint8_t *out);
 idl_status idl_deserializer_read_leb128(idl_deserializer *de, uint64_t *out);
 idl_status idl_deserializer_read_sleb128(idl_deserializer *de, int64_t *out);
@@ -125,10 +132,15 @@ idl_status idl_deserializer_read_int32(idl_deserializer *de, int32_t *out);
 idl_status idl_deserializer_read_int64(idl_deserializer *de, int64_t *out);
 idl_status idl_deserializer_read_float32(idl_deserializer *de, float *out);
 idl_status idl_deserializer_read_float64(idl_deserializer *de, double *out);
-idl_status idl_deserializer_read_text(idl_deserializer *de, const char **out, size_t *out_len);
-idl_status idl_deserializer_read_blob(idl_deserializer *de, const uint8_t **out, size_t *out_len);
-idl_status
-idl_deserializer_read_principal(idl_deserializer *de, const uint8_t **out, size_t *out_len);
+idl_status idl_deserializer_read_text(idl_deserializer *de,
+                                      const char      **out,
+                                      size_t           *out_len);
+idl_status idl_deserializer_read_blob(idl_deserializer *de,
+                                      const uint8_t   **out,
+                                      size_t           *out_len);
+idl_status idl_deserializer_read_principal(idl_deserializer *de,
+                                           const uint8_t   **out,
+                                           size_t           *out_len);
 
 /*
  * Read a value according to its wire type.
@@ -151,7 +163,8 @@ size_t idl_deserializer_get_cost(const idl_deserializer *de);
 /*
  * Get the current decoder config.
  */
-const idl_decoder_config *idl_deserializer_get_config(const idl_deserializer *de);
+const idl_decoder_config *
+idl_deserializer_get_config(const idl_deserializer *de);
 
 #ifdef __cplusplus
 }

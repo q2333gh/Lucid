@@ -118,7 +118,8 @@ typedef idl_status       CandidStatus;
 #define CandidTypeOpt(arena, inner) idl_type_opt(arena, inner)
 #define CandidTypeVec(arena, inner) idl_type_vec(arena, inner)
 #define CandidTypeRecord(arena, fields, len) idl_type_record(arena, fields, len)
-#define CandidTypeVariant(arena, fields, len) idl_type_variant(arena, fields, len)
+#define CandidTypeVariant(arena, fields, len)                                  \
+    idl_type_variant(arena, fields, len)
 
 /* ============================================================
  * Value Constructors (CandidValue* style)
@@ -183,8 +184,10 @@ typedef idl_status       CandidStatus;
  * Deserializer API
  * ============================================================ */
 
-#define CandidDeserializerNew(data, len, arena, out) idl_deserializer_new(data, len, arena, out)
-#define CandidDeserializerGetValue(de, type, val) idl_deserializer_get_value(de, type, val)
+#define CandidDeserializerNew(data, len, arena, out)                           \
+    idl_deserializer_new(data, len, arena, out)
+#define CandidDeserializerGetValue(de, type, val)                              \
+    idl_deserializer_get_value(de, type, val)
 #define CandidDeserializerIsDone(de) idl_deserializer_is_done(de)
 #define CandidDeserializerDone(de) idl_deserializer_done(de)
 

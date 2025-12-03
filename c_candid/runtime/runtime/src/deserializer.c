@@ -12,16 +12,18 @@ void idl_decoder_config_init(idl_decoder_config *config) {
     config->full_error_message = 1;
 }
 
-idl_decoder_config *idl_decoder_config_set_decoding_quota(idl_decoder_config *config,
-                                                          size_t              quota) {
+idl_decoder_config *
+idl_decoder_config_set_decoding_quota(idl_decoder_config *config,
+                                      size_t              quota) {
     if (config) {
         config->decoding_quota = quota;
     }
     return config;
 }
 
-idl_decoder_config *idl_decoder_config_set_skipping_quota(idl_decoder_config *config,
-                                                          size_t              quota) {
+idl_decoder_config *
+idl_decoder_config_set_skipping_quota(idl_decoder_config *config,
+                                      size_t              quota) {
     if (config) {
         config->skipping_quota = quota;
     }
@@ -37,7 +39,8 @@ idl_status idl_deserializer_new_with_config(const uint8_t            *data,
         return IDL_STATUS_ERR_INVALID_ARG;
     }
 
-    idl_deserializer *de = idl_arena_alloc_zeroed(arena, sizeof(idl_deserializer));
+    idl_deserializer *de =
+        idl_arena_alloc_zeroed(arena, sizeof(idl_deserializer));
     if (!de) {
         return IDL_STATUS_ERR_ALLOC;
     }
@@ -74,8 +77,10 @@ idl_status idl_deserializer_new_with_config(const uint8_t            *data,
     return IDL_STATUS_OK;
 }
 
-idl_status
-idl_deserializer_new(const uint8_t *data, size_t len, idl_arena *arena, idl_deserializer **out) {
+idl_status idl_deserializer_new(const uint8_t     *data,
+                                size_t             len,
+                                idl_arena         *arena,
+                                idl_deserializer **out) {
     return idl_deserializer_new_with_config(data, len, arena, NULL, out);
 }
 
@@ -112,7 +117,9 @@ size_t idl_deserializer_remaining(const idl_deserializer *de) {
 
 /* Low-level read functions */
 
-idl_status idl_deserializer_read_bytes(idl_deserializer *de, size_t len, const uint8_t **out) {
+idl_status idl_deserializer_read_bytes(idl_deserializer *de,
+                                       size_t            len,
+                                       const uint8_t   **out) {
     if (!de || !out) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -140,8 +147,8 @@ idl_status idl_deserializer_read_leb128(idl_deserializer *de, uint64_t *out) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
     size_t     consumed;
-    idl_status st =
-        idl_uleb128_decode(de->input + de->pos, de->input_len - de->pos, &consumed, out);
+    idl_status st = idl_uleb128_decode(de->input + de->pos,
+                                       de->input_len - de->pos, &consumed, out);
     if (st != IDL_STATUS_OK) {
         return st;
     }
@@ -154,8 +161,8 @@ idl_status idl_deserializer_read_sleb128(idl_deserializer *de, int64_t *out) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
     size_t     consumed;
-    idl_status st =
-        idl_sleb128_decode(de->input + de->pos, de->input_len - de->pos, &consumed, out);
+    idl_status st = idl_sleb128_decode(de->input + de->pos,
+                                       de->input_len - de->pos, &consumed, out);
     if (st != IDL_STATUS_OK) {
         return st;
     }
@@ -195,8 +202,8 @@ idl_status idl_deserializer_read_nat32(idl_deserializer *de, uint32_t *out) {
     idl_status     st = idl_deserializer_read_bytes(de, 4, &bytes);
     if (st != IDL_STATUS_OK)
         return st;
-    *out = (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) | ((uint32_t)bytes[2] << 16) |
-           ((uint32_t)bytes[3] << 24);
+    *out = (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) |
+           ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
     return IDL_STATUS_OK;
 }
 
@@ -280,7 +287,9 @@ idl_status idl_deserializer_read_float64(idl_deserializer *de, double *out) {
     return IDL_STATUS_OK;
 }
 
-idl_status idl_deserializer_read_text(idl_deserializer *de, const char **out, size_t *out_len) {
+idl_status idl_deserializer_read_text(idl_deserializer *de,
+                                      const char      **out,
+                                      size_t           *out_len) {
     uint64_t   len;
     idl_status st = idl_deserializer_read_leb128(de, &len);
     if (st != IDL_STATUS_OK)
@@ -303,7 +312,9 @@ idl_status idl_deserializer_read_text(idl_deserializer *de, const char **out, si
     return IDL_STATUS_OK;
 }
 
-idl_status idl_deserializer_read_blob(idl_deserializer *de, const uint8_t **out, size_t *out_len) {
+idl_status idl_deserializer_read_blob(idl_deserializer *de,
+                                      const uint8_t   **out,
+                                      size_t           *out_len) {
     uint64_t   len;
     idl_status st = idl_deserializer_read_leb128(de, &len);
     if (st != IDL_STATUS_OK)
@@ -327,8 +338,9 @@ idl_status idl_deserializer_read_blob(idl_deserializer *de, const uint8_t **out,
     return IDL_STATUS_OK;
 }
 
-idl_status
-idl_deserializer_read_principal(idl_deserializer *de, const uint8_t **out, size_t *out_len) {
+idl_status idl_deserializer_read_principal(idl_deserializer *de,
+                                           const uint8_t   **out,
+                                           size_t           *out_len) {
     /* Principal: 0x01 flag + length + bytes */
     uint8_t    flag;
     idl_status st = idl_deserializer_read_byte(de, &flag);
@@ -551,7 +563,8 @@ idl_status idl_deserializer_read_value_by_type(idl_deserializer *de,
             *out = idl_value_opt_none(de->arena);
         } else if (flag == 1) {
             idl_value *inner;
-            st = idl_deserializer_read_value_by_type(de, actual_type->data.inner, &inner);
+            st = idl_deserializer_read_value_by_type(
+                de, actual_type->data.inner, &inner);
             if (st != IDL_STATUS_OK)
                 return st;
             *out = idl_value_opt_some(de->arena, inner);
@@ -583,12 +596,14 @@ idl_status idl_deserializer_read_value_by_type(idl_deserializer *de,
         }
 
         /* General vec */
-        idl_value **items = idl_arena_alloc(de->arena, sizeof(idl_value *) * (size_t)len);
+        idl_value **items =
+            idl_arena_alloc(de->arena, sizeof(idl_value *) * (size_t)len);
         if (!items && len > 0)
             return IDL_STATUS_ERR_ALLOC;
 
         for (uint64_t i = 0; i < len; i++) {
-            st = idl_deserializer_read_value_by_type(de, actual_type->data.inner, &items[i]);
+            st = idl_deserializer_read_value_by_type(
+                de, actual_type->data.inner, &items[i]);
             if (st != IDL_STATUS_OK)
                 return st;
         }
@@ -599,7 +614,8 @@ idl_status idl_deserializer_read_value_by_type(idl_deserializer *de,
 
     case IDL_KIND_RECORD: {
         size_t           field_count = actual_type->data.record.fields_len;
-        idl_value_field *fields = idl_arena_alloc(de->arena, sizeof(idl_value_field) * field_count);
+        idl_value_field *fields =
+            idl_arena_alloc(de->arena, sizeof(idl_value_field) * field_count);
         if (!fields && field_count > 0)
             return IDL_STATUS_ERR_ALLOC;
 
@@ -607,7 +623,8 @@ idl_status idl_deserializer_read_value_by_type(idl_deserializer *de,
             idl_field *type_field = &actual_type->data.record.fields[i];
             fields[i].label = type_field->label;
 
-            st = idl_deserializer_read_value_by_type(de, type_field->type, &fields[i].value);
+            st = idl_deserializer_read_value_by_type(de, type_field->type,
+                                                     &fields[i].value);
             if (st != IDL_STATUS_OK)
                 return st;
         }
@@ -630,7 +647,8 @@ idl_status idl_deserializer_read_value_by_type(idl_deserializer *de,
         idl_value_field field;
         field.label = type_field->label;
 
-        st = idl_deserializer_read_value_by_type(de, type_field->type, &field.value);
+        st = idl_deserializer_read_value_by_type(de, type_field->type,
+                                                 &field.value);
         if (st != IDL_STATUS_OK)
             return st;
 
@@ -652,8 +670,9 @@ idl_status idl_deserializer_read_value_by_type(idl_deserializer *de,
     }
 }
 
-idl_status
-idl_deserializer_get_value(idl_deserializer *de, idl_type **out_type, idl_value **out_value) {
+idl_status idl_deserializer_get_value(idl_deserializer *de,
+                                      idl_type        **out_type,
+                                      idl_value       **out_value) {
     if (!de || !out_type || !out_value) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
@@ -665,7 +684,8 @@ idl_deserializer_get_value(idl_deserializer *de, idl_type **out_type, idl_value 
     idl_type *wire_type = de->header.arg_types[de->arg_index];
     de->arg_index++;
 
-    idl_status st = idl_deserializer_read_value_by_type(de, wire_type, out_value);
+    idl_status st =
+        idl_deserializer_read_value_by_type(de, wire_type, out_value);
     if (st != IDL_STATUS_OK) {
         return st;
     }
@@ -691,12 +711,12 @@ idl_status idl_deserializer_get_value_with_type(idl_deserializer *de,
 
     /* Coerce to expected type */
     /* Note: coerce.h is included via runtime.h */
-    extern idl_status idl_coerce_value(idl_arena * arena, const idl_type_env *env,
-                                       const idl_type *wire_type, const idl_type *expected_type,
-                                       const idl_value *value, idl_value **out);
+    extern idl_status idl_coerce_value(
+        idl_arena * arena, const idl_type_env *env, const idl_type *wire_type,
+        const idl_type *expected_type, const idl_value *value, idl_value **out);
 
-    return idl_coerce_value(de->arena, &de->header.env, wire_type, expected_type, wire_value,
-                            out_value);
+    return idl_coerce_value(de->arena, &de->header.env, wire_type,
+                            expected_type, wire_value, out_value);
 }
 
 idl_status idl_deserializer_add_cost(idl_deserializer *de, size_t cost) {
@@ -719,6 +739,7 @@ size_t idl_deserializer_get_cost(const idl_deserializer *de) {
     return de ? de->cost_accumulated : 0;
 }
 
-const idl_decoder_config *idl_deserializer_get_config(const idl_deserializer *de) {
+const idl_decoder_config *
+idl_deserializer_get_config(const idl_deserializer *de) {
     return de ? &de->config : NULL;
 }

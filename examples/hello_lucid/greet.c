@@ -55,7 +55,6 @@ IC_QUERY(greet_no_arg, "() -> (text)") {
     CandidArenaDestroy(&arena);
 
     ic_api_debug_print("debug print: hello dfx console. ");
-    // printf("stdio print : hello dfx console\n");
 
     ic_api_free(api);
 }

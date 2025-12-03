@@ -8,11 +8,11 @@
 #include "ic_c_sdk.h"
 
 // =============================================================================
-// Candid Interface Description
+// Candid Interface Description (Auto-generated via Registry)
 // =============================================================================
-IC_CANDID_INTERFACE("service : {\n"
-                    "    greet_no_arg : () -> (text) query;\n"
-                    "}");
+// Use IC_CANDID_EXPORT_DID() to export the get_candid_pointer function.
+// The .did content is automatically generated from IC_QUERY/IC_UPDATE macros.
+IC_CANDID_EXPORT_DID()
 
 // =============================================================================
 
@@ -46,8 +46,11 @@ IC_CANDID_INTERFACE("service : {\n"
 
 #include "idl/candid.h"
 
+// =============================================================================
 // Query function: greet_no_arg (no input, returns hello)
-IC_EXPORT_QUERY(greet_no_arg) {
+// =============================================================================
+// Using IC_QUERY macro: automatically registers method AND exports function
+IC_QUERY(greet_no_arg, "() -> (text)") {
     // Initialize IC API for a query function
     ic_api_t *api = ic_api_init(IC_ENTRY_QUERY, __func__, true);
     if (api == NULL) {

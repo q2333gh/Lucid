@@ -12,4 +12,4 @@ AlignConsecutiveAssignments: false
 
 AlignArrayOfStructures: Left
 
-ColumnLimit: 100
+ColumnLimit: 80

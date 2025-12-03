@@ -6,9 +6,6 @@
 
 // raw_init function imported from libic_wasi_polyfill.a library
 #if defined(__wasm32__) || defined(__wasm32_wasi__)
-// Compile-time notification about raw_init import
-#pragma message(                                                               \
-    "IC WASI polyfill: raw_init will be imported from polyfill module")
 // Prevent LTO from removing this import by marking as used
 extern void raw_init(char *p, size_t len)
     WASM_SYMBOL_IMPORTED("polyfill", "raw_init");

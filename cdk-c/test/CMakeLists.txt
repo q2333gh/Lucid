@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.20)
 # Only define project if run standalone
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(ic_cdk_criterion_tests LANGUAGES C VERSION 0.1.0)
+    # Ninja-friendly: Generate compile_commands.json
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    set(CMAKE_DEPENDS_IN_PROJECT_ONLY ON)
 endif()
 
 include(CTest)

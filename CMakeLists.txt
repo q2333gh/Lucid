@@ -1,9 +1,18 @@
 cmake_minimum_required(VERSION 3.20)
 project(ic_sdk_project C)
 
+# Ninja-friendly configuration
+# Generate compile_commands.json for clangd and other tools
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+# Ninja: Better dependency tracking and parallel builds
+# These settings improve incremental builds with Ninja
+set(CMAKE_DEPENDS_IN_PROJECT_ONLY ON)
 
 # Enable testing globally
 enable_testing()

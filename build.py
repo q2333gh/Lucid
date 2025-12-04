@@ -2,12 +2,17 @@
 """
 IC C SDK Build Script
 
-A streamlined build system for IC (Internet Computer) C SDK projects.
-Supports both native and WASI/WASM targets.
+Build pipeline for IC (Internet Computer) C SDK projects.
+
+Phases:
+  1. Toolchain    - WASI SDK setup
+  2. IC Tools     - polyfill library + wasi2ic tool
+  3. Build        - CMake configure + compile
+  4. Post-process - wasi2ic -> wasm-opt -> candid-extractor
 
 Usage:
-    python build.py           # Build for native platform
-    python build.py --wasi    # Build for WASI/IC platform
+    python build.py           # Native build (with tests)
+    python build.py --wasi    # WASI/IC build (with post-processing for canister )
 """
 
 import argparse
@@ -18,51 +23,108 @@ import sys
 from pathlib import Path
 
 # =============================================================================
-# Module Loading
+# Module Setup
 # =============================================================================
 
 _ROOT_DIR = Path(__file__).parent.resolve()
-_BUILD_UTILS_DIR = _ROOT_DIR / "cdk-c/scripts/build_utils"
+_BUILD_UTILS = _ROOT_DIR / "cdk-c/scripts/build_utils"
 
-# Add build_utils to Python path for imports
-if str(_BUILD_UTILS_DIR) not in sys.path:
-    sys.path.insert(0, str(_BUILD_UTILS_DIR))
+if str(_BUILD_UTILS) not in sys.path:
+    sys.path.insert(0, str(_BUILD_UTILS))
 
-# Import build utilities as functions
 from wasi_sdk import ensure_wasi_sdk
 from builders import ensure_polyfill_library, ensure_wasi2ic_tool
-from post_process import post_process_wasm_files
+from post_process import (
+    post_process_wasm_files,
+    run_wasi2ic,
+    run_wasm_opt,
+    run_candid_extractor,
+)
 
 
 # =============================================================================
-# Build Configuration
+# Phase 1: Toolchain - WASI SDK
 # =============================================================================
 
 
-def get_build_dirs(wasi: bool) -> dict:
-    """Get build directory paths based on target platform."""
-    return {
-        "root": _ROOT_DIR,
-        "build": _ROOT_DIR / ("build-wasi" if wasi else "build"),
-        "build_lib": _ROOT_DIR / "build_lib",
-        "examples": _ROOT_DIR / "examples",
-    }
+def setup_wasi_sdk() -> tuple:
+    """
+    Phase 1: Verify and setup WASI SDK toolchain.
+
+    Returns:
+        (sdk_path, toolchain_file) or exits on failure
+    """
+    print("[Phase 1] Toolchain: WASI SDK")
+
+    sdk_path, toolchain_file = ensure_wasi_sdk()
+    if not sdk_path or not toolchain_file:
+        print(" Error: WASI SDK not found.")
+        print(" Set WASI_SDK_ROOT environment variable.")
+        sys.exit(1)
+
+    print(f" SDK: {sdk_path}")
+    print(f" Toolchain: {toolchain_file.name}")
+    return sdk_path, toolchain_file
 
 
 # =============================================================================
-# CMake Build
+# Phase 2: IC Tools - Polyfill + wasi2ic
 # =============================================================================
 
 
-def configure_cmake(build_dir: Path, wasi: bool, extra_args: list) -> None:
-    """Configure CMake with appropriate arguments."""
-    use_ninja = shutil.which("ninja") is not None
+def setup_ic_tools(build_lib_dir: Path) -> tuple:
+    """
+    Phase 2: Ensure IC-specific conversion tools are available.
 
-    if use_ninja:
-        print(" Using Ninja build system")
+    - libic_wasi_polyfill.a: WASI polyfill for IC environment
+    - wasi2ic: WASI to IC WASM converter
+
+    Returns:
+        (polyfill_lib_path, wasi2ic_tool_path)
+    """
+    print("\n[Phase 2] IC Tools: polyfill + wasi2ic")
+
+    # Polyfill library (required for linking)
+    polyfill_lib = ensure_polyfill_library(build_lib_dir)
+    if not polyfill_lib or not polyfill_lib.exists():
+        print(" Error: Failed to build polyfill library.")
+        sys.exit(1)
+    print(f" Polyfill: {polyfill_lib.name}")
+
+    # wasi2ic tool (required for post-processing)
+    wasi2ic_tool = ensure_wasi2ic_tool(build_lib_dir)
+    if not wasi2ic_tool or not wasi2ic_tool.exists():
+        print(" Warning: wasi2ic not available, post-processing will be skipped.")
+        wasi2ic_tool = None
     else:
-        print(" Warning: Ninja not found, using default generator")
+        print(f" wasi2ic: {wasi2ic_tool.name}")
 
+    return polyfill_lib, wasi2ic_tool
+
+
+# =============================================================================
+# Phase 3: Build - CMake Configure + Compile
+# =============================================================================
+
+
+def run_cmake_build(
+    build_dir: Path,
+    wasi: bool,
+    cmake_extra_args: list,
+) -> None:
+    """
+    Phase 3: Configure and build the project.
+
+    Args:
+        build_dir: Build output directory
+        wasi: True for WASI target, False for native
+        cmake_extra_args: Additional CMake arguments
+    """
+    print(f"\n[Phase 3] Build: CMake + {'Ninja' if shutil.which('ninja') else 'Make'}")
+    print(f" Directory: {build_dir}")
+
+    # CMake configure
+    use_ninja = shutil.which("ninja") is not None
     cmake_args = ["cmake", "..", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
 
     if use_ninja:
@@ -73,35 +135,66 @@ def configure_cmake(build_dir: Path, wasi: bool, extra_args: list) -> None:
     else:
         cmake_args.extend(["-DBUILD_CDK_TESTS=ON", "-DC_CANDID_BUILD_TESTS=ON"])
 
-    cmake_args.extend(extra_args)
+    cmake_args.extend(cmake_extra_args)
 
-    print("\n[Configuring CMake]")
+    print(" Configuring...")
     subprocess.run(cmake_args, cwd=build_dir, check=True)
 
-
-def run_build(build_dir: Path) -> None:
-    """Execute the build."""
-    print("\n[Building Project]")
-
-    if shutil.which("ninja"):
+    # Build
+    print(" Compiling...")
+    if use_ninja:
         jobs = multiprocessing.cpu_count()
         subprocess.run(["ninja", "-j", str(jobs)], cwd=build_dir, check=True)
     else:
         subprocess.run(["cmake", "--build", "."], cwd=build_dir, check=True)
 
+    # Copy compile_commands.json for IDE
+    compile_commands = build_dir / "compile_commands.json"
+    if compile_commands.exists():
+        shutil.copy(compile_commands, _ROOT_DIR / "compile_commands.json")
 
-def run_tests(build_dir: Path) -> None:
-    """Run tests (native build only)."""
-    print("\n[Running Tests]")
-    subprocess.run(["ctest", "--output-on-failure"], cwd=build_dir, check=False)
+
+# =============================================================================
+# Phase 4: Post-processing - wasi2ic + wasm-opt + candid
+# =============================================================================
 
 
-def copy_compile_commands(build_dir: Path) -> None:
-    """Copy compile_commands.json to project root for IDE support."""
-    src = build_dir / "compile_commands.json"
-    if src.exists():
-        shutil.copy(src, _ROOT_DIR / "compile_commands.json")
-        print(f" Copied compile_commands.json to project root")
+def run_post_processing(
+    bin_dir: Path,
+    wasi2ic_tool: Path,
+    examples_dir: Path,
+) -> None:
+    """
+    Phase 4: Post-process WASM artifacts.
+
+    Pipeline:
+      Step 1: wasi2ic         - Convert WASI WASM to IC format
+      Step 2: wasm-opt        - Optimize binary size (-Oz)
+      Step 3: candid-extractor - Extract .did interface files
+
+    Args:
+        bin_dir: Directory containing built .wasm files
+        wasi2ic_tool: Path to wasi2ic binary
+        examples_dir: Examples directory for .did output
+    """
+    print("\n[Phase 4] Post-processing: wasi2ic -> wasm-opt -> candid")
+
+    if not bin_dir.exists():
+        print(" Warning: No bin directory found, skipping.")
+        return
+
+    stats = post_process_wasm_files(
+        bin_dir=bin_dir,
+        wasi2ic_tool=wasi2ic_tool,
+        examples_dir=examples_dir,
+        optimization_level="-Oz",
+    )
+
+    print(
+        f"\n Summary: {stats['converted']} converted, "
+        f"{stats['optimized']} optimized, "
+        f"{stats['candid']} .did extracted"
+    )
 
 
 # =============================================================================
@@ -111,31 +204,31 @@ def copy_compile_commands(build_dir: Path) -> None:
 
 def build(wasi: bool = False) -> None:
     """
-    Main build function.
+    Main build orchestrator.
 
-    Args:
-        wasi: If True, build for WASI/IC platform; otherwise build native.
+    WASI build phases:
+      1. Toolchain    - WASI SDK
+      2. IC Tools     - polyfill + wasi2ic
+      3. Build        - CMake + compile
+      4. Post-process - wasi2ic -> wasm-opt -> candid
+
+    Native build phases:
+      3. Build        - CMake + compile + tests
     """
-    dirs = get_build_dirs(wasi)
-    dirs["build"].mkdir(exist_ok=True)
-    dirs["build_lib"].mkdir(exist_ok=True)
+    # Directory setup
+    build_dir = _ROOT_DIR / ("build-wasi" if wasi else "build")
+    build_lib_dir = _ROOT_DIR / "build_lib"
+    examples_dir = _ROOT_DIR / "examples"
+
+    build_dir.mkdir(exist_ok=True)
+    build_lib_dir.mkdir(exist_ok=True)
 
     cmake_extra_args = []
     wasi2ic_tool = None
 
-    # -------------------------------------------------------------------------
-    # Platform Setup
-    # -------------------------------------------------------------------------
     if wasi:
-        print(" Targeting WASI/WASM...")
-
-        # 1. WASI SDK
-        sdk_path, toolchain_file = ensure_wasi_sdk()
-        if not sdk_path or not toolchain_file:
-            print(" Error: WASI SDK not found. Set WASI_SDK_ROOT environment variable.")
-            sys.exit(1)
-
-        print(f" WASI SDK: {sdk_path}")
+        # Phase 1: Toolchain
+        sdk_path, toolchain_file = setup_wasi_sdk()
         cmake_extra_args.extend(
             [
                 f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}",
@@ -143,58 +236,34 @@ def build(wasi: bool = False) -> None:
             ]
         )
 
-        # 2. Polyfill Library
-        polyfill_lib = ensure_polyfill_library(dirs["build_lib"])
-        if polyfill_lib and polyfill_lib.exists():
-            cmake_extra_args.append(f"-DIC_WASI_POLYFILL_PATH={polyfill_lib}")
-        else:
-            print(" Error: Failed to build polyfill library.")
-            sys.exit(1)
-
-        # 3. wasi2ic Tool
-        wasi2ic_tool = ensure_wasi2ic_tool(dirs["build_lib"])
-        if not wasi2ic_tool or not wasi2ic_tool.exists():
-            print(
-                " Warning: wasi2ic tool not available, post-processing will be skipped."
-            )
+        # Phase 2: IC Tools
+        polyfill_lib, wasi2ic_tool = setup_ic_tools(build_lib_dir)
+        cmake_extra_args.append(f"-DIC_WASI_POLYFILL_PATH={polyfill_lib}")
 
     else:
-        print(" Targeting Native (Host)...")
+        print(" Target: Native (Host)")
 
-    # -------------------------------------------------------------------------
-    # Build
-    # -------------------------------------------------------------------------
-    print(f"\n[Configuration]")
-    print(f" Build Directory: {dirs['build']}")
+    # Phase 3: Build
+    run_cmake_build(build_dir, wasi, cmake_extra_args)
 
-    configure_cmake(dirs["build"], wasi, cmake_extra_args)
-    run_build(dirs["build"])
-
+    # Native: run tests
     if not wasi:
-        run_tests(dirs["build"])
+        print("\n[Running Tests]")
+        subprocess.run(
+            ["ctest", "--output-on-failure"],
+            cwd=build_dir,
+            check=False,
+        )
 
-    copy_compile_commands(dirs["build"])
+    # Phase 4: Post-processing (WASI only)
+    if wasi and wasi2ic_tool:
+        run_post_processing(
+            bin_dir=build_dir / "bin",
+            wasi2ic_tool=wasi2ic_tool,
+            examples_dir=examples_dir,
+        )
 
-    # -------------------------------------------------------------------------
-    # Post-processing (WASI only)
-    # -------------------------------------------------------------------------
-    if wasi and wasi2ic_tool and wasi2ic_tool.exists():
-        print("\n[Post-processing WASM files]")
-        bin_dir = dirs["build"] / "bin"
-
-        if bin_dir.exists():
-            stats = post_process_wasm_files(
-                bin_dir=bin_dir,
-                wasi2ic_tool=wasi2ic_tool,
-                examples_dir=dirs["examples"],
-            )
-            print(
-                f"\n Summary: {stats['converted']} converted, "
-                f"{stats['optimized']} optimized, "
-                f"{stats['candid']} .did extracted"
-            )
-
-    print("\nBuild complete.")
+    print("\n✓ Build complete.")
 
 
 # =============================================================================
@@ -207,14 +276,14 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python build.py           Build for native platform (with tests)
-  python build.py --wasi    Build for WASI/IC platform
+  python build.py           Native build (with tests)
+  python build.py --wasi    WASI/IC build (with post-processing)
         """,
     )
     parser.add_argument(
         "--wasi",
         action="store_true",
-        help="Target WASI platform (builds examples for IC)",
+        help="Target WASI/IC platform",
     )
 
     args = parser.parse_args()
@@ -222,8 +291,8 @@ Examples:
     try:
         build(wasi=args.wasi)
     except subprocess.CalledProcessError as e:
-        print(f"\nBuild failed: {e}")
+        print(f"\n✗ Build failed: {e}")
         sys.exit(1)
     except KeyboardInterrupt:
-        print("\nBuild interrupted.")
+        print("\n✗ Build interrupted.")
         sys.exit(130)

@@ -1,0 +1,5 @@
+{
+  "extraPaths": [
+    "cdk-c/scripts/build_utils"
+  ]
+}

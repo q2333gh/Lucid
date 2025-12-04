@@ -88,21 +88,21 @@ def get_wasm_path():
 
     return wasm_path
 def get_did_path():
-    """Get the path to greet.did file"""
+    """Get the path to hello_lucid.did file"""
     script_dir = Path(__file__).parent.resolve()
     project_root = find_project_root(script_dir)
     
     # DID file is typically in the example directory
     examples_dir = project_root / "examples" / "hello_lucid"
-    did_path = examples_dir / "greet.did"
+    did_path = examples_dir / "hello_lucid.did"
     
     if not did_path.exists():
         # Fallback: try relative to script location
-        fallback_path = script_dir.parent / "greet.did"
+        fallback_path = script_dir.parent / "hello_lucid.did"
         if fallback_path.exists():
             return fallback_path
         raise FileNotFoundError(
-            f"greet.did not found at {did_path} or {fallback_path}"
+            f"hello_lucid.did not found at {did_path} or {fallback_path}"
         )
     
     return did_path

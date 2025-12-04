@@ -11,8 +11,8 @@ Phases:
   4. Post-process - wasi2ic -> wasm-opt -> candid-extractor
 
 Usage:
-    python build.py           # Native build (with tests)
-    python build.py --wasi    # WASI/IC build (with post-processing for canister )
+    python build.py            # Native build (with tests)
+    python build.py --icwasm   # IC WASM canister build (with post-processing)
 """
 
 import argparse
@@ -133,6 +133,9 @@ def run_cmake_build(
     if wasi:
         cmake_args.extend(["-DBUILD_WASI=ON", "-DCMAKE_BUILD_TYPE=MinSizeRel"])
     else:
+        # Use Clang for native builds (better clang-tidy integration)
+        if shutil.which("clang"):
+            cmake_args.append("-DCMAKE_C_COMPILER=clang")
         cmake_args.extend(["-DBUILD_CDK_TESTS=ON", "-DC_CANDID_BUILD_TESTS=ON"])
 
     cmake_args.extend(cmake_extra_args)
@@ -276,20 +279,20 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python build.py           Native build (with tests)
-  python build.py --wasi    WASI/IC build (with post-processing)
+  python build.py            Native build (with tests)
+  python build.py --icwasm   IC WASM canister build (with post-processing)
         """,
     )
     parser.add_argument(
-        "--wasi",
+        "--icwasm",
         action="store_true",
-        help="Target WASI/IC platform",
+        help="Build for IC WASM canister platform",
     )
 
     args = parser.parse_args()
 
     try:
-        build(wasi=args.wasi)
+        build(wasi=args.icwasm)
     except subprocess.CalledProcessError as e:
         print(f"\n✗ Build failed: {e}")
         sys.exit(1)

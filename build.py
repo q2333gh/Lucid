@@ -143,6 +143,32 @@ def verify_wasi_artifact(wasm_file: pathlib.Path, sdk_path: pathlib.Path) -> boo
     return True
 
 
+def extract_candid_interfaces(bin_dir: pathlib.Path, examples_dir: pathlib.Path) -> int:
+    """
+    Extract Candid interfaces from _ic.wasm files using candid-extractor.
+    Dynamically loads the extraction module from build_utils.
+
+    Returns:
+        Number of successfully extracted .did files
+    """
+    script_path = pathlib.Path("cdk-c/scripts/build_utils/extract_candid.py").resolve()
+    if not script_path.exists():
+        print(f" Warning: Candid extraction script not found at {script_path}")
+        return 0
+
+    try:
+        spec = importlib.util.spec_from_file_location("extract_candid", script_path)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            if hasattr(module, "extract_candid_for_examples"):
+                return module.extract_candid_for_examples(bin_dir, examples_dir)
+    except Exception as e:
+        print(f" Warning: Failed to extract candid interfaces: {e}")
+
+    return 0
+
+
 def build(wasi=False):
     ROOT_DIR = pathlib.Path(__file__).parent.resolve()
 
@@ -320,6 +346,13 @@ def build(wasi=False):
 
                 except subprocess.CalledProcessError:
                     print(f" Failed to convert {wasm_file.name}")
+
+            # Extract Candid interfaces from all _ic.wasm files
+            print("\n[Extracting Candid interfaces]")
+            examples_dir = ROOT_DIR / "examples"
+            extracted_count = extract_candid_interfaces(bin_dir, examples_dir)
+            if extracted_count > 0:
+                print(f" Extracted {extracted_count} .did file(s)")
 
     print("\nBuild complete.")
 

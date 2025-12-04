@@ -1,7 +1,7 @@
 {
   "canisters": {
     "greet": {
-      "candid": "greet.did",
+      "candid": "hello_lucid.did",
       "wasm": "greet_optimized.wasm",
       "type": "custom",
       "metadata": [

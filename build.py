@@ -4,13 +4,13 @@ IC C SDK Build Script
 
 Build pipeline for IC (Internet Computer) C SDK projects.
 
-Phases:
-  1. Toolchain    - WASI SDK setup
-  2. IC Tools     - polyfill library + wasi2ic tool
-  3. Build        - CMake configure + compile
-  4. Post-process - wasi2ic -> wasm-opt -> candid-extractor
+    Phases:
+      1. Toolchain    - WASI SDK setup
+      2. IC Tools     - polyfill library + wasi2ic tool
+      3. Build        - CMake configure + compile
+      4. Post-process - wasi2ic -> wasm-opt -> candid-extractor -> dfx.json
 
-Usage:
+    Usage:
     python build.py            # Native build (with tests)
     python build.py --icwasm   # IC WASM canister build (with post-processing)
 """
@@ -20,6 +20,7 @@ import multiprocessing
 import shutil
 import subprocess
 import sys
+import os
 from pathlib import Path
 
 # =============================================================================
@@ -28,9 +29,14 @@ from pathlib import Path
 
 _ROOT_DIR = Path(__file__).parent.resolve()
 _BUILD_UTILS = _ROOT_DIR / "cdk-c/scripts/build_utils"
+_SCRIPTS_DIR = _ROOT_DIR / "cdk-c/scripts"
 
 if str(_BUILD_UTILS) not in sys.path:
     sys.path.insert(0, str(_BUILD_UTILS))
+
+# Ensure scripts directory is in path for generate_dfx
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.append(str(_SCRIPTS_DIR))
 
 from wasi_sdk import ensure_wasi_sdk
 from builders import ensure_polyfill_library, ensure_wasi2ic_tool
@@ -40,6 +46,16 @@ from post_process import (
     run_wasm_opt,
     run_candid_extractor,
 )
+
+# Try to import generate_dfx, but don't fail if it's not there yet
+try:
+    # This import relies on sys.path modification above.
+    # We add type: ignore to silence static analysis tools that don't see the path change.
+    import generate_dfx as generate_dfx_json_module  # type: ignore
+except ImportError:
+    # Fallback if script is missing or path issue
+    generate_dfx_json_module = None
+    print("Warning: generate_dfx module not found, skipping dfx.json generation.")
 
 
 # =============================================================================
@@ -174,13 +190,14 @@ def run_post_processing(
       Step 1: wasi2ic         - Convert WASI WASM to IC format
       Step 2: wasm-opt        - Optimize binary size (-Oz)
       Step 3: candid-extractor - Extract .did interface files
+      Step 4: generate_dfx    - Generate dfx.json for examples
 
     Args:
         bin_dir: Directory containing built .wasm files
         wasi2ic_tool: Path to wasi2ic binary
         examples_dir: Examples directory for .did output
     """
-    print("\n[Phase 4] Post-processing: wasi2ic -> wasm-opt -> candid")
+    print("\n[Phase 4] Post-processing: wasi2ic -> wasm-opt -> candid -> dfx.json")
 
     if not bin_dir.exists():
         print(" Warning: No bin directory found, skipping.")
@@ -199,6 +216,10 @@ def run_post_processing(
         f"{stats['candid']} .did extracted"
     )
 
+    # Phase 4, Step 4: Generate dfx.json for examples
+    if generate_dfx_json_module:
+        generate_dfx_json_module.auto_generate_dfx(bin_dir, examples_dir)
+
 
 # =============================================================================
 # Main Build Function
@@ -213,7 +234,7 @@ def build(wasi: bool = False) -> None:
       1. Toolchain    - WASI SDK
       2. IC Tools     - polyfill + wasi2ic
       3. Build        - CMake + compile
-      4. Post-process - wasi2ic -> wasm-opt -> candid
+      4. Post-process - wasi2ic -> wasm-opt -> candid -> dfx.json
 
     Native build phases:
       3. Build        - CMake + compile + tests

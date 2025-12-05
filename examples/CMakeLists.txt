@@ -43,7 +43,8 @@ if (BUILD_TARGET_WASI)
 
         "-Wl,--export=__ic_wasi_polyfill_start" # C symbol for start
 
-        # CRITICAL: Explicitly export polyfill functions to prevent LTO from stripping them
+        ####
+        #  CRITICAL: Explicitly export polyfill functions to prevent LTO from stripping them
         # This is required for wasi2ic to find and replace imports
         "-Wl,--export=__ic_custom_fd_write"
         "-Wl,--export=__ic_custom_fd_read"
@@ -55,6 +56,8 @@ if (BUILD_TARGET_WASI)
         "-Wl,--export=__ic_custom_random_get"
         "-Wl,--export=__ic_custom_clock_time_get"
         "-Wl,--export=__ic_custom_clock_res_get"
+        ####
+
         # Add others if wasi2ic complains about missing replacements
 
         "-Wl,--stack-first"

@@ -6,11 +6,13 @@ Three-step pipeline:
   Step 1: wasi2ic     - Convert WASI WASM to IC-compatible format
   Step 2: wasm-opt    - Optimize WASM binary size
   Step 3: candid-ext  - Extract Candid interface definitions
+  Step 4: copy-wasm   - Copy optimized WASM to example directories
 """
 
 import shutil
 import subprocess
 import sys
+import os
 from pathlib import Path
 from typing import List, Optional
 
@@ -131,6 +133,52 @@ def run_candid_extractor(
 
 
 # =============================================================================
+# Step 4: Copy WASM to Examples
+# =============================================================================
+
+
+def run_copy_wasm(bin_dir: Path, examples_dir: Path) -> int:
+    """
+    Step 4: Copy optimized WASM files to their corresponding example directories.
+
+    Args:
+        bin_dir: Directory containing _ic.wasm files
+        examples_dir: Root examples directory
+
+    Returns:
+        Number of successfully copied files
+    """
+    copied_count = 0
+
+    for wasm_file in bin_dir.glob("*_ic.wasm"):
+        filename = wasm_file.name
+        canister_name = filename.replace("_ic.wasm", "")
+
+        # Find matching example directory
+        target_example_dir = None
+        for d in examples_dir.iterdir():
+            if not d.is_dir():
+                continue
+            if d.name == canister_name:
+                target_example_dir = d
+                break
+            if d.name == "hello_lucid" and canister_name == "greet":
+                target_example_dir = d
+                break
+
+        if target_example_dir:
+            dest_path = target_example_dir / wasm_file.name  
+            try:
+                shutil.copy2(wasm_file, dest_path)
+                print(f"   Copied {wasm_file.name} -> {dest_path}")
+                copied_count += 1
+            except Exception as e:
+                print(f"   Error copying {wasm_file.name}: {e}")
+
+    return copied_count
+
+
+# =============================================================================
 # Pipeline Orchestrator
 # =============================================================================
 
@@ -142,12 +190,14 @@ class PostProcessStats:
         self.wasi2ic_count = 0
         self.wasm_opt_count = 0
         self.candid_count = 0
+        self.copied_count = 0
 
     def __repr__(self):
         return (
             f"wasi2ic: {self.wasi2ic_count}, "
             f"wasm-opt: {self.wasm_opt_count}, "
-            f"candid: {self.candid_count}"
+            f"candid: {self.candid_count}, "
+            f"copied: {self.copied_count}"
         )
 
     def as_dict(self) -> dict:
@@ -155,6 +205,7 @@ class PostProcessStats:
             "converted": self.wasi2ic_count,
             "optimized": self.wasm_opt_count,
             "candid": self.candid_count,
+            "copied": self.copied_count,
         }
 
 
@@ -171,6 +222,7 @@ def post_process_wasm_files(
       Step 1: wasi2ic     - WASI -> IC conversion
       Step 2: wasm-opt    - Binary optimization
       Step 3: candid-ext  - Interface extraction
+      Step 4: copy-wasm   - Copy optimized WASM to example directories
 
     Args:
         bin_dir: Directory containing .wasm files
@@ -192,17 +244,21 @@ def post_process_wasm_files(
         return stats.as_dict()
 
     # Step 1: wasi2ic
-    print(" Step 1/3: wasi2ic (WASI -> IC conversion)")
+    print(" Step 1/4: wasi2ic (WASI -> IC conversion)")
     converted_files = run_wasi2ic(wasi2ic_tool, bin_dir)
     stats.wasi2ic_count = len(converted_files)
 
     # Step 2: wasm-opt
     if converted_files:
-        print(" Step 2/3: wasm-opt (binary optimization)")
+        print(" Step 2/4: wasm-opt (binary optimization)")
         stats.wasm_opt_count = run_wasm_opt(converted_files, optimization_level)
 
     # Step 3: candid-extractor
-    print(" Step 3/3: candid-extractor (interface extraction)")
+    print(" Step 3/4: candid-extractor (interface extraction)")
     stats.candid_count = run_candid_extractor(bin_dir, examples_dir)
+
+    # Step 4: Copy WASM
+    print(" Step 4/4: Copy optimized WASM to examples")
+    stats.copied_count = run_copy_wasm(bin_dir, examples_dir)
 
     return stats.as_dict()

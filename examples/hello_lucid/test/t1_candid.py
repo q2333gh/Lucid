@@ -20,54 +20,48 @@ except ImportError:
 def find_project_root(start_path: Path) -> Path:
     """
     Find project root directory (cdk-c) by looking for characteristic directories.
-    
-    The project root is identified by the presence of 'src' and 'include' directories.
-    This allows the script to work regardless of where it's executed from.
     """
     current = start_path.resolve()
-    
+
     # Search upward for project root
     for parent in [current] + list(current.parents):
         if (parent / "src").exists() and (parent / "include").exists():
             return parent
-    
+
     # Fallback: if we're in examples/hello_lucid/test/, go up 3 levels
     if current.name == "test":
         potential_root = current.parent.parent.parent
         if (potential_root / "src").exists():
             return potential_root
-    
+
     # Last resort: return current directory
     return current
 
 
 def setup_pocketic_binary():
     """Set up PocketIC binary path if not already set"""
-    # Get the directory where this script is located
     script_dir = Path(__file__).parent.resolve()
     pocket_ic_bin = script_dir / "pocket-ic"
-    
-    # If POCKET_IC_BIN is not set and pocket-ic exists in script directory, set it
+
     if "POCKET_IC_BIN" not in os.environ and pocket_ic_bin.exists():
         os.environ["POCKET_IC_BIN"] = str(pocket_ic_bin)
         print(f"Set POCKET_IC_BIN to: {pocket_ic_bin}")
     elif "POCKET_IC_BIN" not in os.environ:
-        # Check if pocket-ic exists in current working directory
         cwd_pocket_ic = Path.cwd() / "pocket-ic"
         if cwd_pocket_ic.exists():
             os.environ["POCKET_IC_BIN"] = str(cwd_pocket_ic)
             print(f"Set POCKET_IC_BIN to: {cwd_pocket_ic}")
         else:
-            print(f"Warning: pocket-ic binary not found in {script_dir} or {Path.cwd()}")
-            print("Please set POCKET_IC_BIN environment variable or place pocket-ic in the test directory")
+            print(
+                f"Warning: pocket-ic binary not found in {script_dir} or {Path.cwd()}"
+            )
+            print(
+                "Please set POCKET_IC_BIN environment variable or place pocket-ic in the test directory"
+            )
 
 
 def get_wasm_path():
-    """
-    Get the path to build-wasi/bin/hello_lucid_ic.wasm 
-    (relative to git repo root; path is always from git repo root)
-    """
-    # Search upward for repo root (has a ".git" directory)
+    """Get the path to build-wasi/bin/hello_lucid_ic.wasm"""
     script_dir = Path(__file__).parent.resolve()
     current = script_dir
     repo_root = None
@@ -76,116 +70,138 @@ def get_wasm_path():
             repo_root = parent
             break
     if repo_root is None:
-        raise FileNotFoundError("Could not find git repository root (no .git directory found upward from script location)")
+        raise FileNotFoundError(
+            "Could not find git repository root (no .git directory found upward from script location)"
+        )
 
-    # Always use path from git repo root
     wasm_path = repo_root / "build-wasi" / "bin" / "hello_lucid_ic.wasm"
 
     if not wasm_path.exists():
         raise FileNotFoundError(
-            f"hello_lucid_ic.wasm not found at expected path: {wasm_path}\n(Expected path is relative to git repo root: 'build-wasi/bin/hello_lucid_ic.wasm')"
+            f"hello_lucid_ic.wasm not found at expected path: {wasm_path}\n"
+            "(Expected path is relative to git repo root: 'build-wasi/bin/hello_lucid_ic.wasm')"
         )
 
     return wasm_path
+
+
 def get_did_path():
     """Get the path to hello_lucid.did file"""
     script_dir = Path(__file__).parent.resolve()
     project_root = find_project_root(script_dir)
-    
-    # DID file is typically in the example directory
+
     examples_dir = project_root / "examples" / "hello_lucid"
     did_path = examples_dir / "hello_lucid.did"
-    
+
     if not did_path.exists():
-        # Fallback: try relative to script location
         fallback_path = script_dir.parent / "hello_lucid.did"
         if fallback_path.exists():
             return fallback_path
         raise FileNotFoundError(
             f"hello_lucid.did not found at {did_path} or {fallback_path}"
         )
-    
+
     return did_path
 
 
+def decode_candid_text(response_bytes: bytes) -> str:
+    """
+    Simple manual decoding for Candid text responses.
+    Extracts printable string from DIDL encoded bytes.
+    """
+    if not isinstance(response_bytes, bytes):
+        return str(response_bytes)
+
+    # Try to find known string pattern or just extract printable chars
+    # This is a naive implementation for test purposes
+    try:
+        # Look for DIDL magic bytes
+        if response_bytes.startswith(b"DIDL"):
+            # Skip header roughly (magic + table) and look for content
+            # Just extraction of ASCII/UTF-8 content for now
+            import re
+
+            text_content = re.search(b"[a-zA-Z0-9_ -]+$", response_bytes)
+            if text_content:
+                return text_content.group(0).decode("utf-8")
+    except Exception:
+        pass
+
+    # Fallback: decode and strip non-printable
+    try:
+        decoded = response_bytes.decode("utf-8", errors="ignore")
+        import string
+
+        return "".join(filter(lambda x: x in string.printable, decoded)).strip()
+    except Exception:
+        return str(response_bytes)
+
+
+def run_test(pic, canister_id, method, expected_substr):
+    """Run a query test and verify response contains expected substring."""
+    print(f"\n=== Testing {method} ===")
+    payload = encode([])  # Empty args
+    response_bytes = pic.query_call(canister_id, method, payload)
+
+    print(f"Raw response: {response_bytes}")
+
+    # Naive decoding for now (until proper candid decode is hooked up)
+    # We check if the expected bytes are present in the raw response
+    # This works because Candid strings are UTF-8 encoded in the byte stream
+    expected_bytes = expected_substr.encode("utf-8")
+    passed = expected_bytes in response_bytes
+
+    if passed:
+        print(f"✓ Test passed: Response contains '{expected_substr}'")
+    else:
+        print(f"✗ Test failed: Expected '{expected_substr}' not found in response")
+        # Try to decode for better error message
+        decoded = decode_candid_text(response_bytes)
+        print(f"  Decoded (approx): {decoded}")
+        sys.exit(1)
+
+
 def main():
-    print("Starting PocketIC test for greet canister (using Candid interface)...")
-    
-    # Set up PocketIC binary path before initializing PocketIC
+    print("Starting PocketIC test for greet canister...")
     setup_pocketic_binary()
-    
-    # Get paths
+
     wasm_path = get_wasm_path()
     did_path = get_did_path()
-    
+
     import os
     import datetime
 
-    print(f"WASM file: {wasm_path}")
-    wasmpath_mtime = datetime.datetime.fromtimestamp(os.path.getmtime(wasm_path))
-    print(f"  (Last modified: {wasmpath_mtime})")
-    print(f"DID file: {did_path}")
-    
-    # Initialize PocketIC
+    print(f"WASM: {wasm_path}")
+    print(
+        f"      (Modified: {datetime.datetime.fromtimestamp(os.path.getmtime(wasm_path))})"
+    )
+    print(f"DID:  {did_path}")
+
     pic = PocketIC()
     print("PocketIC initialized")
-    
-    # Read WASM and DID files
-    with open(wasm_path, 'rb') as f:
-        wasm_module = f.read()
-    
-    with open(did_path, 'r') as f:
-        candid_interface = f.read()
-    
-    print("Creating and installing canister with Candid interface...")
-    print("(This method automatically handles type parsing using the DID file)")
 
-# create_and_install_canister_with_candid:(): automates canister creation, cycles, install, DID registration; returns object with canister_id.
+    with open(wasm_path, "rb") as f:
+        wasm_module = f.read()
+    with open(did_path, "r") as f:
+        candid_interface = f.read()
+
+    print("Installing canister...")
     canister = pic.create_and_install_canister_with_candid(
-        candid=candid_interface,
-        wasm_module=wasm_module
+        candid=candid_interface, wasm_module=wasm_module
     )
-    
     canister_id = canister.canister_id
-    print(f"Canister created and installed: {canister_id}")
-    print(f"Canister object type: {type(canister)}")
-    
-    # Test greet_no_arg method (no arguments, returns text)
-    print("\n=== Testing greet_no_arg ===")
-    
-    # Use pic.query_call to call the method
-    # The canister object created by create_and_install_canister_with_candid
-    # provides the Candid interface definition, but we use pic.query_call
-    # for the actual call, then decode the response manually based on DID file
-    #
-    # According to DID file: "greet_no_arg": () -> (text) query;
-    # So we expect a text (string) return value
-    payload = encode([])  # Empty args for () -> (text)
-    response_bytes = pic.query_call(canister_id, "greet_no_arg", payload)
-    
-    # Decode the Candid response
-    # The response is Candid-encoded bytes, we need to extract the text value
-    # Format: b'DIDL\r\x16hello world from cdk-c'
-    # For text type, we can extract the string directly
-    if isinstance(response_bytes, bytes) and b'hello' in response_bytes:
-        text_start = response_bytes.find(b'hello')
-        response = response_bytes[text_start:].decode('utf-8', errors='ignore').rstrip('\x00')
-    else:
-        response = str(response_bytes)
-    
-    print(f"Response: {response}")
-    print(f"Response type: {type(response)}")
-    
-    # Verify the response
-    assert isinstance(response, str), f"Expected string response, got {type(response)}"
-    assert response == "hello world from cdk-c", f"Expected 'hello world from cdk-c', got: {response}"
-    print("✓ greet_no_arg test passed")
-    
-    print("""\n=== All tests completed ===
-# Note: Call methods via pic.query_call() and decode per DID; canister object methods may not match method naming—use direct calls for reliability.
-    """)
+    print(f"Canister ID: {canister_id}")
+
+    # Test 1: greet_no_arg
+    run_test(pic, canister_id, "greet_no_arg", "hello world from cdk-c")
+
+    # Test 2: greet (returns caller principal as text)
+    # Default PocketIC anonymous caller is anoymous principal 
+    # from IC-candid-spec: Binary: 0x04 ,text  2vxsx-fae
+    run_test(pic, canister_id, "greet_caller", "2vxsx-fae")
+
+    print("\n=== All tests passed ===")
 
 
 if __name__ == "__main__":
     main()
-

@@ -87,7 +87,6 @@ extern int                __ic_candid_method_count;
 // This expands to both:
 //   1. Registration of "greet" with signature "(text) -> (text)" as a query
 //   2. Export of the function as "canister_query greet"
-
 #define IC_QUERY(func_name, sig)                                               \
     IC_CANDID_QUERY(func_name, sig)                                            \
     __attribute__((export_name("canister_query " #func_name)))                 \

@@ -26,7 +26,7 @@ A pure C language SDK for developing Internet Computer (IC) canisters. This SDK 
 ```bash
 
 # Build with hello examples
-python build.py --wasi 
+python build.py --icwasm 
 
 ```
 
@@ -54,7 +54,7 @@ Build and test:
 
 ```bash
 # Build WASM
-python build.py --wasi --examples
+python build.py --icwasm
 
 # Run tests with PocketIC
 python examples/hello_lucid/test/t1_candid.py
@@ -63,41 +63,36 @@ python examples/hello_lucid/test/t1_candid.py
 ## Project Structure
 
 ```
-cdk-c/
-├── include/          # Header files
-│   ├── ic_c_sdk.h   # Main SDK header
-│   ├── ic_api.h     # High-level API
-│   ├── ic_candid.h  # Candid support
-│   └── ...
-├── src/             # SDK source files
-├── examples/        # Example canisters
+Lucid/
+├── build.py         # Main build script (root level)
+├── cdk-c/
+│   ├── include/     # Header files
+│   │   ├── ic_c_sdk.h   # Main SDK header
+│   │   ├── ic_api.h     # High-level API
+│   │   ├── ic_candid.h  # Candid support
+│   │   └── ...
+│   ├── src/        # SDK source files
+│   └── scripts/    # Build utilities
+│       └── build_utils/ # Build utility modules
+├── examples/       # Example canisters
 │   └── hello_lucid/ # Hello world example
-├── scripts/         # Build scripts
-│   ├── build.py     # Main build script
-│   └── build_utils/ # Build utilities
-└── build/           # Build output directory
+├── build/          # Native build output directory
+└── build-wasi/     # WASI build output directory
 ```
 
 ## Build Options
 
-The build script supports multiple options:
+The build script supports the following options:
 
 ```bash
-# Build native library (for testing)
-python scripts/build.py
+# Build native library (for testing, runs CTest automatically)
+python build.py
 
 # Build WASI library (for IC deployment)
-python scripts/build.py --wasi
-
-# Build examples
-python scripts/build.py --examples
-
-# Clean build artifacts
-python scripts/build.py --clean
-
-# Show build configuration
-python scripts/build.py --info
+python build.py --icwasm
 ```
+
+The `--icwasm` flag builds IC-compatible WASM canisters with automatic post-processing (wasi2ic conversion, wasm-opt optimization, and Candid interface extraction).
 
 ## API Overview
 
@@ -135,7 +130,7 @@ This project uses PocketIC for local testing. PocketIC provides a fast, determin
 
 ```bash
 # Build the canister first
-python scripts/build.py --wasi --examples
+python build.py --icwasm
 
 # Run tests
 python examples/hello_lucid/test/t1_candid.py
@@ -153,8 +148,8 @@ See `examples/hello_lucid/` for a complete example canister with PocketIC tests.
 
 ## Documentation
 
-- API documentation: See header files in `include/`
-- Build system: See `scripts/build.py --help`
+- API documentation: See header files in `cdk-c/include/`
+- Build system: Run `python build.py --help` or see `doc/build.md`
 - Examples: See `examples/` directory
 
 ## License

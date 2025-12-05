@@ -58,5 +58,5 @@ jobs:
         run: python build.py
 
       - name: WASI build
-        run: python build.py --wasi
+        run: python build.py --icwasm
 

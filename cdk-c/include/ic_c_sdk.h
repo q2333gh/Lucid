@@ -23,6 +23,7 @@
 
 // High-level API
 #include "ic_api.h"
+#include "ic_simple.h"
 
 // Convenience macros for exporting canister entry points (for function
 // definitions) Usage: IC_EXPORT_QUERY(greet_no_arg) { ... } expands to:

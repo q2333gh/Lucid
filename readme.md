@@ -37,16 +37,12 @@ Create a simple canister function:
 ```c
 #include "ic_c_sdk.h"
 
-IC_EXPORT_QUERY(greet) {
-    ic_api_t *api = ic_api_init(IC_ENTRY_QUERY, __func__, false);
-    if (api == NULL) {
-        ic_api_trap("Failed to initialize IC API");
-    }
-    
-    // Send response
-    ic_api_to_wire_text(api, "Hello from C!");
-    
-    ic_api_free(api);
+IC_CANDID_EXPORT_DID()
+
+IC_API_QUERY(greet, "() -> (text)") {
+    // api variable is automatically initialized
+    IC_API_REPLY_TEXT("Hello from C!");
+    // api is automatically freed when function returns
 }
 ```
 
@@ -69,6 +65,7 @@ Lucid/
 │   ├── include/     # Header files
 │   │   ├── ic_c_sdk.h   # Main SDK header
 │   │   ├── ic_api.h     # High-level API
+│   │   ├── ic_simple.h  # Simplified API macros
 │   │   ├── ic_candid.h  # Candid support
 │   │   └── ...
 │   ├── src/        # SDK source files
@@ -98,28 +95,51 @@ The `--icwasm` flag builds IC-compatible WASM canisters with automatic post-proc
 
 ### Entry Points
 
-Use macros to export canister functions:
+Use simplified macros to define canister functions (recommended):
 
 ```c
-IC_EXPORT_QUERY(function_name) { ... }   // Query function
-IC_EXPORT_UPDATE(function_name) { ... }   // Update function (under development)
+IC_CANDID_EXPORT_DID()  // Export Candid interface (once per file)
+
+IC_API_QUERY(greet, "() -> (text)") {
+    // api variable is automatically available
+    IC_API_REPLY_TEXT("Hello!");
+}
+
+IC_API_UPDATE(set_value, "(nat32) -> ()") {
+    uint64_t value;
+    IC_API_ARG_NAT(&value);
+    // ... process value ...
+    IC_API_REPLY_EMPTY();
+}
 ```
 
-### High-level API
+Or use the lower-level macros for more control:
 
 ```c
-// Initialize API
-ic_api_t *api = ic_api_init(IC_ENTRY_QUERY, __func__, false);
+IC_QUERY(function_name, "() -> (text)") {
+    ic_api_t *api = ic_api_init(IC_ENTRY_QUERY, __func__, false);
+    // ... your code ...
+    ic_api_free(api);
+}
+```
 
-// Get caller principal
-ic_principal_t caller = ic_api_get_caller(api);
+### Simplified API (Recommended)
 
-// Send/receive Candid data
-ic_api_to_wire_text(api, "response");
-ic_api_from_wire_text(api, &text, &len);
+The `IC_API_QUERY` and `IC_API_UPDATE` macros automatically handle API initialization and cleanup:
 
-// Cleanup
-ic_api_free(api);
+```c
+IC_API_QUERY(my_query, "() -> (text)") {
+    // api is automatically initialized and available
+    ic_principal_t caller = ic_api_get_caller(api);
+    
+    // Convenient reply macros
+    IC_API_REPLY_TEXT("response");
+    IC_API_REPLY_NAT(42);
+    IC_API_REPLY_INT(-10);
+    IC_API_REPLY_EMPTY();
+    
+    // api is automatically freed when function returns
+}
 ```
 
 ## Testing

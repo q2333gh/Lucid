@@ -28,7 +28,7 @@ static uint32_t crc32(const uint8_t *data, size_t len) {
 // =============================================================================
 // Base32 Implementation (RFC 4648)
 // =============================================================================
-
+// 1 for human-safe like 1,l
 static const char BASE32_ALPHABET[] = "abcdefghijklmnopqrstuvwxyz234567";
 
 // Encode data to Base32 string

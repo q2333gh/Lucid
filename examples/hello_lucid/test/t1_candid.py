@@ -197,7 +197,7 @@ def main():
 
     # Test 2: greet (returns caller principal as text)
     # Default PocketIC anonymous caller is anoymous principal 
-    # from IC-candid-spec: Binary: 0x04 ,text  2vxsx-fae
+    # from IC-candid-spec anonymous principal: Binary: 0x04 ;text: 2vxsx-fae
     run_test(pic, canister_id, "greet_caller", "2vxsx-fae")
 
     print("\n=== All tests passed ===")

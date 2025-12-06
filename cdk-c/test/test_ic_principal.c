@@ -46,7 +46,7 @@ Test(ic_principal, to_text_encodes_expected_base32_prefix) {
     char text[64] = {0};
     int  written = ic_principal_to_text(&principal, text, sizeof(text));
     cr_expect_gt(written, 0);
-    cr_expect_str_eq(text, "vpzuae");
+    cr_expect_str_eq(text, "em77e-bvlzu-aq");
 }
 
 // Text conversion must fail fast when buffers are too small or inputs invalid.

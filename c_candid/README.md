@@ -212,7 +212,7 @@ idl_status idl_builder_arg_blob(idl_builder *builder, const uint8_t *data, size_
 ## Testing
 
 ```bash
-# Run unit tests
+# Run candid unit tests
 ./build/bin/runtime_tests
 
 # Run oracle tests (compares with Rust didc)

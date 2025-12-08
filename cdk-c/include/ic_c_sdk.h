@@ -25,6 +25,9 @@
 #include "ic_api.h"
 #include "ic_simple.h"
 
+// Inter-canister call
+#include "ic_call.h"
+
 // Convenience macros for exporting canister entry points (for function
 // definitions) Usage: IC_EXPORT_QUERY(greet_no_arg) { ... } expands to:
 //   __attribute__((export_name("canister_query greet_no_arg")))

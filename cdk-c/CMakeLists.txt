@@ -5,6 +5,7 @@ add_library(cdk_c STATIC
     src/ic_wasi_polyfill.c
     src/ic_candid.c
     src/ic_candid_registry.c
+    src/ic_call.c
 )
 
 # Add c_candid dependency

@@ -60,6 +60,9 @@ const char *ic_candid_generate_did(void) {
         if (method->type == IC_METHOD_QUERY) {
             p = str_copy(p, end, " query");
         }
+        // Update methods are default in Candid service blocks, so no annotation
+        // is needed. Unless they are "oneway" but we don't distinguish that
+        // yet.
 
         p = str_copy(p, end, ";\n");
     }

@@ -11,11 +11,7 @@
 // WASI polyfill must be initialized before using these functions
 #include "ic_wasi_polyfill.h"
 
-// Declares a WASM import symbol
-#ifndef WASM_SYMBOL_IMPORTED
-#define WASM_SYMBOL_IMPORTED(module, name)                                     \
-    __attribute__((import_module(module))) __attribute__((import_name(name)))
-#endif
+#include "wasm_symbol.h"
 
 // Incoming message data and metadata
 uint32_t ic0_msg_arg_data_size(void)

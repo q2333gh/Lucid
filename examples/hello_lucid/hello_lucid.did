@@ -2,5 +2,5 @@ service : {
     "greet_no_arg": () -> (text) query;
     "greet_caller": () -> (text) query;
     "whoami": () -> (text) query;
-    "trigger_call": (principal) -> () query;
+    "trigger_call": (principal) -> ();
 }

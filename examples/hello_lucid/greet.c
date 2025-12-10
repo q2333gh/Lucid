@@ -167,13 +167,6 @@ void my_reject(void *env) {
 void make_call(ic_principal_t callee) {
     ic_call_t *call = ic_call_new(&callee, "increment");
 
-    // Add arguments
-    // increment now expects no arguments, but previous code sent {1,2,3}?
-    // Wait, increment signature is () -> (text). It takes NO args.
-    // The previous code sent {1, 2, 3} which might be garbage or ignored if arg
-    // count is 0. Let's remove arg sending or send empty. uint8_t arg_data[] =
-    // {1, 2, 3}; ic_call_with_arg(call, arg_data, sizeof(arg_data));
-
     // Add cycles
     ic_call_with_cycles(call, 1000);
 

@@ -47,6 +47,7 @@ from post_process import (
     run_wasm_opt,
     run_candid_extractor,
 )
+from project_manager import create_new_project
 
 # Try to import generate_dfx, but don't fail if it's not there yet
 try:
@@ -315,6 +316,7 @@ Examples:
   python build.py            Native build (with tests)
   python build.py --icwasm   IC WASM canister build (with post-processing)
   python build.py --icwasm --examples hello_lucid inter-canister-call
+  python build.py --new my_canister  Create a new minimal project
         """,
     )
     parser.add_argument(
@@ -330,7 +332,18 @@ Examples:
         default=None,
     )
 
+    parser.add_argument(
+        "--new",
+        help="Create a new minimal project with the given name",
+        type=str,
+        default=None,
+    )
+
     args = parser.parse_args()
+
+    if args.new:
+        create_new_project(args.new, _ROOT_DIR)
+        sys.exit(0)
 
     try:
         build(wasi=args.icwasm, examples=args.examples)

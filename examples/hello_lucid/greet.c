@@ -72,9 +72,11 @@ IC_API_QUERY(whoami, "() -> (text)") {
 // Inter-Canister Call Example
 // =============================================================================
 static unsigned int counter = 0;
-// value: 要转换的整数
-// str: 输出缓冲区，保证足够大（int32 用 12 字节足够）
-// 返回值: str 指针
+
+// Converts an integer value to a string.
+// value: the integer to convert
+// str: output buffer, must be large enough (12 bytes is enough for int32)
+// Returns: pointer to the output string (str)
 char *int_to_str(int value, char *str) {
     char *p = str;
     char *start = str;
@@ -82,7 +84,7 @@ char *int_to_str(int value, char *str) {
 
     if (value < 0) {
         negative = 1;
-        // 注意处理最小负数 -2147483648
+        // Handle the minimum negative value for int32: -2147483648
         if (value == -2147483648) {
             *p++ = '-';
             *p++ = '2';
@@ -92,7 +94,7 @@ char *int_to_str(int value, char *str) {
         }
     }
 
-    // 生成数字字符（倒序）
+    // Generate digits in reverse order
     char *digits_start = p;
     do {
         *p++ = '0' + (value % 10);
@@ -105,7 +107,7 @@ char *int_to_str(int value, char *str) {
 
     *p = '\0';
 
-    // 反转数字部分
+    // Reverse the digits part to get the correct order
     char *left = negative ? digits_start : str;
     char *right = p - 1;
     while (left < right) {
@@ -119,35 +121,58 @@ char *int_to_str(int value, char *str) {
     return str;
 }
 
-IC_API_UPDATE(increment, "() -> ()") {
+IC_API_UPDATE(increment, "() -> (text)") {
     counter++;
     char msg[128];
     strcat(msg, "increment called ,result is : ");
     char buf[12];
-    int x = counter;
+    int  x = counter;
     int_to_str(x, buf);
     strcat(msg, buf);
     ic_api_debug_print(msg);
-    ic_api_msg_reply(api);
+
+    // Return status text
+    IC_API_REPLY_TEXT("Incremented!");
 }
 
 // Define callbacks
 void my_reply(void *env) {
-    // Handle reply
-    ic_api_debug_print("Call replied!");
+    // Manually init API context for callback reply
+    // Note: IC_ENTRY_REPLY_CALLBACK allows replying to the original caller
+    ic_api_t *api = ic_api_init(IC_ENTRY_REPLY_CALLBACK, "my_reply", true);
+
+    ic_api_debug_print("Call replied! Now replying to original caller.");
+
+    // In a real app, we would decode the response from `increment` here.
+    // The response is in the input buffer of the callback context.
+    // For now, we just reply to the trigger_call caller with success.
+
+    IC_API_REPLY_TEXT("Inter-canister call successful: Increment executed.");
+
+    ic_api_free(api);
 }
 
 void my_reject(void *env) {
-    // Handle rejection
+    ic_api_t *api = ic_api_init(IC_ENTRY_REJECT_CALLBACK, "my_reject", true);
     ic_api_debug_print("Call rejected!");
+
+    // Propagate error to original caller (or just trap)
+    // Here we return a text error for better UX
+    // IC_API_REPLY_TEXT("Inter-canister call failed/rejected.");
+    ic_api_trap("Inter-canister call rejected by callee.");
+
+    ic_api_free(api);
 }
 
 void make_call(ic_principal_t callee) {
     ic_call_t *call = ic_call_new(&callee, "increment");
 
     // Add arguments
-    uint8_t arg_data[] = {1, 2, 3};
-    ic_call_with_arg(call, arg_data, sizeof(arg_data));
+    // increment now expects no arguments, but previous code sent {1,2,3}?
+    // Wait, increment signature is () -> (text). It takes NO args.
+    // The previous code sent {1, 2, 3} which might be garbage or ignored if arg
+    // count is 0. Let's remove arg sending or send empty. uint8_t arg_data[] =
+    // {1, 2, 3}; ic_call_with_arg(call, arg_data, sizeof(arg_data));
 
     // Add cycles
     ic_call_with_cycles(call, 1000);
@@ -164,7 +189,7 @@ void make_call(ic_principal_t callee) {
 }
 
 // Example update function to trigger the call (optional)
-IC_API_UPDATE(trigger_call, "(principal) -> ()") {
+IC_API_UPDATE(trigger_call, "(principal) -> (text)") {
     ic_api_debug_print("trigger_call called, callee: ");
     ic_principal_t callee;
     if (ic_api_from_wire_principal(api, &callee) != IC_OK) {
@@ -173,5 +198,9 @@ IC_API_UPDATE(trigger_call, "(principal) -> ()") {
 
     make_call(callee);
 
-    ic_api_msg_reply(api);
+    // CRITICAL: Do NOT reply here.
+    // We want to reply ONLY when the callback returns.
+    // By returning from this function WITHOUT calling msg_reply,
+    // we tell the IC that the response is pending.
+    // The callback `my_reply` will eventually send the response.
 }

@@ -1,0 +1,4 @@
+service : {
+    "greet": () -> (text) query;
+    "increment": () -> (text);
+}

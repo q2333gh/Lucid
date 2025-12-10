@@ -1,4 +1,3 @@
 service : {
-    "greet_no_arg": () -> (text) query;
-    "greet_caller": () -> (text) query;
+    "trigger_call": (principal) -> (text);
 }

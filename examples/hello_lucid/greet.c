@@ -48,10 +48,9 @@ IC_API_QUERY(greet_caller, "() -> (text)") {
 // Query function: whoami (no input, returns canister id)
 // =============================================================================
 IC_API_QUERY(whoami, "() -> (text)") {
-    // 1. 获取自身的 Principal 结构体
+
     ic_principal_t self = ic_api_get_canister_self(api);
 
-    // 2. 准备缓冲区将 Principal 转换为文本格式
     char self_text[64];
     int  len = ic_principal_to_text(&self, self_text, sizeof(self_text));
 
@@ -66,134 +65,4 @@ IC_API_QUERY(whoami, "() -> (text)") {
     } else {
         ic_api_trap("Failed to get canister id");
     }
-}
-
-// =============================================================================
-// Inter-Canister Call Example
-// =============================================================================
-static unsigned int counter = 0;
-
-// Converts an integer value to a string.
-// value: the integer to convert
-// str: output buffer, must be large enough (12 bytes is enough for int32)
-// Returns: pointer to the output string (str)
-char *int_to_str(int value, char *str) {
-    char *p = str;
-    char *start = str;
-    int   negative = 0;
-
-    if (value < 0) {
-        negative = 1;
-        // Handle the minimum negative value for int32: -2147483648
-        if (value == -2147483648) {
-            *p++ = '-';
-            *p++ = '2';
-            value = 147483648;
-        } else {
-            value = -value;
-        }
-    }
-
-    // Generate digits in reverse order
-    char *digits_start = p;
-    do {
-        *p++ = '0' + (value % 10);
-        value /= 10;
-    } while (value);
-
-    if (negative && digits_start == str) {
-        *p++ = '-';
-    }
-
-    *p = '\0';
-
-    // Reverse the digits part to get the correct order
-    char *left = negative ? digits_start : str;
-    char *right = p - 1;
-    while (left < right) {
-        char tmp = *left;
-        *left = *right;
-        *right = tmp;
-        left++;
-        right--;
-    }
-
-    return str;
-}
-
-IC_API_UPDATE(increment, "() -> (text)") {
-    counter++;
-    char msg[128];
-    strcat(msg, "increment called ,result is : ");
-    char buf[12];
-    int  x = counter;
-    int_to_str(x, buf);
-    strcat(msg, buf);
-    ic_api_debug_print(msg);
-
-    // Return status text
-    IC_API_REPLY_TEXT("Incremented!");
-}
-
-// Define callbacks
-void my_reply(void *env) {
-    // Manually init API context for callback reply
-    // Note: IC_ENTRY_REPLY_CALLBACK allows replying to the original caller
-    ic_api_t *api = ic_api_init(IC_ENTRY_REPLY_CALLBACK, "my_reply", true);
-
-    ic_api_debug_print("Call replied! Now replying to original caller.");
-
-    // In a real app, we would decode the response from `increment` here.
-    // The response is in the input buffer of the callback context.
-    // For now, we just reply to the trigger_call caller with success.
-
-    IC_API_REPLY_TEXT("Inter-canister call successful: Increment executed.");
-
-    ic_api_free(api);
-}
-
-void my_reject(void *env) {
-    ic_api_t *api = ic_api_init(IC_ENTRY_REJECT_CALLBACK, "my_reject", true);
-    ic_api_debug_print("Call rejected!");
-
-    // Propagate error to original caller (or just trap)
-    // Here we return a text error for better UX
-    // IC_API_REPLY_TEXT("Inter-canister call failed/rejected.");
-    ic_api_trap("Inter-canister call rejected by callee.");
-
-    ic_api_free(api);
-}
-
-void make_call(ic_principal_t callee) {
-    ic_call_t *call = ic_call_new(&callee, "increment");
-
-    // Add cycles
-    ic_call_with_cycles(call, 1000);
-
-    // Set callbacks
-    ic_call_on_reply(call, my_reply, NULL);
-    ic_call_on_reject(call, my_reject, NULL);
-
-    // Execute
-    ic_call_perform(call);
-
-    // Cleanup builder (data is already copied by system)
-    ic_call_free(call);
-}
-
-// Example update function to trigger the call (optional)
-IC_API_UPDATE(trigger_call, "(principal) -> (text)") {
-    ic_api_debug_print("trigger_call called, callee: ");
-    ic_principal_t callee;
-    if (ic_api_from_wire_principal(api, &callee) != IC_OK) {
-        ic_api_trap("Failed to parse callee principal");
-    }
-
-    make_call(callee);
-
-    // CRITICAL: Do NOT reply here.
-    // We want to reply ONLY when the callback returns.
-    // By returning from this function WITHOUT calling msg_reply,
-    // we tell the IC that the response is pending.
-    // The callback `my_reply` will eventually send the response.
 }

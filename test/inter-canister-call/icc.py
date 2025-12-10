@@ -13,8 +13,10 @@ from ic.agent import Agent
 from ic.candid import encode, decode, Types
 
 # Canister ID - update this with your deployed canister ID from 'dfx deploy' output
-callee = "uzt4z-lp777-77774-qaabq-cai"
-# Local IC network URL (default for dfx start)
+# TODO dev-exp: find a way to pass a name instead of generated canister ID, a tool to KV store it .
+callee = "ufxgi-4p777-77774-qaadq-cai"
+caller = "vpyes-67777-77774-qaaeq-cai"
+# Default local IC network URL (default for dfx start)
 ic_network_url = "http://127.0.0.1:4943"
 
 # Initialize client, identity, and agent
@@ -28,5 +30,5 @@ print("inter-canister call increment:")
 # 3) Update call: trigger_call (requires principal parameter)
 # Update calls can modify state and are executed on-chain
 params = [{"type": Types.Principal, "value": callee}]  # Using self as target
-resp = agent.update_raw(callee, "trigger_call", encode(params))
+resp = agent.update_raw(caller, "trigger_call", encode(params))
 print("trigger_call:", resp)  # Usually [] when no return value

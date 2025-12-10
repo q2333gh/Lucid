@@ -19,27 +19,72 @@ IC_CANDID_EXPORT_DID()
 #include "idl/candid.h"
 
 // =============================================================================
-// Query function: greet_no_arg (no input, returns hello)
+// Inter-Canister Call Example
 // =============================================================================
-// Using IC_API_QUERY macro: simplifies API initialization and cleanup
-IC_API_QUERY(greet_no_arg, "() -> (text)") {
-    ic_api_debug_print("debug print: hello dfx console. ");
-    IC_API_REPLY_TEXT("hello world from cdk-c !");
+
+
+
+
+
+// Define callbacks
+void my_reply(void *env) {
+    // Manually init API context for callback reply
+    // Note: IC_ENTRY_REPLY_CALLBACK allows replying to the original caller
+    ic_api_t *api = ic_api_init(IC_ENTRY_REPLY_CALLBACK, "my_reply", true);
+
+    ic_api_debug_print("Call replied! Now replying to original caller.");
+
+    // In a real app, we would decode the response from `increment` here.
+    // The response is in the input buffer of the callback context.
+    // For now, we just reply to the trigger_call caller with success.
+
+    IC_API_REPLY_TEXT("Inter-canister call successful: Increment executed.");
+
+    ic_api_free(api);
 }
 
-// =============================================================================
-// Query function: greet_caller (no input, returns caller)
-// =============================================================================
-// Using IC_API_QUERY macro: simplifies API initialization and cleanup
-IC_API_QUERY(greet_caller, "() -> (text)") {
-    ic_principal_t caller = ic_api_get_caller(api);
-    char           caller_text[64];
-    ic_principal_to_text(&caller, caller_text, sizeof(caller_text));
+void my_reject(void *env) {
+    ic_api_t *api = ic_api_init(IC_ENTRY_REJECT_CALLBACK, "my_reject", true);
+    ic_api_debug_print("Call rejected!");
 
-    char msg[256] = "caller: ";
-    strcat(msg, caller_text);
-    ic_api_debug_print(msg);
+    // Propagate error to original caller (or just trap)
+    // Here we return a text error for better UX
+    // IC_API_REPLY_TEXT("Inter-canister call failed/rejected.");
+    ic_api_trap("Inter-canister call rejected by callee.");
 
-    // Return as text
-    IC_API_REPLY_TEXT(caller_text);
+    ic_api_free(api);
+}
+
+void make_call(ic_principal_t callee) {
+    ic_call_t *call = ic_call_new(&callee, "increment");
+
+    // Add cycles
+    ic_call_with_cycles(call, 1000);
+
+    // Set callbacks
+    ic_call_on_reply(call, my_reply, NULL);
+    ic_call_on_reject(call, my_reject, NULL);
+
+    // Execute
+    ic_call_perform(call);
+
+    // Cleanup builder (data is already copied by system)
+    ic_call_free(call);
+}
+
+// Example update function to trigger the call (optional)
+IC_API_UPDATE(trigger_call, "(principal) -> (text)") {
+    ic_api_debug_print("trigger_call called, callee: ");
+    ic_principal_t callee;
+    if (ic_api_from_wire_principal(api, &callee) != IC_OK) {
+        ic_api_trap("Failed to parse callee principal");
+    }
+
+    make_call(callee);
+
+    // CRITICAL: Do NOT reply here.
+    // We want to reply ONLY when the callback returns.
+    // By returning from this function WITHOUT calling msg_reply,
+    // we tell the IC that the response is pending.
+    // The callback `my_reply` will eventually send the response.
 }

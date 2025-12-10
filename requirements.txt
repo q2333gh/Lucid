@@ -1,6 +1,10 @@
 # auto scan for libs:   pipreqs ./cdk-c
 
+#### dev and  testing 
 # ic_py==1.0.1
+# httpx[socks]
+####
+
 pocket_ic==3.1.1
 rich==14.2.0
 sh==2.2.2

@@ -1,0 +1,22 @@
+{
+  "canisters": {
+    "ic_time_test": {
+      "candid": "ic_time_test.did",
+      "wasm": "ic_time_test_ic.wasm",
+      "type": "custom",
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

@@ -71,6 +71,65 @@ IC_API_QUERY(whoami, "() -> (text)") {
 // =============================================================================
 // Inter-Canister Call Example
 // =============================================================================
+static unsigned int counter = 0;
+// value: 要转换的整数
+// str: 输出缓冲区，保证足够大（int32 用 12 字节足够）
+// 返回值: str 指针
+char *int_to_str(int value, char *str) {
+    char *p = str;
+    char *start = str;
+    int   negative = 0;
+
+    if (value < 0) {
+        negative = 1;
+        // 注意处理最小负数 -2147483648
+        if (value == -2147483648) {
+            *p++ = '-';
+            *p++ = '2';
+            value = 147483648;
+        } else {
+            value = -value;
+        }
+    }
+
+    // 生成数字字符（倒序）
+    char *digits_start = p;
+    do {
+        *p++ = '0' + (value % 10);
+        value /= 10;
+    } while (value);
+
+    if (negative && digits_start == str) {
+        *p++ = '-';
+    }
+
+    *p = '\0';
+
+    // 反转数字部分
+    char *left = negative ? digits_start : str;
+    char *right = p - 1;
+    while (left < right) {
+        char tmp = *left;
+        *left = *right;
+        *right = tmp;
+        left++;
+        right--;
+    }
+
+    return str;
+}
+
+IC_API_UPDATE(increment, "() -> ()") {
+    counter++;
+    char msg[128];
+    strcat(msg, "increment called ,result is : ");
+    char buf[12];
+    int x = counter;
+    int_to_str(x, buf);
+    strcat(msg, buf);
+    ic_api_debug_print(msg);
+    ic_api_msg_reply(api);
+}
 
 // Define callbacks
 void my_reply(void *env) {
@@ -84,7 +143,7 @@ void my_reject(void *env) {
 }
 
 void make_call(ic_principal_t callee) {
-    ic_call_t *call = ic_call_new(&callee, "method_name");
+    ic_call_t *call = ic_call_new(&callee, "increment");
 
     // Add arguments
     uint8_t arg_data[] = {1, 2, 3};
@@ -106,6 +165,7 @@ void make_call(ic_principal_t callee) {
 
 // Example update function to trigger the call (optional)
 IC_API_UPDATE(trigger_call, "(principal) -> ()") {
+    ic_api_debug_print("trigger_call called, callee: ");
     ic_principal_t callee;
     if (ic_api_from_wire_principal(api, &callee) != IC_OK) {
         ic_api_trap("Failed to parse callee principal");

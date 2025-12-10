@@ -22,6 +22,7 @@ import subprocess
 import sys
 import os
 from pathlib import Path
+from typing import List, Optional
 
 # =============================================================================
 # Module Setup
@@ -226,7 +227,7 @@ def run_post_processing(
 # =============================================================================
 
 
-def build(wasi: bool = False) -> None:
+def build(wasi: bool = False, examples: Optional[List[str]] = None) -> None:
     """
     Main build orchestrator.
 
@@ -267,6 +268,17 @@ def build(wasi: bool = False) -> None:
     else:
         print(" Target: Native (Host)")
 
+    # Handle examples
+    if examples:
+        # Sanitize examples input (remove 'examples/' prefix if present)
+        sanitized_examples = []
+        for ex in examples:
+            clean_ex = ex.rstrip("/").split("/")[-1]
+            sanitized_examples.append(clean_ex)
+
+        examples_list = ";".join(sanitized_examples)
+        cmake_extra_args.append(f"-DBUILD_EXAMPLES={examples_list}")
+
     # Phase 3: Build
     run_cmake_build(build_dir, wasi, cmake_extra_args)
 
@@ -302,6 +314,7 @@ if __name__ == "__main__":
 Examples:
   python build.py            Native build (with tests)
   python build.py --icwasm   IC WASM canister build (with post-processing)
+  python build.py --icwasm --examples hello_lucid inter-canister-call
         """,
     )
     parser.add_argument(
@@ -310,10 +323,17 @@ Examples:
         help="Build for IC WASM canister platform",
     )
 
+    parser.add_argument(
+        "--examples",
+        nargs="+",
+        help="Specify which examples to build (default: hello_lucid). Usage: --examples hello_lucid inter-canister-call",
+        default=None,
+    )
+
     args = parser.parse_args()
 
     try:
-        build(wasi=args.icwasm)
+        build(wasi=args.icwasm, examples=args.examples)
     except subprocess.CalledProcessError as e:
         print(f"\n✗ Build failed: {e}")
         sys.exit(1)

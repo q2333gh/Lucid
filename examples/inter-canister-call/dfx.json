@@ -1,8 +1,8 @@
 {
   "canisters": {
     "inter-canister-call": {
-      "candid": "hello_lucid.did",
-      "wasm": "hello_lucid_ic.wasm",
+      "candid": "inter-canister-call.did",
+      "wasm": "inter-canister-call_ic.wasm",
       "type": "custom",
       "metadata": [
         {

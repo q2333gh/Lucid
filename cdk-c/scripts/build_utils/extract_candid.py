@@ -92,7 +92,7 @@ def extract_candid(
         console.print(f"[red]  Error extracting candid: {e}[/]")
         return False
 
-
+# TODO consider if any nessasy to lock candid-extractor version
 def extract_candid_for_examples(
     bin_dir: Path,
     examples_dir: Path,

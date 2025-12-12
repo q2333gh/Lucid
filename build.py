@@ -184,6 +184,7 @@ def run_post_processing(
     bin_dir: Path,
     wasi2ic_tool: Path,
     examples_dir: Path,
+    examples: Optional[List[str]] = None,
 ) -> None:
     """
     Phase 4: Post-process WASM artifacts.
@@ -198,6 +199,7 @@ def run_post_processing(
         bin_dir: Directory containing built .wasm files
         wasi2ic_tool: Path to wasi2ic binary
         examples_dir: Examples directory for .did output
+        examples: Optional list of example names to process (None = all)
     """
     print("\n[Phase 4] Post-processing: wasi2ic -> wasm-opt -> candid -> dfx.json")
 
@@ -210,6 +212,7 @@ def run_post_processing(
         wasi2ic_tool=wasi2ic_tool,
         examples_dir=examples_dir,
         optimization_level="-Oz",
+        examples=examples,
     )
 
     print(
@@ -220,7 +223,7 @@ def run_post_processing(
 
     # Phase 4, Step 4: Generate dfx.json for examples
     if generate_dfx_json_module:
-        generate_dfx_json_module.auto_generate_dfx(bin_dir, examples_dir)
+        generate_dfx_json_module.auto_generate_dfx(bin_dir, examples_dir, examples)
 
 
 # =============================================================================
@@ -294,10 +297,19 @@ def build(wasi: bool = False, examples: Optional[List[str]] = None) -> None:
 
     # Phase 4: Post-processing (WASI only)
     if wasi and wasi2ic_tool:
+        # Pass sanitized examples to post-processing
+        sanitized_examples = None
+        if examples:
+            sanitized_examples = []
+            for ex in examples:
+                clean_ex = ex.rstrip("/").split("/")[-1]
+                sanitized_examples.append(clean_ex)
+
         run_post_processing(
             bin_dir=build_dir / "bin",
             wasi2ic_tool=wasi2ic_tool,
             examples_dir=examples_dir,
+            examples=sanitized_examples,
         )
 
     print("\n✓ Build complete.")

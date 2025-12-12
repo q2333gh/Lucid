@@ -37,6 +37,7 @@ except ImportError:
 def run_wasi2ic(
     wasi2ic_tool: Path,
     bin_dir: Path,
+    examples: Optional[List[str]] = None,
 ) -> List[Path]:
     """
     Step 1: Convert all WASI WASM files to IC format using wasi2ic.
@@ -44,6 +45,7 @@ def run_wasi2ic(
     Args:
         wasi2ic_tool: Path to wasi2ic binary
         bin_dir: Directory containing .wasm files
+        examples: Optional list of example names to process (None = all)
 
     Returns:
         List of successfully converted _ic.wasm file paths
@@ -54,6 +56,13 @@ def run_wasi2ic(
         # Skip already converted files
         if "_ic.wasm" in wasm_file.name:
             continue
+
+        # Filter by examples if specified
+        if examples is not None:
+            # Extract example name from wasm filename (without .wasm extension)
+            wasm_name = wasm_file.stem
+            if wasm_name not in examples:
+                continue
 
         output_wasm = bin_dir / f"{wasm_file.stem}_ic.wasm"
         print(f"   {wasm_file.name} -> {output_wasm.name}")
@@ -118,6 +127,7 @@ def run_wasm_opt(
 def run_candid_extractor(
     bin_dir: Path,
     examples_dir: Path,
+    examples: Optional[List[str]] = None,
 ) -> int:
     """
     Step 3: Extract Candid interfaces from _ic.wasm files.
@@ -125,11 +135,12 @@ def run_candid_extractor(
     Args:
         bin_dir: Directory containing _ic.wasm files
         examples_dir: Root examples directory for .did output
+        examples: Optional list of example names to process (None = all)
 
     Returns:
         Number of successfully extracted .did files
     """
-    return extract_candid_for_examples(bin_dir, examples_dir)
+    return extract_candid_for_examples(bin_dir, examples_dir, examples)
 
 
 # =============================================================================
@@ -137,13 +148,16 @@ def run_candid_extractor(
 # =============================================================================
 
 
-def run_copy_wasm(bin_dir: Path, examples_dir: Path) -> int:
+def run_copy_wasm(
+    bin_dir: Path, examples_dir: Path, examples: Optional[List[str]] = None
+) -> int:
     """
     Step 4: Copy optimized WASM files to their corresponding example directories.
 
     Args:
         bin_dir: Directory containing _ic.wasm files
         examples_dir: Root examples directory
+        examples: Optional list of example names to process (None = all)
 
     Returns:
         Number of successfully copied files
@@ -153,6 +167,11 @@ def run_copy_wasm(bin_dir: Path, examples_dir: Path) -> int:
     for wasm_file in bin_dir.glob("*_ic.wasm"):
         filename = wasm_file.name
         canister_name = filename.replace("_ic.wasm", "")
+
+        # Filter by examples if specified
+        if examples is not None:
+            if canister_name not in examples:
+                continue
 
         # Find matching example directory
         target_example_dir = None
@@ -167,7 +186,7 @@ def run_copy_wasm(bin_dir: Path, examples_dir: Path) -> int:
                 break
 
         if target_example_dir:
-            dest_path = target_example_dir / wasm_file.name  
+            dest_path = target_example_dir / wasm_file.name
             try:
                 shutil.copy2(wasm_file, dest_path)
                 print(f"   Copied {wasm_file.name} -> {dest_path}")
@@ -214,6 +233,7 @@ def post_process_wasm_files(
     wasi2ic_tool: Path,
     examples_dir: Path,
     optimization_level: str = "-Oz",
+    examples: Optional[List[str]] = None,
 ) -> dict:
     """
     Execute the complete post-processing pipeline.
@@ -229,6 +249,7 @@ def post_process_wasm_files(
         wasi2ic_tool: Path to wasi2ic tool
         examples_dir: Root examples directory
         optimization_level: wasm-opt level
+        examples: Optional list of example names to process (None = all)
 
     Returns:
         Dict with counts for each step
@@ -245,7 +266,7 @@ def post_process_wasm_files(
 
     # Step 1: wasi2ic
     print(" Step 1/4: wasi2ic (WASI -> IC conversion)")
-    converted_files = run_wasi2ic(wasi2ic_tool, bin_dir)
+    converted_files = run_wasi2ic(wasi2ic_tool, bin_dir, examples)
     stats.wasi2ic_count = len(converted_files)
 
     # Step 2: wasm-opt
@@ -255,10 +276,10 @@ def post_process_wasm_files(
 
     # Step 3: candid-extractor
     print(" Step 3/4: candid-extractor (interface extraction)")
-    stats.candid_count = run_candid_extractor(bin_dir, examples_dir)
+    stats.candid_count = run_candid_extractor(bin_dir, examples_dir, examples)
 
     # Step 4: Copy WASM
     print(" Step 4/4: Copy optimized WASM to examples")
-    stats.copied_count = run_copy_wasm(bin_dir, examples_dir)
+    stats.copied_count = run_copy_wasm(bin_dir, examples_dir, examples)
 
     return stats.as_dict()

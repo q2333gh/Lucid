@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 # Handle imports for both direct execution and dynamic loading
 _script_dir = Path(__file__).parent.resolve()
@@ -96,6 +96,7 @@ def extract_candid(
 def extract_candid_for_examples(
     bin_dir: Path,
     examples_dir: Path,
+    examples: Optional[List[str]] = None,
 ) -> int:
     """
     Extract Candid interfaces for all _ic.wasm files in bin_dir.
@@ -106,6 +107,7 @@ def extract_candid_for_examples(
     Args:
         bin_dir: Directory containing _ic.wasm files
         examples_dir: Root examples directory
+        examples: Optional list of example names to process (None = all)
 
     Returns:
         Number of successfully extracted .did files
@@ -127,6 +129,11 @@ def extract_candid_for_examples(
     for wasm_file in bin_dir.glob("*_ic.wasm"):
         # Extract example name: hello_lucid_ic.wasm -> hello_lucid
         example_name = wasm_file.stem.replace("_ic", "")
+
+        # Filter by examples if specified
+        if examples is not None:
+            if example_name not in examples:
+                continue
 
         # Find corresponding example directory
         example_dir = examples_dir / example_name

@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+from typing import Optional, List
 
 
 def generate_dfx_json(
@@ -33,18 +34,30 @@ def generate_dfx_json(
         print(f"Error generating dfx.json: {e}")
 
 
-def auto_generate_dfx(bin_dir: Path, examples_dir: Path):
+def auto_generate_dfx(
+    bin_dir: Path, examples_dir: Path, examples: Optional[List[str]] = None
+):
     """
     Simplified version:
     1. Scan examples directory.
     2. For each example, look for a local .wasm file.
     3. If found, assume it's the target canister and generate dfx.json using local paths.
+
+    Args:
+        bin_dir: Directory containing built .wasm files (not used in current implementation)
+        examples_dir: Root examples directory
+        examples: Optional list of example names to process (None = all)
     """
     print(" Generating dfx.json configurations...")
 
     for example_dir in examples_dir.iterdir():
         if not example_dir.is_dir():
             continue
+
+        # Filter by examples if specified
+        if examples is not None:
+            if example_dir.name not in examples:
+                continue
 
         # Look for any .wasm file in the example directory
         # We prefer *_optimized.wasm but take any .wasm if that's all there is

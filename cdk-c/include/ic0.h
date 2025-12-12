@@ -124,6 +124,12 @@ void ic0_stable64_read(uint64_t dst, int64_t off, int64_t size)
 // System time and authorization checks
 int64_t ic0_time(void) WASM_SYMBOL_IMPORTED("ic0", "time");
 
+// Global timer API
+// Sets the global timer to fire at the specified timestamp (nanoseconds since
+// epoch) Returns: the previous timer value, or 0 if no timer was set
+int64_t ic0_global_timer_set(int64_t timestamp)
+    WASM_SYMBOL_IMPORTED("ic0", "global_timer_set");
+
 uint32_t ic0_is_controller(uintptr_t src, uint32_t size)
     WASM_SYMBOL_IMPORTED("ic0", "is_controller");
 

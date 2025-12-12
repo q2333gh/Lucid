@@ -1,0 +1,6 @@
+service : {
+    "get_periodic_count": () -> (nat64) query;
+    "set_one_time_timer": () -> (nat64);
+    "set_periodic_timer": () -> (nat64);
+    "clear_timer": (nat64) -> (nat64);
+}

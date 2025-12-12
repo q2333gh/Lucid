@@ -1,8 +1,8 @@
 {
   "canisters": {
-    "my_canister": {
-      "candid": "my_canister.did",
-      "wasm": "my_canister_ic.wasm",
+    "timer": {
+      "candid": "timer.did",
+      "wasm": "timer_ic.wasm",
       "type": "custom",
       "metadata": [
         {

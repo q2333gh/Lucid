@@ -31,6 +31,9 @@
 // Stable storage API
 #include "ic_storage.h"
 
+// Timer API
+#include "ic_timer.h"
+
 // Convenience macros for exporting canister entry points (for function
 // definitions) Usage: IC_EXPORT_QUERY(greet_no_arg) { ... } expands to:
 //   __attribute__((export_name("canister_query greet_no_arg")))
@@ -58,5 +61,7 @@
     __attribute__((export_name("canister_post_upgrade")))                      \
     __attribute__((visibility("default"))) void                                \
     func(void)
-
-
+#define IC_EXPORT_GLOBAL_TIMER(func)                                           \
+    __attribute__((export_name("canister_global_timer")))                      \
+    __attribute__((visibility("default"))) void                                \
+    func(void)

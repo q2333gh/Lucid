@@ -20,12 +20,14 @@ IC_CANDID_EXPORT_DID()
 // Minimal Hello World
 IC_API_QUERY(greet, "() -> (text)") {
     IC_API_REPLY_TEXT("Hello from minimal C canister!");
+    // ic_stable_save(NULL, 0);
 }
 // Example: Simple counter state on RAM 
 static uint64_t counter = 0;
 
 // Pre-upgrade function: saves state to stable memory
 IC_EXPORT_PRE_UPGRADE(pre_upgrade) {
+    ic_api_debug_print("canister_pre_upgrade function called");
     // Create a buffer to encode our state
     ic_buffer_t buf;
     ic_buffer_init(&buf);
@@ -42,7 +44,7 @@ IC_EXPORT_PRE_UPGRADE(pre_upgrade) {
         ic_buffer_free(&buf);
         ic_api_trap("Failed to save state to stable memory");
     }
-
+    ic_api_debug_print("State saved to stable memory");
     ic_buffer_free(&buf);
 }
 
@@ -69,7 +71,7 @@ void restore_state(void) {
 
 }
 
-// Example query function
+// Example query funmction
 IC_EXPORT_QUERY(get_counter) {
     ic_api_t *api = ic_api_init(IC_ENTRY_QUERY, __func__, false);
     if (!api) {

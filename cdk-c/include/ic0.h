@@ -113,10 +113,12 @@ int64_t ic0_stable64_size(void) WASM_SYMBOL_IMPORTED("ic0", "stable64_size");
 int64_t ic0_stable64_grow(int64_t new_pages)
     WASM_SYMBOL_IMPORTED("ic0", "stable64_grow");
 
-void ic0_stable64_write(int64_t off, uintptr_t src, int64_t size)
+// Note: 64-bit stable memory APIs use 64-bit pointer parameters in IC spec.
+// Using uint64_t here ensures the import signature matches [I64, I64, I64].
+void ic0_stable64_write(int64_t off, uint64_t src, int64_t size)
     WASM_SYMBOL_IMPORTED("ic0", "stable64_write");
 
-void ic0_stable64_read(uintptr_t dst, int64_t off, int64_t size)
+void ic0_stable64_read(uint64_t dst, int64_t off, int64_t size)
     WASM_SYMBOL_IMPORTED("ic0", "stable64_read");
 
 // System time and authorization checks

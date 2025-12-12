@@ -38,7 +38,7 @@ void ic_stable_write(int64_t offset, const uint8_t *src, int64_t size) {
     if (size == 0) {
         return;
     }
-    ic0_stable64_write(offset, (uintptr_t)src, size);
+    ic0_stable64_write(offset, (uint64_t)(uintptr_t)src, size);
 }
 
 void ic_stable_read(uint8_t *dst, int64_t offset, int64_t size) {
@@ -48,7 +48,7 @@ void ic_stable_read(uint8_t *dst, int64_t offset, int64_t size) {
     if (size == 0) {
         return;
     }
-    ic0_stable64_read((uintptr_t)dst, offset, size);
+    ic0_stable64_read((uint64_t)(uintptr_t)dst, offset, size);
 }
 
 // =============================================================================

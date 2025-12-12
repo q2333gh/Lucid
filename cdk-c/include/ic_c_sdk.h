@@ -39,10 +39,17 @@
     __attribute__((export_name("canister_query " #func)))                      \
     __attribute__((visibility("default"))) void                                \
     func(void)
+
 #define IC_EXPORT_UPDATE(func)                                                 \
     __attribute__((export_name("canister_update " #func)))                     \
     __attribute__((visibility("default"))) void                                \
     func(void)
+
+#define IC_EXPORT_INIT(func)                                                   \
+    __attribute__((export_name("canister_init")))                              \
+    __attribute__((visibility("default"))) void                                \
+    func(void)
+
 #define IC_EXPORT_PRE_UPGRADE(func)                                            \
     __attribute__((export_name("canister_pre_upgrade")))                       \
     __attribute__((visibility("default"))) void                                \
@@ -51,3 +58,5 @@
     __attribute__((export_name("canister_post_upgrade")))                      \
     __attribute__((visibility("default"))) void                                \
     func(void)
+
+

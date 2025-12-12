@@ -28,6 +28,9 @@
 // Inter-canister call
 #include "ic_call.h"
 
+// Stable storage API
+#include "ic_storage.h"
+
 // Convenience macros for exporting canister entry points (for function
 // definitions) Usage: IC_EXPORT_QUERY(greet_no_arg) { ... } expands to:
 //   __attribute__((export_name("canister_query greet_no_arg")))
@@ -38,5 +41,9 @@
     func(void)
 #define IC_EXPORT_UPDATE(func)                                                 \
     __attribute__((export_name("canister_update " #func)))                     \
+    __attribute__((visibility("default"))) void                                \
+    func(void)
+#define IC_EXPORT_PRE_UPGRADE(func)                                            \
+    __attribute__((export_name("canister_pre_upgrade")))                       \
     __attribute__((visibility("default"))) void                                \
     func(void)

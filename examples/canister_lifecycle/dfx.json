@@ -1,0 +1,22 @@
+{
+  "canisters": {
+    "canister_lifecycle": {
+      "candid": "canister_lifecycle.did",
+      "wasm": "canister_lifecycle_ic.wasm",
+      "type": "custom",
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

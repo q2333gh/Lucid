@@ -331,6 +331,7 @@ Examples:
   python build.py --new my_canister  Create a new minimal project
         """,
     )
+    # TODO if any step goes err,early exit, no need to continue
     parser.add_argument(
         "--icwasm",
         action="store_true",
@@ -340,7 +341,7 @@ Examples:
     parser.add_argument(
         "--examples",
         nargs="+",
-        help="Specify which examples to build (default: hello_lucid). Usage: --examples hello_lucid inter-canister-call",
+        help="Specify which examples to build (default: hello_lucid). Usage: --examples proj1 proj2 ",
         default=None,
     )
 

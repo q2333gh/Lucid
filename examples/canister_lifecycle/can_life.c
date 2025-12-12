@@ -15,6 +15,7 @@
 IC_CANDID_EXPORT_DID()
 
 #include "idl/candid.h"
+#include "idl/cdk_alloc.h"
 
 // Minimal Hello World
 IC_API_QUERY(greet, "() -> (text)") {
@@ -23,6 +24,9 @@ IC_API_QUERY(greet, "() -> (text)") {
 }
 // Example: Simple counter state on RAM
 static uint64_t counter = 3;
+
+// Forward declaration
+void restore_state(void);
 
 // Pre-upgrade function: saves state to stable memory
 IC_EXPORT_PRE_UPGRADE(pre_upgrade) {
@@ -48,8 +52,13 @@ IC_EXPORT_PRE_UPGRADE(pre_upgrade) {
 }
 
 // Post-upgrade function: restores state from stable memory
-// Note: This would typically use IC_EXPORT_POST_UPGRADE macro
-// (which should be implemented similarly)
+IC_EXPORT_POST_UPGRADE(post_upgrade) {
+    ic_api_debug_print("canister_post_upgrade function called");
+    restore_state();
+    ic_api_debug_print("canister_post_upgrade completed");
+}
+
+// Helper function to restore state from stable memory
 void restore_state(void) {
     uint8_t *data;
     size_t   len;
@@ -68,8 +77,12 @@ void restore_state(void) {
             "restore_state: Invalid Candid data, set counter to 0");
         // Invalid data, use default
         counter = -1;
+    } else {
+        ic_api_debug_print("restore_state() runs successfully");
     }
-    ic_api_debug_print("restore_state() runs successfully");
+
+    // Free the buffer allocated by ic_stable_restore()
+    cdk_free(data);
 }
 
 // Example query funmction

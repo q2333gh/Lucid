@@ -47,3 +47,7 @@
     __attribute__((export_name("canister_pre_upgrade")))                       \
     __attribute__((visibility("default"))) void                                \
     func(void)
+#define IC_EXPORT_POST_UPGRADE(func)                                           \
+    __attribute__((export_name("canister_post_upgrade")))                      \
+    __attribute__((visibility("default"))) void                                \
+    func(void)

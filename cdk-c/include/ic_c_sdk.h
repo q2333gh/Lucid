@@ -76,6 +76,7 @@
     __attribute__((visibility("default"))) void                                \
     func(void)
 
+// running volatile memory, not stable-memory(like a ssd)
 #define IC_EXPORT_ON_LOW_WASM_MEMORY(func)                                     \
     __attribute__((export_name("canister_on_low_wasm_memory")))                \
     __attribute__((visibility("default"))) void                                \

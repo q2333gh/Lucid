@@ -3,9 +3,6 @@
 
 #include <stddef.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 void *cdk_malloc(size_t size);
 void *cdk_calloc(size_t nmemb, size_t size);
@@ -21,10 +18,6 @@ void  cdk_free(void *ptr);
 #define realloc cdk_realloc
 #define reallocarray cdk_reallocarray
 #define free cdk_free
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif /* CDK_ALLOC_H */

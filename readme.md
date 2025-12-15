@@ -9,11 +9,10 @@ A pure C language SDK for developing Internet Computer (IC) canisters. This SDK 
 
 ## Features
 
-- **Pure C Implementation**: minimal runtime overhead
-- **WASI Support**: Compile to WebAssembly for IC canisters
+- **Pure C Implementation**: minimal runtime overhead and precise control
+- **WASI Support**: Compile to IC compatible wasm module
 - **High-level API**: Easy-to-use API for common IC operations
 - **Candid Support**: Built-in Candid serialization/deserialization
-- **Automatic Optimization**: Built-in WASM optimization with wasm-opt
 
 ## Getting Started
 
@@ -26,7 +25,8 @@ A pure C language SDK for developing Internet Computer (IC) canisters. This SDK 
 ```bash
 
 # Build with hello examples
-python build.py --icwasm 
+python build.py --new hello_lucid
+python build.py --icwasm --examples hello_lucid
 
 ```
 
@@ -93,36 +93,6 @@ The `--icwasm` flag builds IC-compatible WASM canisters with automatic post-proc
 
 ## API Overview
 
-### Entry Points
-
-Use simplified macros to define canister functions (recommended):
-
-```c
-IC_CANDID_EXPORT_DID()  // Export Candid interface (once per file)
-
-IC_API_QUERY(greet, "() -> (text)") {
-    // api variable is automatically available
-    IC_API_REPLY_TEXT("Hello!");
-}
-
-IC_API_UPDATE(set_value, "(nat32) -> ()") {
-    uint64_t value;
-    IC_API_ARG_NAT(&value);
-    // ... process value ...
-    IC_API_REPLY_EMPTY();
-}
-```
-
-Or use the lower-level macros for more control:
-
-```c
-IC_QUERY(function_name, "() -> (text)") {
-    ic_api_t *api = ic_api_init(IC_ENTRY_QUERY, __func__, false);
-    // ... your code ...
-    ic_api_free(api);
-}
-```
-
 ### Simplified API (Recommended)
 
 The `IC_API_QUERY` and `IC_API_UPDATE` macros automatically handle API initialization and cleanup:
@@ -164,7 +134,7 @@ The test script will:
 
 ## Examples
 
-See `examples/hello_lucid/` for a complete example canister with PocketIC tests.
+See `examples/hello_lucid/` for a complete example canister with ic-py or local testnet replica tests.
 
 ## Documentation
 

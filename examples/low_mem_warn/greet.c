@@ -1,141 +1,100 @@
 #include "ic_c_sdk.h"
-#include <string.h>
-#include "ic_simple.h"
-#include "tinyprintf.h"
-#include"idl/cdk_alloc.h"
+
+// Export helper for candid-extractor
 IC_CANDID_EXPORT_DID()
 
-// Example usage:
-// dfx deploy && dfx canister update-settings low_mem_warn --wasm-memory-limit 300MB --wasm-memory-threshold 200MB && dfx canister call low_mem_warn start_lowmem_stress
+#include "idl/candid.h"
+#include "tinyprintf.h"
+#include <stdlib.h>
+#include <string.h>
 
-// Loop: malloc memory and write to stable memory until it fails or 400MB is written.
-IC_API_UPDATE(start_lowmem_stress, ("() -> (nat64)")) {
-    ic_api_debug_print(" start_lowmem_stress called (write only 400MB)");
-    int32_t write_ticks = 0;
-    int64_t stable_offset = 0;
-    const int64_t chunk_size = 262144; // 256KB
-    const int64_t max_bytes = 400LL * 1024 * 1024; // 400MB limit
-
-    while (stable_offset < max_bytes) {
-        uint8_t *buf = (uint8_t *)malloc(chunk_size);
-        if (!buf) {
-            char msg[100];
-            tfp_snprintf(msg, sizeof(msg), "lowmem: malloc failed after %ld ticks, stable_offset=%ld, pause", (long)write_ticks, (long)stable_offset);
-            ic_api_debug_print(msg);
-            break;
-        }
-        memset(buf, (int)(write_ticks & 0xFF), (size_t)chunk_size); // fill buffer
-
-        int64_t end_offset = stable_offset + chunk_size;
-        if (end_offset > max_bytes) {
-            end_offset = max_bytes;
-        }
-        int64_t this_chunk = end_offset - stable_offset;
-
-        const int64_t PAGE_BYTES = 64 * 1024; // 64KB per stable memory page
-        int64_t required_pages = (end_offset + PAGE_BYTES - 1) / PAGE_BYTES;
-        int64_t current_pages = ic0_stable64_size();
-        if (required_pages > current_pages) {
-            int64_t add_pages = required_pages - current_pages;
-            int grow_ret = ic0_stable64_grow(add_pages);
-            if (grow_ret == -1) {
-                char msg[120];
-                // If grow fails, log (optional) and stop. Do not free buf to simulate memory pressure.
-                break;
-            } else {
-                char msg[120];
-                tfp_snprintf(msg, sizeof(msg), "stable64_grow succeed: grew %ld pages, total pages now %ld", (long)add_pages, (long)ic0_stable64_size());
-                ic_api_debug_print(msg);
-            }
-        }
-
-        ic_stable_write(stable_offset, buf, this_chunk);
-        {
-            char msg[100];
-            tfp_snprintf(msg, sizeof(msg), "wrote %ld bytes at offset %ld, tick %lu", (long)this_chunk, (long)stable_offset, (long)write_ticks);
-            // Logging can be enabled here
-        }
-        stable_offset = end_offset;
-        write_ticks++;
-
-        // Do not free buf (intentionally leak memory to test low-mem conditions)
-    }
-
-    char msg[80];
-    tfp_snprintf(msg, sizeof(msg), "finished after %ld ticks, total stable_offset=%ld", (long)write_ticks, (long)stable_offset);
-    // Optional: log msg
-
-    IC_API_REPLY_NAT(write_ticks);
+IC_API_QUERY(greet2, "() -> (text)") {
+    IC_API_REPLY_TEXT("Hello1 from minimal C canister!");
 }
 
-// Example usage:
-// dfx deploy && dfx canister update-settings low_mem_warn --wasm-memory-limit 300MB --wasm-memory-threshold 200MB && dfx canister call low_mem_warn stress_heap_malloc_no_free
+// --- Experimental code to consistently trigger the low-memory hook ---
+// This code is tailored to the IC's Wasm memory limit/threshold mechanism. See
+// comments below for details.
 
-// New function: malloc blocks of memory in a loop, never free, do NOT interact with stable memory.
-// Allocate heap continuously until malloc fails. Counts ticks to evaluate low-mem trigger conditions.
-IC_API_UPDATE(stress_heap_malloc_no_free, ("() -> (nat64)")) {
-    ic_api_debug_print(" stress_heap_malloc_no_free called (no stable write, malloc without free)");
-    int32_t alloc_ticks = 0;
-    const int64_t chunk_size = 262144; // 256KB
-    const int64_t max_chunks = (400LL * 1024 * 1024) / chunk_size; // up to 400MB, but keeps going until malloc fails
+// Strong recommendation: To reliably observe the on_low_wasm_memory callback,
+// increase the memory limit and use a smaller allocation granularity! For
+// maximum effect, use parameters like: --wasm-memory-limit 512MB
+// --wasm-memory-threshold 256MB Otherwise (e.g., with limit=100MB), this code
+// won't trigger the callback. See:
+// https://forum.dfinity.org/t/ic0539-discussion/
+//
+// The code allocates only 8MB per call (adjustable via MALLOC_CHUNK_MB),
+// ensuring enough "distance" between threshold and limit (e.g.,
+// threshold=256MB, limit=512MB).
 
-    while (alloc_ticks < max_chunks) {
-        void *buf = malloc(chunk_size);
-        if (!buf) {
-            char msg[100];
-            tfp_snprintf(msg, sizeof(msg), "heap-malloc: malloc failed after %ld ticks", (long)alloc_ticks);
-            ic_api_debug_print(msg);
-            break;
-        }
-        memset(buf, (int)(alloc_ticks & 0xFF), (size_t)chunk_size);
-        alloc_ticks++;
-        // Intentionally not freeing buf (simulate heap pressure)
+#define MALLOC_CHUNK_MB 8
+#define MALLOC_CHUNK_SIZE (MALLOC_CHUNK_MB * 1024 * 1024)
+#define MALLOC_TOTAL_LIMIT_MB 512
+
+// Hold pointers to each allocation so they aren't freed
+static void *ptr_list[(MALLOC_TOTAL_LIMIT_MB / MALLOC_CHUNK_MB) + 4] = {0};
+
+static size_t allocated = 0;
+
+// on fish shell: run update-funciton  for 20 times
+// dfx deploy && dfx canister update-settings low_mem_warn --wasm-memory-limit
+// 256MB  --wasm-memory-threshold 128MB && for i in (seq 1 20); dfx canister
+// call low_mem_warn request_running_memory ; end
+//
+//
+// ========= update: each call mallocs MALLOC_CHUNK_MB MB, incrementally, up to
+// the limit =========
+IC_API_UPDATE(request_running_memory, "() -> (text)") {
+    ic_api_debug_print(" low_mem_t1 called, start to malloc 512MB");
+    char  msg[128] = {0};
+    void *p = malloc(MALLOC_CHUNK_SIZE);
+    if (!p) {
+        ic_api_debug_print("malloc failed (no more memory)");
+        IC_API_REPLY_TEXT("malloc failed (out of memory)");
+        return;
     }
+    // memset ensures the memory is actually allocated by the runtime
+    memset(p, 0, MALLOC_CHUNK_SIZE);
+    ptr_list[allocated] = p;
+    allocated++;
 
-    char msg[80];
-    tfp_snprintf(msg, sizeof(msg), "stress_heap_malloc_no_free finished after %ld ticks", (long)alloc_ticks);
+    size_t total_alloc = allocated * MALLOC_CHUNK_MB;
+
+    // Debug print: show total allocated, and highlight crossing threshold
+    tfp_snprintf(msg, sizeof(msg), "[low_mem_t1] allocated: %zu MB",
+                 total_alloc);
     ic_api_debug_print(msg);
 
-    IC_API_REPLY_NAT(alloc_ticks);
-}
-
-// Handler will be triggered automatically when WASM memory is low
-IC_EXPORT_ON_LOW_WASM_MEMORY(function_on_low_wasm_memory) {
-    ic_api_debug_print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX on_low_wasm_memory triggered");
-}
-
-// Continuously allocate memory from the WASM heap, keeping pointers so the memory is not freed.
-// Never free, infinite loop to maximize WASM memory usage, logs progress.
-IC_API_UPDATE(stress_heap_malloc_forever, ("() -> (text)")) {
-    size_t chunk_size = 1024 * 1024; // 1 MB per allocation
-    size_t count = 0;
-    // Allocate a pointer array to prevent blocks being garbage collected or released
-    void **allocated = malloc(sizeof(void*) * 1024 * 1024); // Reserve space for up to 1M blocks
-    if (!allocated) {
-        ic_api_debug_print("Failed to allocate pointer array");
-        IC_API_REPLY_TEXT("Failed to allocate pointer array");
+// Log when crossing the threshold, to indicate when the system will likely
+// schedule on_low_wasm_memory
+#define THRESHOLD_MB 256
+    if (total_alloc == THRESHOLD_MB) {
+        ic_api_debug_print("---- Crossing threshold 256MB: expect "
+                           "on_low_wasm_memory will be scheduled ----");
+    }
+#define HARDCAP_MB 512
+    if (total_alloc >= HARDCAP_MB) {
+        ic_api_debug_print(
+            "---- Reaching 512MB, triggering trap by malloc ----");
+        IC_API_REPLY_TEXT(
+            "trap: hard memory limit reached (>=512MB allocated)");
+        abort(); // Intentionally cause a trap when exceeding hard cap
         return;
     }
 
-    while (1) {
-        void *p = malloc(chunk_size);
-        if (!p) {
-            char msg[100];
-            tfp_snprintf(msg, sizeof(msg), "Malloc failed, allocated %zu MB", count);
-            ic_api_debug_print(msg);
-            break;
-        }
-        memset(p, 0, chunk_size); // Prevent optimizer from eliminating the allocation
-        allocated[count++] = p;
+    // Normal return for client to observe progress
+    tfp_snprintf(msg, sizeof(msg), "OK: allocated %zu MB, next at %zu MB",
+                 total_alloc, total_alloc + MALLOC_CHUNK_MB);
+    IC_API_REPLY_TEXT(msg);
+}
 
-        // Log progress every 10 allocations
-        if (count % 10 == 0) {
-            char msg[80];
-            tfp_snprintf(msg, sizeof(msg), "Allocated %zu MB", count);
-            ic_api_debug_print(msg);
-        }
-    }
-
-    // Never free, infinite loop to keep memory occupied
-    while (1) {}
+// ========= low-memory hook handler: automatically scheduled by the IC, not a
+// synchronous callback =========
+IC_EXPORT_ON_LOW_WASM_MEMORY(function_on_low_wasm_memory) {
+    ic_api_debug_print(
+        "[on_low_wasm_memory] triggered (scheduled asynchronously by the "
+        "system; replies/persistence still possible here)");
+    // NOTE: This handler will NOT be called on an IC0539 "trap"—it is only
+    // invoked when low memory is crossed and the canister is still operational.
+    // See IC design documentation and behavior for details.
 }

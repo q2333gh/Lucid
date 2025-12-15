@@ -1,18 +1,18 @@
-#include "buddy_alloc.h"
+#include "../buddy_alloc.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// 只在失败时多报告
+// Only report extra details on failure
 void try_alloc_bytes_sysmalloc(const char *label, size_t bytes) {
     void *p = malloc(bytes);
     if (p) {
         printf("%s: ok\n size: %zu", label, bytes);
-        memset(p, 0, bytes); // 测试填充
+        memset(p, 0, bytes); // Test fill
         free(p);
     } else {
-        printf("%s: (系统malloc) 分配 %zu 字节失败\n", label, bytes);
+        printf("%s: (system malloc) failed to allocate %zu bytes\n", label, bytes);
     }
 }
 
@@ -20,30 +20,30 @@ void try_alloc_bytes(const char *label, struct buddy *buddy, size_t bytes) {
     void *p = buddy_malloc(buddy, bytes);
     if (p) {
         printf("%s: ok\n size: %zu", label, bytes);
-        memset(p, 0, bytes);
+        memset(p, 0, bytes); // Test fill
         buddy_free(buddy, p);
     } else {
-        printf("%s: (buddy_alloc) 分配 %zu 字节失败\n", label, bytes);
+        printf("%s: (buddy_alloc) failed to allocate %zu bytes\n", label, bytes);
     }
 }
 
 int main() {
-    size_t arena_size = 16 * 1024 * 1024; // 足够大, 可以调整
+    size_t arena_size = 16 * 1024 * 1024; // Large enough, can be changed
 
-    /* 外部元数据初始化方式 */
+    /* External metadata initialization */
     void         *buddy_metadata = malloc(buddy_sizeof(arena_size));
     void         *buddy_arena = malloc(arena_size);
     struct buddy *buddy = buddy_init(buddy_metadata, buddy_arena, arena_size);
 
-    // 自动测试（外部元数据）：从128 byte开始，每次加倍，直到>10MB
+    // Auto test (external metadata): start from 128 bytes, double each time, stop at >10MB
     size_t bytes;
-    printf("==== buddy_alloc 外部元数据测试 ====\n");
+    printf("==== buddy_alloc external metadata test ====\n");
     for (bytes = 128; bytes <= 10 * 1024 * 1024; bytes *= 2) {
         try_alloc_bytes("buddy_alloc", buddy, bytes);
     }
 
-    // 直接用系统malloc比较：从128 byte开始，每次加倍，直到>10MB
-    printf("==== 系统malloc测试 ====\n");
+    // Compare directly with system malloc: start from 128 bytes, double each time, stop at >10MB
+    printf("==== system malloc test ====\n");
     for (bytes = 128; bytes <= 10 * 1024 * 1024; bytes *= 2) {
         try_alloc_bytes_sysmalloc("sysmalloc", bytes);
     }
@@ -51,20 +51,20 @@ int main() {
     free(buddy_metadata);
     free(buddy_arena);
 
-    /* 嵌入式元数据初始化方式 */
+    /* Embedded metadata initialization */
     buddy_arena = malloc(arena_size);
     buddy = buddy_embed(buddy_arena, arena_size);
 
-    // 自动测试（内嵌元数据）：从128 byte开始，每次加倍，直到>10MB
-    printf("==== buddy_alloc 内嵌元数据测试 ====\n");
+    // Auto test (embedded metadata): start from 128 bytes, double each time, stop at >128MB
+    printf("==== buddy_alloc embedded metadata test ====\n");
     for (bytes = 128; bytes <= 128 * 1024 * 1024; bytes *= 2) {
-        try_alloc_bytes("[内嵌] buddy_alloc", buddy, bytes);
+        try_alloc_bytes("[embedded] buddy_alloc", buddy, bytes);
     }
 
-    // 系统malloc对比（再测一次）
-    printf("==== 系统malloc测试(内嵌元数据) ====\n");
+    // System malloc comparison (test again)
+    printf("==== system malloc test (embedded metadata) ====\n");
     for (bytes = 128; bytes <= 128 * 1024 * 1024; bytes *= 2) {
-        try_alloc_bytes_sysmalloc("[内嵌] sysmalloc", bytes);
+        try_alloc_bytes_sysmalloc("[embedded] sysmalloc", bytes);
     }
 
     free(buddy_arena);

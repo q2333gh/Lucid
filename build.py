@@ -331,7 +331,7 @@ Examples:
   python build.py --new my_canister  Create a new minimal project
         """,
     )
-    # TODO if any step goes err,early exit, no need to continue
+    # TODO if any step goes err,early exit with RED COLOR FATAL MESSAGE 
     parser.add_argument(
         "--icwasm",
         action="store_true",

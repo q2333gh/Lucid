@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-
+# TODO xx.c name should be project_name.c
 def create_new_project(project_name: str, root_dir: Path) -> None:
     """
     Create a new minimal hello world project template in examples directory.
@@ -35,6 +35,7 @@ IC_API_QUERY(greet, "() -> (text)") {
 """
     (project_dir / "greet.c").write_text(greet_c_content)
 
+    # TODO also cmakelist.txt contents need the same project_name.c
     # 2. CMakeLists.txt
     cmake_content = f"""if(BUILD_TARGET_WASI)
     add_executable({project_name} greet.c)

@@ -5,18 +5,19 @@
 
 // Entry point types matching IC specification
 typedef enum {
-    IC_ENTRY_INIT,             // I: canister_init
-    IC_ENTRY_POST_UPGRADE,     // I: canister_post_upgrade
-    IC_ENTRY_PRE_UPGRADE,      // G: canister_pre_upgrade
-    IC_ENTRY_UPDATE,           // U: canister_update
-    IC_ENTRY_QUERY,            // Q: canister_query
-    IC_ENTRY_REPLY_CALLBACK,   // Ry: reply callback
-    IC_ENTRY_REJECT_CALLBACK,  // Rt: reject callback
-    IC_ENTRY_CLEANUP_CALLBACK, // C: cleanup callback
-    IC_ENTRY_HEARTBEAT,        // T: canister_heartbeat
-    IC_ENTRY_GLOBAL_TIMER,     // T: canister_global_timer
-    IC_ENTRY_INSPECT_MESSAGE,  // F: canister_inspect_message
-    IC_ENTRY_START             // s: start function
+    IC_ENTRY_INIT,               // I: canister_init
+    IC_ENTRY_POST_UPGRADE,       // I: canister_post_upgrade
+    IC_ENTRY_PRE_UPGRADE,        // G: canister_pre_upgrade
+    IC_ENTRY_UPDATE,             // U: canister_update
+    IC_ENTRY_QUERY,              // Q: canister_query
+    IC_ENTRY_REPLY_CALLBACK,     // Ry: reply callback
+    IC_ENTRY_REJECT_CALLBACK,    // Rt: reject callback
+    IC_ENTRY_CLEANUP_CALLBACK,   // C: cleanup callback
+    IC_ENTRY_HEARTBEAT,          // T: canister_heartbeat
+    IC_ENTRY_ON_LOW_WASM_MEMORY, // L: canister_on_low_wasm_memory
+    IC_ENTRY_GLOBAL_TIMER,       // T: canister_global_timer
+    IC_ENTRY_INSPECT_MESSAGE,    // F: canister_inspect_message
+    IC_ENTRY_START               // s: start function
 } ic_entry_type_t;
 
 // Helper functions to check entry point types

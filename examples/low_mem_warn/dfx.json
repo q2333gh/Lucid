@@ -1,0 +1,22 @@
+{
+  "canisters": {
+    "low_mem_warn": {
+      "candid": "low_mem_warn.did",
+      "wasm": "low_mem_warn_ic.wasm",
+      "type": "custom",
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

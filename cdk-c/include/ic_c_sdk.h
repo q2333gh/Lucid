@@ -65,3 +65,18 @@
     __attribute__((export_name("canister_global_timer")))                      \
     __attribute__((visibility("default"))) void                                \
     func(void)
+
+#define IC_EXPORT_HEARTBEAT(func)                                              \
+    __attribute__((export_name("canister_heartbeat")))                         \
+    __attribute__((visibility("default"))) void                                \
+    func(void)
+
+#define IC_EXPORT_INSPECT_MESSAGE(func)                                        \
+    __attribute__((export_name("canister_inspect_message")))                   \
+    __attribute__((visibility("default"))) void                                \
+    func(void)
+
+#define IC_EXPORT_ON_LOW_WASM_MEMORY(func)                                     \
+    __attribute__((export_name("canister_on_low_wasm_memory")))                \
+    __attribute__((visibility("default"))) void                                \
+    func(void)

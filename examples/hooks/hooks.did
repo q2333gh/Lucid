@@ -1,0 +1,4 @@
+service : {
+    "greet": () -> (text) query;
+    "get_hooks_counters": () -> (text) query;
+}

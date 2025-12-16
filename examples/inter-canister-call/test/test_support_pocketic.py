@@ -20,7 +20,7 @@ from ic.principal import Principal
 from test_support_build import build_example_ic_wasm, get_wasm_and_did_paths
 
 
-# TODO 1. make pocket-it asnyc running , because it takes ~3s
+# TODO performance: 1. make pocket-it asnyc init to prepare for service call, because it takes ~3s
 # TODO 2.give a flag to mannually skip build, because autoskip in build.py is not impl yet
 def setup_pocketic_binary() -> None:
     """

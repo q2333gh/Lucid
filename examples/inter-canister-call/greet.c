@@ -26,6 +26,59 @@ IC_CANDID_EXPORT_DID()
 // Inter-Canister Call Example
 // =============================================================================
 
+// Helper macro for error handling
+#define TRAP_IF(cond, msg)                                                     \
+    do {                                                                       \
+        if (cond)                                                              \
+            ic_api_trap(msg);                                                  \
+    } while (0)
+
+// Parse trigger_call text argument: "<callee>,<method_name>"
+// Returns parsed callee principal and method name via output parameters.
+static void parse_trigger_call_arg(ic_api_t       *api,
+                                   ic_principal_t *callee_out,
+                                   char           *method_out,
+                                   size_t          method_buf_size) {
+    char  *input = NULL;
+    size_t input_len = 0;
+
+    // Get text argument
+    TRAP_IF(ic_api_from_wire_text(api, &input, &input_len) != IC_OK ||
+                input == NULL || input_len == 0,
+            "Failed to parse trigger_call text argument");
+
+    // Copy to modifiable string (manual allocation for WASI compatibility)
+    char *copy = (char *)malloc(input_len + 1);
+    TRAP_IF(!copy, "Memory allocation failed");
+    memcpy(copy, input, input_len);
+    copy[input_len] = '\0';
+
+    // Find first comma
+    char *comma = strchr(copy, ',');
+    TRAP_IF(!comma || comma == copy,
+            "Callee string missing before comma in trigger_call argument");
+
+    // Split string
+    *comma = '\0';
+    char *callee_str = copy;
+    char *method_str = comma + 1;
+
+    // Validate method name
+    size_t method_len = strlen(method_str);
+    TRAP_IF(method_len == 0, "Method name missing in trigger_call argument");
+    TRAP_IF(method_len >= method_buf_size, "Method name string too long");
+
+    // Parse principal
+    TRAP_IF(ic_principal_from_text(callee_out, callee_str) != IC_OK,
+            "Failed to parse callee principal text");
+
+    // Copy method name
+    memcpy(method_out, method_str, method_len);
+    method_out[method_len] = '\0';
+
+    free(copy);
+}
+
 // Define callbacks
 void my_reply(void *env) {
     // Manually init API context for callback reply
@@ -100,62 +153,12 @@ void make_call(ic_principal_t callee, const char *method_name) {
 IC_API_UPDATE(trigger_call, "(text) -> (text)") {
     ic_api_debug_print("trigger_call called");
 
-    // Read combined text argument
-    char  *input = NULL;
-    size_t input_len = 0;
-    if (ic_api_from_wire_text(api, &input, &input_len) != IC_OK ||
-        input == NULL || input_len == 0) {
-        ic_api_trap("Failed to parse trigger_call text argument");
-    }
-
-    // Find first comma, if any
-    size_t comma_index = input_len;
-    for (size_t i = 0; i < input_len; i++) {
-        if (input[i] == ',') {
-            comma_index = i;
-            break;
-        }
-    }
-
-    // Parse callee
+    // Parse argument: "<callee>,<method_name>"
     ic_principal_t callee;
-    if (comma_index < input_len) {
-        // Comma exists, first part is callee
-        if (comma_index == 0) {
-            ic_api_trap(
-                "Callee string missing before comma in trigger_call argument");
-        }
-        char callee_str[100] = {0};
-        if (comma_index >= sizeof(callee_str)) {
-            ic_api_trap("Callee string too long");
-        }
-        memcpy(callee_str, input, comma_index);
-        callee_str[comma_index] = '\0';
+    char           method_str[100] = {0};
+    parse_trigger_call_arg(api, &callee, method_str, sizeof(method_str));
 
-        // Parse callee principal using strict text parse as in
-        // ic_principal_from_text()
-        if (ic_principal_from_text(&callee, callee_str) != IC_OK) {
-            ic_api_trap("Failed to parse callee principal text");
-        }
-    } else {
-        ic_api_trap(
-            "Callee string missing before comma in trigger_call argument");
-    }
-
-    // Parse method_name
-    size_t method_start = (comma_index < input_len) ? (comma_index + 1) : 0;
-    size_t method_len = input_len - method_start;
-    if (method_len == 0) {
-        ic_api_trap("Method name missing in trigger_call argument");
-    }
-
-    char method_str[100] = {0};
-    if (method_len >= sizeof(method_str)) {
-        ic_api_trap("Method name string too long");
-    }
-    memcpy(method_str, input + method_start, method_len);
-    method_str[method_len] = '\0';
-
+    // Debug output
     ic_api_debug_print("Parsed callee for trigger_call: ");
     {
         char callee_buf[100] = {0};

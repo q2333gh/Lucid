@@ -201,6 +201,7 @@ def run_post_processing(
         examples_dir: Examples directory for .did output
         examples: Optional list of example names to process (None = all)
     """
+    # TODO if compile successed last time and no changes, skip this step
     print("\n[Phase 4] Post-processing: wasi2ic -> wasm-opt -> candid -> dfx.json")
 
     if not bin_dir.exists():

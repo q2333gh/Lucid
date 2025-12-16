@@ -88,37 +88,56 @@ void make_call(ic_principal_t callee, const char *method_name) {
 }
 
 // Example update function to trigger the call
-// Signature: (principal, text) -> (text)
-//  - first arg: target canister principal
-//  - second arg: method name on that canister
-IC_API_UPDATE(trigger_call, "(principal, text) -> (text)") {
+// Signature: (text) -> (text)
+//
+// The single text argument is expected to be either:
+//   "<method_name>"
+// or
+//   "<ignored_prefix>,<method_name>"
+// In the second form we parse by the first comma and ignore the prefix.
+// For simplicity, this example always calls the current canister (`self`)
+// rather than an arbitrary target principal.
+IC_API_UPDATE(trigger_call, "(text) -> (text)") {
     ic_api_debug_print("trigger_call called");
 
-    // Read principal argument
-    ic_principal_t callee;
-    if (ic_api_from_wire_principal(api, &callee) != IC_OK) {
-        ic_api_trap("Failed to parse callee principal");
+    // Read combined text argument
+    char  *input = NULL;
+    size_t input_len = 0;
+    if (ic_api_from_wire_text(api, &input, &input_len) != IC_OK ||
+        input == NULL || input_len == 0) {
+        ic_api_trap("Failed to parse trigger_call text argument");
     }
 
-    // Read method name argument
-    char  *method = NULL;
-    size_t method_len = 0;
-    if (ic_api_from_wire_text(api, &method, &method_len) != IC_OK ||
-        method == NULL || method_len == 0) {
-        ic_api_trap("Failed to parse method name");
+    // Find first comma, if any
+    size_t comma_index = input_len;
+    for (size_t i = 0; i < input_len; i++) {
+        if (input[i] == ',') {
+            comma_index = i;
+            break;
+        }
+    }
+
+    // Determine method substring start
+    size_t method_start = (comma_index < input_len) ? (comma_index + 1) : 0;
+    size_t method_len = input_len - method_start;
+    if (method_len == 0) {
+        ic_api_trap("Method name missing in trigger_call argument");
     }
 
     char method_str[100] = {0};
     if (method_len >= sizeof(method_str)) {
         ic_api_trap("Method name string too long");
     }
-    memcpy(method_str, method, method_len);
+
+    memcpy(method_str, input + method_start, method_len);
     method_str[method_len] = '\0';
 
-    ic_api_debug_print("Method parsed: ");
+    ic_api_debug_print("Parsed method for trigger_call: ");
     ic_api_debug_print(method_str);
 
-    make_call(callee, method_str);
+    // For this example, call the method on this canister itself
+    ic_principal_t self_principal = ic_api_get_canister_self(api);
+    make_call(self_principal, method_str);
 
     // INFO: Do not reply here.
     // We want to reply ONLY when the callback returns.

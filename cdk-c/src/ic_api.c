@@ -57,26 +57,35 @@ ic_api_init(ic_entry_type_t entry_type, const char *func_name, bool debug) {
     }
 
     // Load message data
-    uint32_t arg_size = ic0_msg_arg_data_size();
-    if (arg_size > 0) {
-        if (ic_buffer_reserve(&api->input_buffer, arg_size) != IC_OK) {
-            ic_buffer_free(&api->input_buffer);
-            ic_buffer_free(&api->output_buffer);
-            idl_arena_destroy(&api->arena);
-            free(api);
-            return NULL;
+    //
+    // IMPORTANT: For some entry types (notably reject callbacks), the IC
+    // contract forbids calling msg_arg_data_* APIs. In those modes, there is
+    // no argument payload to read anyway, so we must skip this section.
+    //
+    // See: IC0504 "ic0_msg_arg_data_size cannot be executed in reject callback
+    // mode".
+    if (entry_type != IC_ENTRY_REJECT_CALLBACK) {
+        uint32_t arg_size = ic0_msg_arg_data_size();
+        if (arg_size > 0) {
+            if (ic_buffer_reserve(&api->input_buffer, arg_size) != IC_OK) {
+                ic_buffer_free(&api->input_buffer);
+                ic_buffer_free(&api->output_buffer);
+                idl_arena_destroy(&api->arena);
+                free(api);
+                return NULL;
+            }
+            uint8_t *temp_buf = (uint8_t *)malloc(arg_size);
+            if (temp_buf == NULL) {
+                ic_buffer_free(&api->input_buffer);
+                ic_buffer_free(&api->output_buffer);
+                idl_arena_destroy(&api->arena);
+                free(api);
+                return NULL;
+            }
+            ic0_msg_arg_data_copy((uintptr_t)temp_buf, 0, arg_size);
+            ic_buffer_append(&api->input_buffer, temp_buf, arg_size);
+            free(temp_buf);
         }
-        uint8_t *temp_buf = (uint8_t *)malloc(arg_size);
-        if (temp_buf == NULL) {
-            ic_buffer_free(&api->input_buffer);
-            ic_buffer_free(&api->output_buffer);
-            idl_arena_destroy(&api->arena);
-            free(api);
-            return NULL;
-        }
-        ic0_msg_arg_data_copy((uintptr_t)temp_buf, 0, arg_size);
-        ic_buffer_append(&api->input_buffer, temp_buf, arg_size);
-        free(temp_buf);
     }
 
     // Load principal identities

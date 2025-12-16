@@ -90,3 +90,9 @@ ic_result_t ic_api_to_wire_empty(ic_api_t *api); // Return empty result
 
 // Low-level reply dispatch (invoked automatically by serialization functions)
 ic_result_t ic_api_msg_reply(ic_api_t *api);
+
+// Retrieve reject information for the *current* message (typically in a
+// reject callback). These wrap the raw ic0 msg_reject_* APIs.
+uint32_t ic_api_msg_reject_code(void);
+ic_result_t
+ic_api_msg_reject_message(char *buf, size_t buf_len, size_t *out_len);

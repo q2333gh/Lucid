@@ -29,6 +29,7 @@ enable_testing()
 
 # Add subdirectories
 add_subdirectory(third_party/buddy_alloc) # Memory allocator
+add_subdirectory(third_party/tinyprintf)  # Lightweight string tool
 add_subdirectory(cdk_alloc)    # CDK allocator adapter
 add_subdirectory(c_candid)     # C candid serde lib 
 add_subdirectory(cdk-c)        # CDK main lib 

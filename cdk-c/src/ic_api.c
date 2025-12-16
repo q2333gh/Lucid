@@ -507,3 +507,35 @@ ic_result_t ic_api_msg_reply(ic_api_t *api) {
 
     return IC_OK;
 }
+
+uint32_t ic_api_msg_reject_code(void) { return ic0_msg_reject_code(); }
+
+ic_result_t
+ic_api_msg_reject_message(char *buf, size_t buf_len, size_t *out_len) {
+    if (buf == NULL || buf_len == 0) {
+        return IC_ERR_INVALID_ARG;
+    }
+
+    uint32_t msg_size = ic0_msg_reject_msg_size();
+    if (out_len != NULL) {
+        *out_len = msg_size;
+    }
+
+    // Leave space for a terminating '\0'
+    size_t copy_len = msg_size;
+    if (copy_len >= buf_len) {
+        copy_len = buf_len - 1;
+    }
+
+    if (copy_len > 0) {
+        ic0_msg_reject_msg_copy((uintptr_t)buf, 0, (uint32_t)copy_len);
+    }
+    buf[copy_len] = '\0';
+
+    if (copy_len < msg_size) {
+        // Truncated
+        return IC_ERR_BUFFER_OVERFLOW;
+    }
+
+    return IC_OK;
+}

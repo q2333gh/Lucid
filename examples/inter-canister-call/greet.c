@@ -7,6 +7,8 @@
 
 #include "ic_c_sdk.h"
 
+#include "tinyprintf.h"
+
 // =============================================================================
 // Candid Interface Description (Auto-generated via Registry)
 // =============================================================================
@@ -21,10 +23,6 @@ IC_CANDID_EXPORT_DID()
 // =============================================================================
 // Inter-Canister Call Example
 // =============================================================================
-
-
-
-
 
 // Define callbacks
 void my_reply(void *env) {
@@ -47,10 +45,26 @@ void my_reject(void *env) {
     ic_api_t *api = ic_api_init(IC_ENTRY_REJECT_CALLBACK, "my_reject", true);
     ic_api_debug_print("Call rejected!");
 
-    // Propagate error to original caller (or just trap)
-    // Here we return a text error for better UX
-    // IC_API_REPLY_TEXT("Inter-canister call failed/rejected.");
-    ic_api_trap("Inter-canister call rejected by callee.");
+    // Read reject code and message from the system and propagate a helpful
+    // error back to the original caller.
+    uint32_t    code = ic_api_msg_reject_code();
+    char        msg_buf[256];
+    size_t      msg_len = 0;
+    ic_result_t res =
+        ic_api_msg_reject_message(msg_buf, sizeof msg_buf, &msg_len);
+
+    char out[512];
+    if (res == IC_OK) {
+        tfp_snprintf(out, sizeof out,
+                     "Inter-canister call rejected (code=%u, msg=\"%s\")",
+                     (unsigned)code, msg_buf);
+    } else {
+        tfp_snprintf(out, sizeof out,
+                     "Inter-canister call rejected (code=%u, msg truncated)",
+                     (unsigned)code);
+    }
+
+    IC_API_REPLY_TEXT(out);
 
     ic_api_free(api);
 }

@@ -96,7 +96,7 @@ IC_API_UPDATE(trigger_call, "(principal) -> (text)") {
 
     make_call(callee);
 
-    // CRITICAL: Do NOT reply here.
+    // INFO: Do not reply here.
     // We want to reply ONLY when the callback returns.
     // By returning from this function WITHOUT calling msg_reply,
     // we tell the IC that the response is pending.

@@ -3,6 +3,7 @@
 
 #include "greet.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "ic_c_sdk.h"
@@ -36,7 +37,7 @@ void my_reply(void *env) {
     // The response is in the input buffer of the callback context.
     // For now, we just reply to the trigger_call caller with success.
 
-    IC_API_REPLY_TEXT("Inter-canister call successful: Increment executed.");
+    IC_API_REPLY_TEXT("Inter-canister call successful.");
 
     ic_api_free(api);
 }
@@ -69,8 +70,8 @@ void my_reject(void *env) {
     ic_api_free(api);
 }
 
-void make_call(ic_principal_t callee) {
-    ic_call_t *call = ic_call_new(&callee, "increment");
+void make_call(ic_principal_t callee, const char *method_name) {
+    ic_call_t *call = ic_call_new(&callee, method_name);
 
     // Add cycles
     ic_call_with_cycles(call, 1000);
@@ -86,15 +87,38 @@ void make_call(ic_principal_t callee) {
     ic_call_free(call);
 }
 
-// Example update function to trigger the call (optional)
-IC_API_UPDATE(trigger_call, "(principal) -> (text)") {
-    ic_api_debug_print("trigger_call called, callee: ");
+// Example update function to trigger the call
+// Signature: (principal, text) -> (text)
+//  - first arg: target canister principal
+//  - second arg: method name on that canister
+IC_API_UPDATE(trigger_call, "(principal, text) -> (text)") {
+    ic_api_debug_print("trigger_call called");
+
+    // Read principal argument
     ic_principal_t callee;
     if (ic_api_from_wire_principal(api, &callee) != IC_OK) {
         ic_api_trap("Failed to parse callee principal");
     }
 
-    make_call(callee);
+    // Read method name argument
+    char  *method = NULL;
+    size_t method_len = 0;
+    if (ic_api_from_wire_text(api, &method, &method_len) != IC_OK ||
+        method == NULL || method_len == 0) {
+        ic_api_trap("Failed to parse method name");
+    }
+
+    char method_str[100] = {0};
+    if (method_len >= sizeof(method_str)) {
+        ic_api_trap("Method name string too long");
+    }
+    memcpy(method_str, method, method_len);
+    method_str[method_len] = '\0';
+
+    ic_api_debug_print("Method parsed: ");
+    ic_api_debug_print(method_str);
+
+    make_call(callee, method_str);
 
     // INFO: Do not reply here.
     // We want to reply ONLY when the callback returns.

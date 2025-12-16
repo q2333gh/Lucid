@@ -8,6 +8,7 @@
 
 #include "ic_c_sdk.h"
 
+#include "ic_principal.h"
 #include "tinyprintf.h"
 
 // =============================================================================
@@ -93,10 +94,9 @@ void make_call(ic_principal_t callee, const char *method_name) {
 // The single text argument is expected to be either:
 //   "<method_name>"
 // or
-//   "<ignored_prefix>,<method_name>"
-// In the second form we parse by the first comma and ignore the prefix.
-// For simplicity, this example always calls the current canister (`self`)
-// rather than an arbitrary target principal.
+//   "<callee>,<method_name>"
+// In the second form we parse by the first comma.
+// 前半部分是callee, 逗号后半部分是method_name.
 IC_API_UPDATE(trigger_call, "(text) -> (text)") {
     ic_api_debug_print("trigger_call called");
 
@@ -117,7 +117,30 @@ IC_API_UPDATE(trigger_call, "(text) -> (text)") {
         }
     }
 
-    // Determine method substring start
+    // 解析callee
+    ic_principal_t callee;
+    if (comma_index < input_len) {
+        // Comma exists, first part is callee
+        if (comma_index == 0) {
+            ic_api_trap("Callee string missing before comma in trigger_call argument");
+        }
+        char callee_str[100] = {0};
+        if (comma_index >= sizeof(callee_str)) {
+            ic_api_trap("Callee string too long");
+        }
+        memcpy(callee_str, input, comma_index);
+        callee_str[comma_index] = '\0';
+
+        // Parse callee principal using strict text parse as in ic_principal_from_text()
+        if (ic_principal_from_text(&callee, callee_str) != IC_OK) {
+            ic_api_trap("Failed to parse callee principal text");
+        }
+    } else {
+        ic_api_trap("Callee string missing before comma in trigger_call argument");
+    }
+
+
+    // 解析method_name
     size_t method_start = (comma_index < input_len) ? (comma_index + 1) : 0;
     size_t method_len = input_len - method_start;
     if (method_len == 0) {
@@ -128,16 +151,19 @@ IC_API_UPDATE(trigger_call, "(text) -> (text)") {
     if (method_len >= sizeof(method_str)) {
         ic_api_trap("Method name string too long");
     }
-
     memcpy(method_str, input + method_start, method_len);
     method_str[method_len] = '\0';
 
+    ic_api_debug_print("Parsed callee for trigger_call: ");
+    {
+        char callee_buf[100] = {0};
+        ic_principal_to_text(&callee, callee_buf, sizeof(callee_buf));
+        ic_api_debug_print(callee_buf);
+    }
     ic_api_debug_print("Parsed method for trigger_call: ");
     ic_api_debug_print(method_str);
 
-    // For this example, call the method on this canister itself
-    ic_principal_t self_principal = ic_api_get_canister_self(api);
-    make_call(self_principal, method_str);
+    make_call(callee, method_str);
 
     // INFO: Do not reply here.
     // We want to reply ONLY when the callback returns.

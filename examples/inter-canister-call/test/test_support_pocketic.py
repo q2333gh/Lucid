@@ -82,6 +82,60 @@ def install_example_canister(
     return pic, canister_id
 
 
+def install_multiple_examples(
+    example_names: list[str],
+    *,
+    auto_build: bool = True,
+) -> tuple[PocketIC, dict[str, Principal]]:
+    """
+    Build (optionally) and install multiple example canisters into a *single*
+    PocketIC instance.
+
+    Returns:
+      (PocketIC instance, {example_name: canister_id_principal})
+    """
+    if not example_names:
+        raise ValueError("install_multiple_examples: example_names must not be empty")
+
+    setup_pocketic_binary()
+
+    if auto_build:
+        for name in example_names:
+            build_example_ic_wasm(name)
+
+    wasm_did_paths: dict[str, tuple[Path, Path]] = {}
+    for name in example_names:
+        wasm_path, did_path = get_wasm_and_did_paths(name)
+        wasm_did_paths[name] = (wasm_path, did_path)
+
+    pic = PocketIC()
+    print("[install-multi] PocketIC initialized")
+
+    ids: dict[str, Principal] = {}
+    for name, (wasm_path, did_path) in wasm_did_paths.items():
+        print(f"[install-multi] Installing '{name}'")
+        with open(wasm_path, "rb") as f:
+            wasm_module = f.read()
+        with open(did_path, "r") as f:
+            candid_interface = f.read()
+
+        canister = pic.create_and_install_canister_with_candid(
+            candid=candid_interface,
+            wasm_module=wasm_module,
+        )
+        canister_id = canister.canister_id
+        # Normalize to Principal explicitly for clarity
+        if isinstance(canister_id, Principal):
+            principal_id = canister_id
+        else:
+            principal_id = Principal.from_str(str(canister_id))
+
+        ids[name] = principal_id
+        print(f"[install-multi]  -> {name} ID: {principal_id}")
+
+    return pic, ids
+
+
 def decode_candid_text(response_bytes: bytes) -> str:
     """
     Simple heuristic Candid text decoder used for assertions/logging.

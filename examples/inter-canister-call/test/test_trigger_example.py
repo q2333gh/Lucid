@@ -20,17 +20,17 @@ from test_support_pocketic import decode_candid_text, install_multiple_examples
 def test_trigger() -> None:
     """End-to-end test for `trigger_call(text) -> (text)`."""
     print("=== test_trigger: start ===")
-    # 1. 在同一个 PocketIC 实例中安装两个 canister：adder 和 inter-canister-call
+    # 1. Install two canisters (adder and inter-canister-call) on the same PocketIC instance
     pic, ids = install_multiple_examples(
         ["adder", "inter-canister-call"], auto_build=True
     )
     adder_id = ids["adder"]
     caller_id = ids["inter-canister-call"]
 
-    # 2. 准备 Candid 参数：trigger_call(text)
+    # 2. Prepare Candid parameters for trigger_call(text)
     target_method = "increment"
-    # 传给 trigger_call 的约定格式: "<callee>,<method_name>"
-    # 这里使用 adder canister 的 principal 文本 + 方法名。
+    # Convention for the argument to trigger_call: "<callee>,<method_name>"
+    # Use adder canister's principal text and method name here.
     from ic.principal import Principal  # local import to avoid circular issues
 
     if isinstance(adder_id, Principal):
@@ -42,14 +42,14 @@ def test_trigger() -> None:
     params = [{"type": Types.Text, "value": arg_text}]
     payload = encode(params)
 
-    # 3. 调用 trigger_call（update）
+    # 3. Call trigger_call (as an update call)
     print(
         f"[test_trigger] calling trigger_call on {caller_id} "
         f"with arg_text={arg_text!r} (adder_id={adder_id})"
     )
     response_bytes = pic.update_call(caller_id, "trigger_call", payload)
 
-    # 4. 打印结果
+    # 4. Print the result
     decoded = decode_candid_text(response_bytes)
     print(f"=== test_trigger: done, decoded={decoded!r} ===")
 

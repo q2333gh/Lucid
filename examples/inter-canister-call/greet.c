@@ -9,7 +9,7 @@
 #include "ic_c_sdk.h"
 
 #include "ic_principal.h"
-#include "tinyprintf.h"
+#include <tinyprintf.h>
 
 // =============================================================================
 // Candid Interface Description (Auto-generated via Registry)
@@ -88,15 +88,15 @@ void make_call(ic_principal_t callee, const char *method_name) {
     ic_call_free(call);
 }
 
-// Example update function to trigger the call
+// Example update function to trigger the call.
 // Signature: (text) -> (text)
 //
 // The single text argument is expected to be either:
 //   "<method_name>"
 // or
 //   "<callee>,<method_name>"
-// In the second form we parse by the first comma.
-// 前半部分是callee, 逗号后半部分是method_name.
+// In the second form, we split by the first comma.
+// The part before the comma is the callee, the part after is the method name.
 IC_API_UPDATE(trigger_call, "(text) -> (text)") {
     ic_api_debug_print("trigger_call called");
 
@@ -117,7 +117,7 @@ IC_API_UPDATE(trigger_call, "(text) -> (text)") {
         }
     }
 
-    // 解析callee
+    // Parse callee
     ic_principal_t callee;
     if (comma_index < input_len) {
         // Comma exists, first part is callee
@@ -140,7 +140,7 @@ IC_API_UPDATE(trigger_call, "(text) -> (text)") {
     }
 
 
-    // 解析method_name
+    // Parse method_name
     size_t method_start = (comma_index < input_len) ? (comma_index + 1) : 0;
     size_t method_len = input_len - method_start;
     if (method_len == 0) {

@@ -122,7 +122,8 @@ IC_API_UPDATE(trigger_call, "(text) -> (text)") {
     if (comma_index < input_len) {
         // Comma exists, first part is callee
         if (comma_index == 0) {
-            ic_api_trap("Callee string missing before comma in trigger_call argument");
+            ic_api_trap(
+                "Callee string missing before comma in trigger_call argument");
         }
         char callee_str[100] = {0};
         if (comma_index >= sizeof(callee_str)) {
@@ -131,14 +132,15 @@ IC_API_UPDATE(trigger_call, "(text) -> (text)") {
         memcpy(callee_str, input, comma_index);
         callee_str[comma_index] = '\0';
 
-        // Parse callee principal using strict text parse as in ic_principal_from_text()
+        // Parse callee principal using strict text parse as in
+        // ic_principal_from_text()
         if (ic_principal_from_text(&callee, callee_str) != IC_OK) {
             ic_api_trap("Failed to parse callee principal text");
         }
     } else {
-        ic_api_trap("Callee string missing before comma in trigger_call argument");
+        ic_api_trap(
+            "Callee string missing before comma in trigger_call argument");
     }
-
 
     // Parse method_name
     size_t method_start = (comma_index < input_len) ? (comma_index + 1) : 0;

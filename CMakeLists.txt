@@ -35,7 +35,7 @@ add_subdirectory(c_candid)     # C candid serde lib
 add_subdirectory(cdk-c)        # CDK main lib 
 add_subdirectory(examples)     # User code examples 
 
-# Global Optimization Flags for WASM/WASI
+# Global Optimization Flags for WASM/WASI ; STREQUAL->string equal 
 if(CMAKE_SYSTEM_NAME STREQUAL "WASI")
     message(STATUS "Applying WASM size optimizations...")
     add_compile_options(

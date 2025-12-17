@@ -9,8 +9,8 @@
 #include "ic_c_sdk.h"
 
 #include "ic_principal.h"
+#include "idl/cdk_alloc.h"
 #include <tinyprintf.h>
-#include"idl/cdk_alloc.h"
 
 // =============================================================================
 // Candid Interface Description (Auto-generated via Registry)
@@ -34,50 +34,22 @@ IC_CANDID_EXPORT_DID()
             ic_api_trap(msg);                                                  \
     } while (0)
 
-// Parse trigger_call text argument: "<callee>,<method_name>"
-// Returns parsed callee principal and method name via output parameters.
-static void parse_trigger_call_arg(ic_api_t       *api,
-                                   ic_principal_t *callee_out,
-                                   char           *method_out,
-                                   size_t          method_buf_size) {
-    char  *input = NULL;
-    size_t input_len = 0;
-
-    // Get text argument
-    TRAP_IF(ic_api_from_wire_text(api, &input, &input_len) != IC_OK ||
-                input == NULL || input_len == 0,
-            "Failed to parse trigger_call text argument");
-
-    // Copy to modifiable string (manual allocation for WASI compatibility)
-    char *copy = (char *)malloc(input_len + 1);
-    TRAP_IF(!copy, "Memory allocation failed");
-    memcpy(copy, input, input_len);
-    copy[input_len] = '\0';
-
-    // Find first comma
-    char *comma = strchr(copy, ',');
-    TRAP_IF(!comma || comma == copy,
-            "Callee string missing before comma in trigger_call argument");
-
-    // Split string
-    *comma = '\0';
-    char *callee_str = copy;
-    char *method_str = comma + 1;
-
-    // Validate method name
-    size_t method_len = strlen(method_str);
-    TRAP_IF(method_len == 0, "Method name missing in trigger_call argument");
-    TRAP_IF(method_len >= method_buf_size, "Method name string too long");
-
-    // Parse principal
-    TRAP_IF(ic_principal_from_text(callee_out, callee_str) != IC_OK,
-            "Failed to parse callee principal text");
-
-    // Copy method name
-    memcpy(method_out, method_str, method_len);
-    method_out[method_len] = '\0';
-
-    free(copy);
+// Split a string by a delimiter character into two parts.
+// Uses a static buffer; returned pointers point into this buffer.
+static void split2(const char *s, char sep, char **out1, char **out2) {
+    static char buf[128];
+    memset(buf, 0, sizeof(buf));
+    strncpy(buf, s, sizeof(buf));
+    buf[sizeof(buf) - 1] = '\0';
+    char *p = strchr(buf, sep);
+    if (p) {
+        *p = '\0';
+        *out1 = buf;
+        *out2 = p + 1;
+    } else {
+        *out1 = buf;
+        *out2 = NULL;
+    }
 }
 
 // Define callbacks
@@ -154,10 +126,33 @@ void make_call(ic_principal_t callee, const char *method_name) {
 IC_API_UPDATE(trigger_call, "(text) -> (text)") {
     ic_api_debug_print("trigger_call called");
 
+    // Get text argument
+    char  *input = NULL;
+    size_t input_len = 0;
+
+    TRAP_IF(ic_api_from_wire_text(api, &input, &input_len) != IC_OK ||
+                input == NULL || input_len == 0,
+            "Failed to parse trigger_call text argument");
+
+    // Make a null-terminated copy for parsing
+    char   input_nt[128];
+    size_t copy_len =
+        input_len < sizeof(input_nt) - 1 ? input_len : sizeof(input_nt) - 1;
+    memcpy(input_nt, input, copy_len);
+    input_nt[copy_len] = '\0';
+
     // Parse argument: "<callee>,<method_name>"
+    char *callee_str = NULL;
+    char *method_str = NULL;
+    split2(input_nt, ',', &callee_str, &method_str);
+
+    TRAP_IF(method_str == NULL,
+            "Failed to split trigger_call argument with ','");
+
+    // Parse principal from callee string
     ic_principal_t callee;
-    char           method_str[100] = {0};
-    parse_trigger_call_arg(api, &callee, method_str, sizeof(method_str));
+    TRAP_IF(ic_principal_from_text(&callee, callee_str) != IC_OK,
+            "Failed to parse callee principal text");
 
     // Debug output
     ic_api_debug_print("Parsed callee for trigger_call: ");

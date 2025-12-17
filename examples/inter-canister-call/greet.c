@@ -10,6 +10,7 @@
 
 #include "ic_principal.h"
 #include <tinyprintf.h>
+#include"idl/cdk_alloc.h"
 
 // =============================================================================
 // Candid Interface Description (Auto-generated via Registry)

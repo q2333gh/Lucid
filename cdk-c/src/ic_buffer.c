@@ -1,4 +1,4 @@
-// Byte buffer management implementation
+// Byte buffer management implementation, like Rust: Vec<u8>
 #include "ic_buffer.h"
 
 #include "idl/cdk_alloc.h"

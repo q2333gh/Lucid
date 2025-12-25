@@ -13,8 +13,19 @@ The single text argument is interpreted by the canister as either:
 For this example we just send "<method_name>".
 """
 
+import sys
+from pathlib import Path
+
+# Add project root to path for imports
+project_root = Path(__file__).resolve().parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 from ic.candid import Types, encode
-from test_support_pocketic import decode_candid_text, install_multiple_examples
+from test.support.test_support_pocketic import (
+    decode_candid_text,
+    install_multiple_examples,
+)
 
 
 def test_trigger() -> None:

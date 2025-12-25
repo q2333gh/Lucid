@@ -17,7 +17,7 @@ from typing import Optional
 from pocket_ic import PocketIC
 from ic.candid import encode
 from ic.principal import Principal
-from test_support_build import build_example_ic_wasm, get_wasm_and_did_paths
+from .test_support_build import build_example_ic_wasm, get_wasm_and_did_paths
 
 
 # TODO performance: 1. make pocket-it asnyc init to prepare for service call, because it takes ~3s
@@ -195,3 +195,4 @@ def query_and_expect_substr(
             )
 
     return decoded
+

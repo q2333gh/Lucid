@@ -1,0 +1,395 @@
+#include "ic_c_sdk.h"
+
+// Export helper for candid-extractor
+IC_CANDID_EXPORT_DID()
+
+#include <stdio.h>
+#include <string.h>
+
+#include "idl/candid.h"
+
+// -----------------------------------------------------------------------------
+// Helpers: small, in-memory demo data + reply helper using the low-level
+// Candid builder so we can return records/variants/vec/opt.
+// -----------------------------------------------------------------------------
+static void reply_with_builder(idl_builder *builder) {
+    uint8_t *bytes = NULL;
+    size_t   len = 0;
+
+    if (idl_builder_serialize(builder, &bytes, &len) != IDL_STATUS_OK) {
+        ic_api_trap("failed to serialize candid reply");
+    }
+
+    if (len > UINT32_MAX) {
+        ic_api_trap("reply too large");
+    }
+
+    ic0_msg_reply_data_append((uintptr_t)bytes, (uint32_t)len);
+    ic0_msg_reply();
+}
+
+// Build Address type/value
+static idl_type *build_address_type(idl_arena *arena) {
+    idl_field fields[3];
+
+    fields[0].label.kind = IDL_LABEL_NAME;
+    fields[0].label.id = idl_hash("street");
+    fields[0].label.name = "street";
+    fields[0].type = idl_type_text(arena);
+
+    fields[1].label.kind = IDL_LABEL_NAME;
+    fields[1].label.id = idl_hash("city");
+    fields[1].label.name = "city";
+    fields[1].type = idl_type_text(arena);
+
+    fields[2].label.kind = IDL_LABEL_NAME;
+    fields[2].label.id = idl_hash("zip");
+    fields[2].label.name = "zip";
+    fields[2].type = idl_type_nat(arena);
+
+    return idl_type_record(arena, fields, 3);
+}
+
+static idl_value *build_address_value(idl_arena  *arena,
+                                      const char *street,
+                                      const char *city,
+                                      uint32_t    zip) {
+    idl_value_field fields[3];
+
+    fields[0].label.kind = IDL_LABEL_NAME;
+    fields[0].label.id = idl_hash("street");
+    fields[0].label.name = "street";
+    fields[0].value = idl_value_text_cstr(arena, street);
+
+    fields[1].label.kind = IDL_LABEL_NAME;
+    fields[1].label.id = idl_hash("city");
+    fields[1].label.name = "city";
+    fields[1].value = idl_value_text_cstr(arena, city);
+
+    fields[2].label.kind = IDL_LABEL_NAME;
+    fields[2].label.id = idl_hash("zip");
+    fields[2].label.name = "zip";
+    fields[2].value = idl_value_nat32(arena, zip);
+
+    return idl_value_record(arena, fields, 3);
+}
+
+// Build Status type/value helpers
+static idl_type *build_status_type(idl_arena *arena) {
+    idl_field variants[3];
+
+    variants[0].label.kind = IDL_LABEL_NAME;
+    variants[0].label.id = idl_hash("Active");
+    variants[0].label.name = "Active";
+    variants[0].type = idl_type_null(arena);
+
+    variants[1].label.kind = IDL_LABEL_NAME;
+    variants[1].label.id = idl_hash("Inactive");
+    variants[1].label.name = "Inactive";
+    variants[1].type = idl_type_null(arena);
+
+    variants[2].label.kind = IDL_LABEL_NAME;
+    variants[2].label.id = idl_hash("Banned");
+    variants[2].label.name = "Banned";
+    variants[2].type = idl_type_text(arena);
+
+    return idl_type_variant(arena, variants, 3);
+}
+
+static idl_value *build_status_value_active(idl_arena *arena) {
+    idl_value_field field;
+    field.label.kind = IDL_LABEL_NAME;
+    field.label.id = idl_hash("Active");
+    field.label.name = "Active";
+    field.value = idl_value_null(arena);
+    return idl_value_variant(arena, 0, &field);
+}
+
+static idl_value *build_status_value_banned(idl_arena *arena, const char *msg) {
+    idl_value_field field;
+    field.label.kind = IDL_LABEL_NAME;
+    field.label.id = idl_hash("Banned");
+    field.label.name = "Banned";
+    field.value = idl_value_text_cstr(arena, msg);
+    return idl_value_variant(arena, 2, &field);
+}
+
+// Build Profile type/value
+static idl_type *build_profile_type(idl_arena *arena, idl_type *status_type) {
+    idl_field fields[5];
+
+    fields[0].label.kind = IDL_LABEL_NAME;
+    fields[0].label.id = idl_hash("id");
+    fields[0].label.name = "id";
+    fields[0].type = idl_type_nat(arena);
+
+    fields[1].label.kind = IDL_LABEL_NAME;
+    fields[1].label.id = idl_hash("name");
+    fields[1].label.name = "name";
+    fields[1].type = idl_type_text(arena);
+
+    fields[2].label.kind = IDL_LABEL_NAME;
+    fields[2].label.id = idl_hash("emails");
+    fields[2].label.name = "emails";
+    fields[2].type = idl_type_vec(arena, idl_type_text(arena));
+
+    fields[3].label.kind = IDL_LABEL_NAME;
+    fields[3].label.id = idl_hash("age");
+    fields[3].label.name = "age";
+    fields[3].type = idl_type_opt(arena, idl_type_nat(arena));
+
+    fields[4].label.kind = IDL_LABEL_NAME;
+    fields[4].label.id = idl_hash("status");
+    fields[4].label.name = "status";
+    fields[4].type = status_type;
+
+    return idl_type_record(arena, fields, 5);
+}
+
+static idl_value *build_profile_value(idl_arena *arena, idl_value *status_val) {
+    idl_value_field fields[5];
+
+    fields[0].label.kind = IDL_LABEL_NAME;
+    fields[0].label.id = idl_hash("id");
+    fields[0].label.name = "id";
+    fields[0].value = idl_value_nat32(arena, 7);
+
+    fields[1].label.kind = IDL_LABEL_NAME;
+    fields[1].label.id = idl_hash("name");
+    fields[1].label.name = "name";
+    fields[1].value = idl_value_text_cstr(arena, "Dfinity Dev");
+
+    idl_value *email_items[2];
+    email_items[0] = idl_value_text_cstr(arena, "dev@example.com");
+    email_items[1] = idl_value_text_cstr(arena, "contact@example.com");
+    fields[2].label.kind = IDL_LABEL_NAME;
+    fields[2].label.id = idl_hash("emails");
+    fields[2].label.name = "emails";
+    fields[2].value = idl_value_vec(arena, email_items, 2);
+
+    fields[3].label.kind = IDL_LABEL_NAME;
+    fields[3].label.id = idl_hash("age");
+    fields[3].label.name = "age";
+    fields[3].value = idl_value_opt_some(arena, idl_value_nat32(arena, 30));
+
+    fields[4].label.kind = IDL_LABEL_NAME;
+    fields[4].label.id = idl_hash("status");
+    fields[4].label.name = "status";
+    fields[4].value = status_val;
+
+    return idl_value_record(arena, fields, 5);
+}
+
+// -----------------------------------------------------------------------------
+// Query function: greet
+// -----------------------------------------------------------------------------
+IC_API_QUERY(greet, "(text) -> (text)") {
+    // Echo-friendly greeting to show arg parsing for a single text
+    char  *name = NULL;
+    size_t name_len = 0;
+    if (ic_api_from_wire_text(api, &name, &name_len) == IC_OK && name_len > 0) {
+        char reply[128];
+        snprintf(reply, sizeof(reply), "Hello, %.*s!", (int)name_len, name);
+        IC_API_REPLY_TEXT(reply);
+    } else {
+        IC_API_REPLY_TEXT("Hello from types_example!");
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Update: add_user (text, nat, bool) -> ()
+// Parses arguments with the raw deserializer just for logging; returns empty.
+// -----------------------------------------------------------------------------
+IC_API_UPDATE(add_user, "(text, nat, bool) -> ()") {
+    const ic_buffer_t *input = ic_api_get_input_buffer(api);
+    idl_arena          arena;
+    idl_arena_init(&arena, 2048);
+
+    idl_deserializer *de = NULL;
+    if (idl_deserializer_new(ic_buffer_data(input), ic_buffer_size(input),
+                             &arena, &de) == IDL_STATUS_OK) {
+        idl_type  *ty = NULL;
+        idl_value *val = NULL;
+        if (idl_deserializer_get_value(de, &ty, &val) == IDL_STATUS_OK &&
+            val->kind == IDL_VALUE_TEXT) {
+            ic_api_debug_print("add_user name parsed");
+        }
+        if (idl_deserializer_get_value(de, &ty, &val) == IDL_STATUS_OK &&
+            val->kind == IDL_VALUE_NAT64) {
+            ic_api_debug_print("add_user age parsed");
+        }
+        if (idl_deserializer_get_value(de, &ty, &val) == IDL_STATUS_OK &&
+            val->kind == IDL_VALUE_BOOL) {
+            ic_api_debug_print("add_user active parsed");
+        }
+    }
+    idl_arena_destroy(&arena);
+    ic_api_to_wire_empty(api);
+}
+
+// -----------------------------------------------------------------------------
+// Update: set_address (name : text, addr : Address) -> ()
+// -----------------------------------------------------------------------------
+IC_API_UPDATE(
+    set_address,
+    "(text, record { street : text; city : text; zip : nat }) -> ()") {
+    ic_api_debug_print("set_address called (demo only, no storage)");
+    ic_api_to_wire_empty(api);
+}
+
+// -----------------------------------------------------------------------------
+// Query: get_address (name : text) -> (opt Address)
+// -----------------------------------------------------------------------------
+IC_API_QUERY(
+    get_address,
+    "(text) -> (opt record { street : text; city : text; zip : nat })") {
+    idl_arena arena;
+    idl_arena_init(&arena, 2048);
+
+    idl_builder builder;
+    idl_builder_init(&builder, &arena);
+
+    idl_type  *address_type = build_address_type(&arena);
+    idl_type  *opt_addr = idl_type_opt(&arena, address_type);
+    idl_value *addr_val = idl_value_opt_some(
+        &arena, build_address_value(&arena, "1 Hacker Way", "IC", 2050));
+
+    idl_builder_arg(&builder, opt_addr, addr_val);
+    reply_with_builder(&builder);
+
+    idl_arena_destroy(&arena);
+}
+
+// -----------------------------------------------------------------------------
+// Update: set_status (user : text, st : Status) -> ()
+// -----------------------------------------------------------------------------
+IC_API_UPDATE(set_status,
+              "(text, variant { Active; Inactive; Banned : text }) -> ()") {
+    ic_api_debug_print("set_status called (demo only, no storage)");
+    ic_api_to_wire_empty(api);
+}
+
+// -----------------------------------------------------------------------------
+// Query: get_status (user : text) -> (Status)
+// -----------------------------------------------------------------------------
+IC_API_QUERY(get_status,
+             "(text) -> (variant { Active; Inactive; Banned : text })") {
+    idl_arena arena;
+    idl_arena_init(&arena, 1024);
+
+    idl_builder builder;
+    idl_builder_init(&builder, &arena);
+
+    idl_type  *status_type = build_status_type(&arena);
+    idl_value *status_val =
+        build_status_value_banned(&arena, "too many requests");
+
+    idl_builder_arg(&builder, status_type, status_val);
+    reply_with_builder(&builder);
+
+    idl_arena_destroy(&arena);
+}
+
+// -----------------------------------------------------------------------------
+// Update: create_profiles (vec Profile) -> (vec Result)
+// -----------------------------------------------------------------------------
+IC_API_UPDATE(
+    create_profiles,
+    "(vec record { id : nat; name : text; emails : vec text; age : opt nat; "
+    "status : variant { Active; Inactive; Banned : text } }) -> (vec variant { "
+    "Ok : record { id : nat; name : text; emails : vec text; age : opt nat; "
+    "status : variant { Active; Inactive; Banned : text } }; Err : text })") {
+    idl_arena arena;
+    idl_arena_init(&arena, 4096);
+
+    idl_builder builder;
+    idl_builder_init(&builder, &arena);
+
+    idl_type *status_type = build_status_type(&arena);
+    idl_type *profile_type = build_profile_type(&arena, status_type);
+
+    idl_field result_fields[2];
+    result_fields[0].label.kind = IDL_LABEL_NAME;
+    result_fields[0].label.id = idl_hash("Ok");
+    result_fields[0].label.name = "Ok";
+    result_fields[0].type = profile_type;
+    result_fields[1].label.kind = IDL_LABEL_NAME;
+    result_fields[1].label.id = idl_hash("Err");
+    result_fields[1].label.name = "Err";
+    result_fields[1].type = idl_type_text(&arena);
+
+    idl_type *result_variant = idl_type_variant(&arena, result_fields, 2);
+    idl_type *vec_result = idl_type_vec(&arena, result_variant);
+
+    idl_value_field ok_field;
+    ok_field.label = result_fields[0].label;
+    ok_field.value =
+        build_profile_value(&arena, build_status_value_active(&arena));
+    idl_value *ok_variant = idl_value_variant(&arena, 0, &ok_field);
+
+    idl_value_field err_field;
+    err_field.label = result_fields[1].label;
+    err_field.value = idl_value_text_cstr(&arena, "duplicate id");
+    idl_value *err_variant = idl_value_variant(&arena, 1, &err_field);
+
+    idl_value *items[2] = {ok_variant, err_variant};
+    idl_value *vec_val = idl_value_vec(&arena, items, 2);
+
+    idl_builder_arg(&builder, vec_result, vec_val);
+    reply_with_builder(&builder);
+
+    idl_arena_destroy(&arena);
+}
+
+// -----------------------------------------------------------------------------
+// Query: find_profile (nat) -> (opt Profile)
+// -----------------------------------------------------------------------------
+IC_API_QUERY(
+    find_profile,
+    "(nat) -> (opt record { id : nat; name : text; emails : vec text; age : "
+    "opt nat; status : variant { Active; Inactive; Banned : text } })") {
+    idl_arena arena;
+    idl_arena_init(&arena, 4096);
+
+    idl_builder builder;
+    idl_builder_init(&builder, &arena);
+
+    idl_type  *status_type = build_status_type(&arena);
+    idl_type  *profile_type = build_profile_type(&arena, status_type);
+    idl_type  *opt_profile = idl_type_opt(&arena, profile_type);
+    idl_value *profile_val = idl_value_opt_some(
+        &arena, build_profile_value(&arena, build_status_value_active(&arena)));
+
+    idl_builder_arg(&builder, opt_profile, profile_val);
+    reply_with_builder(&builder);
+
+    idl_arena_destroy(&arena);
+}
+
+// -----------------------------------------------------------------------------
+// Query: stats () -> (nat, vec nat, text)
+// -----------------------------------------------------------------------------
+IC_API_QUERY(stats, "() -> (nat, vec nat, text)") {
+    idl_arena arena;
+    idl_arena_init(&arena, 1024);
+
+    idl_builder builder;
+    idl_builder_init(&builder, &arena);
+
+    idl_builder_arg_nat64(&builder, 3); // count
+
+    uint64_t   numbers_raw[3] = {1, 2, 3};
+    idl_value *num_vals[3];
+    num_vals[0] = idl_value_nat64(&arena, numbers_raw[0]);
+    num_vals[1] = idl_value_nat64(&arena, numbers_raw[1]);
+    num_vals[2] = idl_value_nat64(&arena, numbers_raw[2]);
+
+    idl_type  *vec_nat_type = idl_type_vec(&arena, idl_type_nat(&arena));
+    idl_value *vec_val = idl_value_vec(&arena, num_vals, 3);
+    idl_builder_arg(&builder, vec_nat_type, vec_val);
+
+    idl_builder_arg_text_cstr(&builder, "ok");
+
+    reply_with_builder(&builder);
+    idl_arena_destroy(&arena);
+}

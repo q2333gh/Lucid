@@ -34,10 +34,9 @@ def ensure_principal(canister_id) -> Principal:
     return Principal.from_str(str(canister_id))
 
 
-def test_greet() -> None:
+def test_greet(pic, canister_id) -> None:
     """Test greet: (text) -> (text) query"""
     print("\n=== Test: greet ===")
-    pic, canister_id = install_example_canister("types_example", auto_build=True)
     principal_id = ensure_principal(canister_id)
 
     # Call greet with a name
@@ -49,10 +48,9 @@ def test_greet() -> None:
     assert "Hello" in decoded or "World" in decoded, f"Unexpected response: {decoded}"
 
 
-def test_add_user() -> None:
+def test_add_user(pic, canister_id) -> None:
     """Test add_user: (text, nat, bool) -> ()"""
     print("\n=== Test: add_user ===")
-    pic, canister_id = install_example_canister("types_example", auto_build=True)
 
     # Call add_user with multiple parameters
     params = [
@@ -68,35 +66,40 @@ def test_add_user() -> None:
     assert response_bytes is not None
 
 
-def test_set_address() -> None:
+def test_set_address(pic, canister_id) -> None:
     """Test set_address: (text, record) -> ()"""
     print("\n=== Test: set_address ===")
-    pic, canister_id = install_example_canister("types_example", auto_build=True)
+    principal_id = ensure_principal(canister_id)
 
-    # Build record type for address using dictionary format
-    address_record = {
-        "street": "123 Main St",
-        "city": "San Francisco",
-        "zip": 94102,
-    }
+    # Define Record type using Types.Record
+    address_type = Types.Record(
+        {"street": Types.Text, "city": Types.Text, "zip": Types.Nat}
+    )
 
+    # Encode parameters with proper format
     params = [
         {"type": Types.Text, "value": "Bob"},
-        {"type": Types.Record, "value": address_record},
+        {
+            "type": address_type,
+            "value": {"street": "123 Main St", "city": "San Francisco", "zip": 94102},
+        },
     ]
-    payload = encode(params)
-    principal_id = ensure_principal(canister_id)
-    response_bytes = pic.update_call(principal_id, "set_address", payload)
-    print(
-        f"set_address('Bob', {{street: '...', city: '...', zip: 94102}}) -> response received"
-    )
-    assert response_bytes is not None
+
+    try:
+        payload = encode(params)
+        response_bytes = pic.update_call(principal_id, "set_address", payload)
+        print(
+            f"set_address('Bob', {{street: '...', city: '...', zip: 94102}}) -> response received"
+        )
+        assert response_bytes is not None
+    except Exception as e:
+        print(f"Error: {e}")
+        raise
 
 
-def test_get_address() -> None:
+def test_get_address(pic, canister_id) -> None:
     """Test get_address: (text) -> (opt record) query"""
     print("\n=== Test: get_address ===")
-    pic, canister_id = install_example_canister("types_example", auto_build=True)
 
     params = [{"type": Types.Text, "value": "Alice"}]
     payload = encode(params)
@@ -108,38 +111,45 @@ def test_get_address() -> None:
     assert response_bytes is not None
 
 
-def test_set_status() -> None:
+def test_set_status(pic, canister_id) -> None:
     """Test set_status: (text, variant) -> ()"""
     print("\n=== Test: set_status ===")
-    pic, canister_id = install_example_canister("types_example", auto_build=True)
+    principal_id = ensure_principal(canister_id)
 
-    # Test with Active variant (no data) - using dictionary format
+    # Define Variant type using Types.Variant
+    status_type = Types.Variant(
+        {"Active": Types.Null, "Inactive": Types.Null, "Banned": Types.Text}
+    )
+
+    # Test with Active variant (no data)
     params = [
         {"type": Types.Text, "value": "user1"},
-        {"type": Types.Variant, "value": {"Active": None}},
+        {"type": status_type, "value": {"Active": None}},
     ]
-    payload = encode(params)
-    principal_id = ensure_principal(canister_id)
-    response_bytes = pic.update_call(principal_id, "set_status", payload)
-    print(f"set_status('user1', Active) -> response received")
-    assert response_bytes is not None
 
-    # Test with Banned variant (with text data)
-    params = [
-        {"type": Types.Text, "value": "user2"},
-        {"type": Types.Variant, "value": {"Banned": "spam detected"}},
-    ]
-    payload = encode(params)
-    principal_id = ensure_principal(canister_id)
-    response_bytes = pic.update_call(principal_id, "set_status", payload)
-    print(f"set_status('user2', Banned('spam detected')) -> response received")
-    assert response_bytes is not None
+    try:
+        payload = encode(params)
+        response_bytes = pic.update_call(principal_id, "set_status", payload)
+        print(f"set_status('user1', Active) -> response received")
+        assert response_bytes is not None
+
+        # Test with Banned variant (with text data)
+        params2 = [
+            {"type": Types.Text, "value": "user2"},
+            {"type": status_type, "value": {"Banned": "spam detected"}},
+        ]
+        payload2 = encode(params2)
+        response_bytes2 = pic.update_call(principal_id, "set_status", payload2)
+        print(f"set_status('user2', Banned('spam detected')) -> response received")
+        assert response_bytes2 is not None
+    except Exception as e:
+        print(f"Error: {e}")
+        raise
 
 
-def test_get_status() -> None:
+def test_get_status(pic, canister_id) -> None:
     """Test get_status: (text) -> (variant) query"""
     print("\n=== Test: get_status ===")
-    pic, canister_id = install_example_canister("types_example", auto_build=True)
 
     params = [{"type": Types.Text, "value": "user1"}]
     payload = encode(params)
@@ -151,10 +161,9 @@ def test_get_status() -> None:
     assert response_bytes is not None
 
 
-def test_create_profiles() -> None:
+def test_create_profiles(pic, canister_id) -> None:
     """Test create_profiles: (vec record) -> (vec variant)"""
     print("\n=== Test: create_profiles ===")
-    pic, canister_id = install_example_canister("types_example", auto_build=True)
 
     # Build a simple profile record using dictionary format
     profile = {
@@ -165,9 +174,35 @@ def test_create_profiles() -> None:
         "status": {"Active": None},  # Variant
     }
 
-    # Create vec of profiles - encode should handle the nested structure
-    params = [{"type": Types.Vec, "value": [profile]}]
     principal_id = ensure_principal(canister_id)
+
+    # Define nested types
+    status_type = Types.Variant(
+        {"Active": Types.Null, "Inactive": Types.Null, "Banned": Types.Text}
+    )
+
+    profile_type = Types.Record(
+        {
+            "id": Types.Nat,
+            "name": Types.Text,
+            "emails": Types.Vec(Types.Text),
+            "age": Types.Opt(Types.Nat),
+            "status": status_type,
+        }
+    )
+
+    # Create a profile value
+    profile_value = {
+        "id": 1,
+        "name": "Test User",
+        "emails": ["test@example.com"],
+        "age": [30],  # Opt: [value] means Some(value)
+        "status": {"Active": None},  # Variant
+    }
+
+    # Encode vec of profiles
+    params = [{"type": Types.Vec(profile_type), "value": [profile_value]}]
+
     try:
         payload = encode(params)
         response_bytes = pic.update_call(principal_id, "create_profiles", payload)
@@ -176,14 +211,13 @@ def test_create_profiles() -> None:
         # Should return vec of Result variants (Ok/Err)
         assert response_bytes is not None
     except Exception as e:
-        print(f"Note: Complex nested type encoding may need adjustment: {e}")
-        print("This test verifies the method exists and can be called")
+        print(f"Error: {e}")
+        raise
 
 
-def test_find_profile() -> None:
+def test_find_profile(pic, canister_id) -> None:
     """Test find_profile: (nat) -> (opt record) query"""
     print("\n=== Test: find_profile ===")
-    pic, canister_id = install_example_canister("types_example", auto_build=True)
 
     params = [{"type": Types.Nat, "value": 7}]
     payload = encode(params)
@@ -195,10 +229,9 @@ def test_find_profile() -> None:
     assert response_bytes is not None
 
 
-def test_stats() -> None:
+def test_stats(pic, canister_id) -> None:
     """Test stats: () -> (nat, vec nat, text) query"""
     print("\n=== Test: stats ===")
-    pic, canister_id = install_example_canister("types_example", auto_build=True)
 
     # No parameters
     params = []
@@ -219,26 +252,45 @@ def run_all_tests() -> None:
     print("Running types_example test suite")
     print("=" * 60)
 
-    try:
-        test_greet()
-        test_add_user()
-        test_set_address()
-        test_get_address()
-        test_set_status()
-        test_get_status()
-        test_create_profiles()
-        test_find_profile()
-        test_stats()
+    # Build and install canister once for all tests
+    print("\n[Setup] Building and installing canister...")
+    pic, canister_id = install_example_canister("types_example", auto_build=True)
+    print(f"[Setup] Canister installed: {canister_id}\n")
 
-        print("\n" + "=" * 60)
-        print("All tests completed successfully!")
-        print("=" * 60)
-    except Exception as e:
-        print(f"\n❌ Test failed with error: {e}")
-        import traceback
+    # List of all test functions
+    tests = [
+        ("greet", test_greet),
+        ("add_user", test_add_user),
+        ("set_address", test_set_address),
+        ("get_address", test_get_address),
+        ("set_status", test_set_status),
+        ("get_status", test_get_status),
+        ("create_profiles", test_create_profiles),
+        ("find_profile", test_find_profile),
+        ("stats", test_stats),
+    ]
 
-        traceback.print_exc()
+    passed = 0
+    failed = 0
+
+    for test_name, test_func in tests:
+        try:
+            test_func(pic, canister_id)
+            passed += 1
+        except Exception as e:
+            failed += 1
+            print(f"\n⚠️  Test '{test_name}' failed: {e}")
+            # Continue with other tests instead of stopping
+
+    print("\n" + "=" * 60)
+    print(f"Test Summary: {passed} passed, {failed} failed")
+    print("=" * 60)
+
+    if failed > 0:
+        print(f"\n⚠️  {failed} test(s) failed. Check the output above for details.")
         sys.exit(1)
+    else:
+        print("\n✅ All tests completed successfully!")
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 // Export helper for candid-extractor
 IC_CANDID_EXPORT_DID()
 
-#include <stdio.h>
+// #include <stdio.h>
 #include <string.h>
 
 #include "idl/candid.h"
@@ -189,7 +189,10 @@ IC_API_QUERY(greet, "(text) -> (text)") {
     size_t name_len = 0;
     if (ic_api_from_wire_text(api, &name, &name_len) == IC_OK && name_len > 0) {
         char reply[128];
-        snprintf(reply, sizeof(reply), "Hello, %.*s!", (int)name_len, name);
+        // snprintf(reply, sizeof(reply), "Hello, %.*s!", (int)name_len, name);
+        strcpy(reply, "Hello, ");
+        strcat(reply, name);
+        strcat(reply, "!");
         IC_API_REPLY_TEXT(reply);
     } else {
         IC_API_REPLY_TEXT("Hello from types_example!");

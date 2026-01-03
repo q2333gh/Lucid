@@ -12,6 +12,12 @@
 #include "idl/cdk_alloc.h"
 #include "idl/leb128.h"
 
+// Memory pool node for tracking allocated memory
+typedef struct ic_mem_node {
+    void               *ptr;
+    struct ic_mem_node *next;
+} ic_mem_node_t;
+
 struct ic_api {
     ic_entry_type_t entry_type;
     const char     *calling_function;
@@ -23,7 +29,9 @@ struct ic_api {
     bool            called_from_wire;
     bool            called_to_wire;
 
-    idl_arena arena;
+    idl_arena         arena;
+    ic_mem_node_t    *mem_pool;     // Linked list of allocated memory blocks
+    idl_deserializer *deserializer; // Cached deserializer for args parsing
 };
 
 ic_api_t *
@@ -39,6 +47,8 @@ ic_api_init(ic_entry_type_t entry_type, const char *func_name, bool debug) {
     api->debug_print = debug;
     api->called_from_wire = false;
     api->called_to_wire = false;
+    api->mem_pool = NULL;
+    api->deserializer = NULL;
 
     // Initialize arena
     idl_arena_init(&api->arena, 4096);
@@ -123,11 +133,47 @@ ic_api_init(ic_entry_type_t entry_type, const char *func_name, bool debug) {
 
 void ic_api_free(ic_api_t *api) {
     if (api != NULL) {
+        // Free all allocated memory in the pool
+        ic_mem_node_t *node = api->mem_pool;
+        while (node != NULL) {
+            ic_mem_node_t *next = node->next;
+            if (node->ptr != NULL) {
+                free(node->ptr);
+            }
+            free(node);
+            node = next;
+        }
+
         ic_buffer_free(&api->input_buffer);
         ic_buffer_free(&api->output_buffer);
         idl_arena_destroy(&api->arena);
         free(api);
     }
+}
+
+// Memory pool allocation: allocates memory that will be freed in ic_api_free
+void *ic_api_malloc(ic_api_t *api, size_t size) {
+    if (api == NULL || size == 0) {
+        return NULL;
+    }
+
+    void *ptr = malloc(size);
+    if (ptr == NULL) {
+        return NULL;
+    }
+
+    // Add to memory pool
+    ic_mem_node_t *node = (ic_mem_node_t *)malloc(sizeof(ic_mem_node_t));
+    if (node == NULL) {
+        free(ptr);
+        return NULL;
+    }
+
+    node->ptr = ptr;
+    node->next = api->mem_pool;
+    api->mem_pool = node;
+
+    return ptr;
 }
 
 ic_principal_t ic_api_get_caller(const ic_api_t *api) {
@@ -364,9 +410,21 @@ ic_result_t ic_api_from_wire_principal(ic_api_t       *api,
 }
 
 // Helper for sending reply
-static ic_result_t ic_api_reply_builder(ic_api_t *api, idl_builder *builder) {
-    uint8_t *bytes;
-    size_t   len;
+ic_result_t ic_api_reply_builder(ic_api_t *api, void *builder_ptr) {
+    if (api == NULL || builder_ptr == NULL) {
+        return IC_ERR_INVALID_ARG;
+    }
+    if (api->called_to_wire) {
+        ic_api_trap("cdk-c: ic_api_reply_builder() called twice");
+    }
+    if (!ic_entry_can_reply(api->entry_type)) {
+        ic_api_trap("cdk-c: cannot reply");
+    }
+    api->called_to_wire = true;
+
+    idl_builder *builder = (idl_builder *)builder_ptr;
+    uint8_t     *bytes;
+    size_t       len;
     if (idl_builder_serialize(builder, &bytes, &len) != IDL_STATUS_OK) {
         return IC_ERR_INVALID_ARG;
     }
@@ -385,7 +443,6 @@ ic_result_t ic_api_to_wire_text(ic_api_t *api, const char *text) {
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
     if (!ic_entry_can_reply(api->entry_type))
         ic_api_trap("cdk-c: cannot reply");
-    api->called_to_wire = true;
 
     idl_builder builder;
     idl_builder_init(&builder, &api->arena);
@@ -401,7 +458,6 @@ ic_result_t ic_api_to_wire_nat(ic_api_t *api, uint64_t value) {
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
     if (!ic_entry_can_reply(api->entry_type))
         ic_api_trap("cdk-c: cannot reply");
-    api->called_to_wire = true;
 
     idl_builder builder;
     idl_builder_init(&builder, &api->arena);
@@ -417,7 +473,6 @@ ic_result_t ic_api_to_wire_int(ic_api_t *api, int64_t value) {
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
     if (!ic_entry_can_reply(api->entry_type))
         ic_api_trap("cdk-c: cannot reply");
-    api->called_to_wire = true;
 
     idl_builder builder;
     idl_builder_init(&builder, &api->arena);
@@ -434,7 +489,6 @@ ic_api_to_wire_blob(ic_api_t *api, const uint8_t *blob, size_t blob_len) {
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
     if (!ic_entry_can_reply(api->entry_type))
         ic_api_trap("cdk-c: cannot reply");
-    api->called_to_wire = true;
 
     idl_builder builder;
     idl_builder_init(&builder, &api->arena);
@@ -451,7 +505,6 @@ ic_result_t ic_api_to_wire_principal(ic_api_t             *api,
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
     if (!ic_entry_can_reply(api->entry_type))
         ic_api_trap("cdk-c: cannot reply");
-    api->called_to_wire = true;
 
     idl_builder builder;
     idl_builder_init(&builder, &api->arena);
@@ -467,7 +520,6 @@ ic_result_t ic_api_to_wire_empty(ic_api_t *api) {
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
     if (!ic_entry_can_reply(api->entry_type))
         ic_api_trap("cdk-c: cannot reply");
-    api->called_to_wire = true;
 
     idl_builder builder;
     idl_builder_init(&builder, &api->arena);
@@ -515,6 +567,23 @@ ic_result_t ic_api_msg_reply(ic_api_t *api) {
     ic0_msg_reply();
 
     return IC_OK;
+}
+
+// Internal helper to get arena (not exported to WASM)
+// This is used internally by ic_args.c and for building replies
+// Marked with internal name to avoid WASM export issues
+idl_arena *ic_api_get_arena_internal(ic_api_t *api) {
+    if (api == NULL) {
+        return NULL;
+    }
+    return &api->arena;
+}
+
+// Reset the arena (useful if you need more space)
+void ic_api_reset_arena(ic_api_t *api) {
+    if (api != NULL) {
+        idl_arena_reset(&api->arena);
+    }
 }
 
 uint32_t ic_api_msg_reject_code(void) { return ic0_msg_reject_code(); }

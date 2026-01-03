@@ -24,6 +24,7 @@
 // High-level API
 #include "ic_api.h"
 #include "ic_simple.h"
+#include "ic_args.h"  // Simplified argument parsing
 
 // Inter-canister call
 #include "ic_call.h"

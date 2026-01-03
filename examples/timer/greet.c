@@ -8,8 +8,8 @@
 
 IC_CANDID_EXPORT_DID()
 
-#include "idl/candid.h"
 #include "ic_simple.h"
+#include "idl/candid.h"
 // Counter for periodic timer
 static uint64_t periodic_count = 0;
 
@@ -76,9 +76,8 @@ IC_API_UPDATE(set_periodic_timer, ("() -> (nat64)")) {
 // Update to clear a timer (takes timer ID as argument)
 IC_API_UPDATE(clear_timer, ("(nat64) -> (nat64)")) {
     uint64_t timer_id;
-    if (ic_api_from_wire_nat(api, &timer_id) != IC_OK) {
-        ic_api_trap("Failed to read timer ID");
-    }
+    IC_API_PARSE_SIMPLE(api, nat, timer_id);
+
     ic_timer_result_t result = ic_timer_clear((ic_timer_id_t)timer_id);
     if (result == IC_TIMER_OK) {
         ic_api_debug_print("Timer TIMER_CLEARED");

@@ -91,8 +91,37 @@ ic_result_t ic_api_to_wire_empty(ic_api_t *api); // Return empty result
 // Low-level reply dispatch (invoked automatically by serialization functions)
 ic_result_t ic_api_msg_reply(ic_api_t *api);
 
+// Reply using a builder (for complex types like records, variants, vec, opt)
+// This function serializes the builder and sends the reply
+// Note: Include idl/candid.h in your source file to use idl_builder
+// The builder parameter type is void* to avoid requiring idl/candid.h in header
+ic_result_t ic_api_reply_builder(ic_api_t *api, void *builder_ptr);
+
 // Retrieve reject information for the *current* message (typically in a
 // reject callback). These wrap the raw ic0 msg_reject_* APIs.
 uint32_t ic_api_msg_reject_code(void);
 ic_result_t
 ic_api_msg_reject_message(char *buf, size_t buf_len, size_t *out_len);
+
+// Memory pool management (internal use, but exposed for args parsing)
+// Allocates memory that will be automatically freed when ic_api_free is called
+void *ic_api_malloc(ic_api_t *api, size_t size);
+
+// Forward declarations
+struct idl_arena;
+struct idl_builder;
+typedef struct idl_arena   idl_arena;
+typedef struct idl_builder idl_builder;
+
+// Get the arena from API context (for building replies)
+// The arena is automatically initialized and will be freed in ic_api_free
+// Note: This is an internal function - users should use IC_API_ARENA macro
+// instead Internal implementation (not exported to WASM to avoid import errors)
+idl_arena *ic_api_get_arena_internal(ic_api_t *api);
+
+// Public API wrapper (macro to avoid WASM export)
+#define ic_api_get_arena(api) ic_api_get_arena_internal(api)
+
+// Reset the arena (useful if you need more space)
+// This clears all allocations in the arena but keeps it initialized
+void ic_api_reset_arena(ic_api_t *api);

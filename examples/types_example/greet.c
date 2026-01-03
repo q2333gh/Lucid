@@ -11,22 +11,8 @@ IC_CANDID_EXPORT_DID()
 // -----------------------------------------------------------------------------
 // Helpers: small, in-memory demo data + reply helper using the low-level
 // Candid builder so we can return records/variants/vec/opt.
+// Note: Now using ic_api_reply_builder which handles everything automatically
 // -----------------------------------------------------------------------------
-static void reply_with_builder(idl_builder *builder) {
-    uint8_t *bytes = NULL;
-    size_t   len = 0;
-
-    if (idl_builder_serialize(builder, &bytes, &len) != IDL_STATUS_OK) {
-        ic_api_trap("failed to serialize candid reply");
-    }
-
-    if (len > UINT32_MAX) {
-        ic_api_trap("reply too large");
-    }
-
-    ic0_msg_reply_data_append((uintptr_t)bytes, (uint32_t)len);
-    ic0_msg_reply();
-}
 
 // Build Address type/value
 static idl_type *build_address_type(idl_arena *arena) {
@@ -184,49 +170,35 @@ static idl_value *build_profile_value(idl_arena *arena, idl_value *status_val) {
 // Query function: greet
 // -----------------------------------------------------------------------------
 IC_API_QUERY(greet, "(text) -> (text)") {
-    // Echo-friendly greeting to show arg parsing for a single text
-    char  *name = NULL;
-    size_t name_len = 0;
-    if (ic_api_from_wire_text(api, &name, &name_len) == IC_OK && name_len > 0) {
-        char reply[128];
-        // snprintf(reply, sizeof(reply), "Hello, %.*s!", (int)name_len, name);
-        strcpy(reply, "Hello, ");
-        strcat(reply, name);
-        strcat(reply, "!");
-        IC_API_REPLY_TEXT(reply);
-    } else {
-        IC_API_REPLY_TEXT("Hello from types_example!");
-    }
+    // Echo-friendly greeting using simplified argument parsing
+    char *name = NULL;
+    IC_API_PARSE_SIMPLE(api, text, name);
+
+    char reply[128];
+    strcpy(reply, "Hello, ");
+    strcat(reply, name);
+    strcat(reply, "!");
+    IC_API_REPLY_TEXT(reply);
 }
 
 // -----------------------------------------------------------------------------
 // Update: add_user (text, nat, bool) -> ()
-// Parses arguments with the raw deserializer just for logging; returns empty.
+// Uses simplified argument parsing API
 // -----------------------------------------------------------------------------
 IC_API_UPDATE(add_user, "(text, nat, bool) -> ()") {
-    const ic_buffer_t *input = ic_api_get_input_buffer(api);
-    idl_arena          arena;
-    idl_arena_init(&arena, 2048);
+    char    *name = NULL;
+    uint64_t age = 0;
+    bool     active = false;
 
-    idl_deserializer *de = NULL;
-    if (idl_deserializer_new(ic_buffer_data(input), ic_buffer_size(input),
-                             &arena, &de) == IDL_STATUS_OK) {
-        idl_type  *ty = NULL;
-        idl_value *val = NULL;
-        if (idl_deserializer_get_value(de, &ty, &val) == IDL_STATUS_OK &&
-            val->kind == IDL_VALUE_TEXT) {
-            ic_api_debug_print("add_user name parsed");
-        }
-        if (idl_deserializer_get_value(de, &ty, &val) == IDL_STATUS_OK &&
-            val->kind == IDL_VALUE_NAT64) {
-            ic_api_debug_print("add_user age parsed");
-        }
-        if (idl_deserializer_get_value(de, &ty, &val) == IDL_STATUS_OK &&
-            val->kind == IDL_VALUE_BOOL) {
-            ic_api_debug_print("add_user active parsed");
-        }
-    }
-    idl_arena_destroy(&arena);
+    IC_API_PARSE_BEGIN(api);
+    IC_ARG_TEXT(&name);
+    IC_ARG_NAT(&age);
+    IC_ARG_BOOL(&active);
+    IC_API_PARSE_END();
+
+    // All arguments parsed and ready to use
+    // Memory for 'name' is automatically managed
+    ic_api_debug_print("add_user called with parsed arguments");
     ic_api_to_wire_empty(api);
 }
 
@@ -237,7 +209,7 @@ IC_API_UPDATE(
     set_address,
     "(text, record { street : text; city : text; zip : nat }) -> ()") {
     ic_api_debug_print("set_address called (demo only, no storage)");
-    ic_api_to_wire_empty(api);
+    IC_API_REPLY_EMPTY();
 }
 
 // -----------------------------------------------------------------------------
@@ -246,30 +218,37 @@ IC_API_UPDATE(
 IC_API_QUERY(
     get_address,
     "(text) -> (opt record { street : text; city : text; zip : nat })") {
-    idl_arena arena;
-    idl_arena_init(&arena, 2048);
+    // Parse input argument using simplified API
+    char *name = NULL;
+    IC_API_PARSE_SIMPLE(api, text, name);
 
-    idl_builder builder;
-    idl_builder_init(&builder, &arena);
+    // Build reply using simplified API (arena is automatically managed)
+    IC_API_BUILDER_BEGIN(api) {
+        idl_type  *address_type = build_address_type(arena);
+        idl_type  *opt_addr = idl_type_opt(arena, address_type);
+        idl_value *addr_val = idl_value_opt_some(
+            arena, build_address_value(arena, "1 Hacker Way", "IC", 2050));
 
-    idl_type  *address_type = build_address_type(&arena);
-    idl_type  *opt_addr = idl_type_opt(&arena, address_type);
-    idl_value *addr_val = idl_value_opt_some(
-        &arena, build_address_value(&arena, "1 Hacker Way", "IC", 2050));
-
-    idl_builder_arg(&builder, opt_addr, addr_val);
-    reply_with_builder(&builder);
-
-    idl_arena_destroy(&arena);
+        idl_builder_arg(builder, opt_addr, addr_val);
+    }
+    IC_API_BUILDER_END(api);
 }
 
 // -----------------------------------------------------------------------------
 // Update: set_status (user : text, st : Status) -> ()
+// Note: Only text argument is parsed with simplified API, variant parsing
+// would require additional support
 // -----------------------------------------------------------------------------
 IC_API_UPDATE(set_status,
               "(text, variant { Active; Inactive; Banned : text }) -> ()") {
+    // Parse text argument using simplified API
+    char *user = NULL;
+    IC_API_PARSE_SIMPLE(api, text, user);
+
+    // TODO: Variant parsing would need additional API support
+    // For now, we just parse the text argument
     ic_api_debug_print("set_status called (demo only, no storage)");
-    ic_api_to_wire_empty(api);
+    IC_API_REPLY_EMPTY();
 }
 
 // -----------------------------------------------------------------------------
@@ -277,20 +256,19 @@ IC_API_UPDATE(set_status,
 // -----------------------------------------------------------------------------
 IC_API_QUERY(get_status,
              "(text) -> (variant { Active; Inactive; Banned : text })") {
-    idl_arena arena;
-    idl_arena_init(&arena, 1024);
+    // Parse input argument using simplified API
+    char *user = NULL;
+    IC_API_PARSE_SIMPLE(api, text, user);
 
-    idl_builder builder;
-    idl_builder_init(&builder, &arena);
+    // Build reply using simplified API (arena is automatically managed)
+    IC_API_BUILDER_BEGIN(api) {
+        idl_type  *status_type = build_status_type(arena);
+        idl_value *status_val =
+            build_status_value_banned(arena, "too many requests");
 
-    idl_type  *status_type = build_status_type(&arena);
-    idl_value *status_val =
-        build_status_value_banned(&arena, "too many requests");
-
-    idl_builder_arg(&builder, status_type, status_val);
-    reply_with_builder(&builder);
-
-    idl_arena_destroy(&arena);
+        idl_builder_arg(builder, status_type, status_val);
+    }
+    IC_API_BUILDER_END(api);
 }
 
 // -----------------------------------------------------------------------------
@@ -302,46 +280,41 @@ IC_API_UPDATE(
     "status : variant { Active; Inactive; Banned : text } }) -> (vec variant { "
     "Ok : record { id : nat; name : text; emails : vec text; age : opt nat; "
     "status : variant { Active; Inactive; Banned : text } }; Err : text })") {
-    idl_arena arena;
-    idl_arena_init(&arena, 4096);
+    // Build reply using simplified API (arena is automatically managed)
+    IC_API_BUILDER_BEGIN(api) {
+        idl_type *status_type = build_status_type(arena);
+        idl_type *profile_type = build_profile_type(arena, status_type);
 
-    idl_builder builder;
-    idl_builder_init(&builder, &arena);
+        idl_field result_fields[2];
+        result_fields[0].label.kind = IDL_LABEL_NAME;
+        result_fields[0].label.id = idl_hash("Ok");
+        result_fields[0].label.name = "Ok";
+        result_fields[0].type = profile_type;
+        result_fields[1].label.kind = IDL_LABEL_NAME;
+        result_fields[1].label.id = idl_hash("Err");
+        result_fields[1].label.name = "Err";
+        result_fields[1].type = idl_type_text(arena);
 
-    idl_type *status_type = build_status_type(&arena);
-    idl_type *profile_type = build_profile_type(&arena, status_type);
+        idl_type *result_variant = idl_type_variant(arena, result_fields, 2);
+        idl_type *vec_result = idl_type_vec(arena, result_variant);
 
-    idl_field result_fields[2];
-    result_fields[0].label.kind = IDL_LABEL_NAME;
-    result_fields[0].label.id = idl_hash("Ok");
-    result_fields[0].label.name = "Ok";
-    result_fields[0].type = profile_type;
-    result_fields[1].label.kind = IDL_LABEL_NAME;
-    result_fields[1].label.id = idl_hash("Err");
-    result_fields[1].label.name = "Err";
-    result_fields[1].type = idl_type_text(&arena);
+        idl_value_field ok_field;
+        ok_field.label = result_fields[0].label;
+        ok_field.value =
+            build_profile_value(arena, build_status_value_active(arena));
+        idl_value *ok_variant = idl_value_variant(arena, 0, &ok_field);
 
-    idl_type *result_variant = idl_type_variant(&arena, result_fields, 2);
-    idl_type *vec_result = idl_type_vec(&arena, result_variant);
+        idl_value_field err_field;
+        err_field.label = result_fields[1].label;
+        err_field.value = idl_value_text_cstr(arena, "duplicate id");
+        idl_value *err_variant = idl_value_variant(arena, 1, &err_field);
 
-    idl_value_field ok_field;
-    ok_field.label = result_fields[0].label;
-    ok_field.value =
-        build_profile_value(&arena, build_status_value_active(&arena));
-    idl_value *ok_variant = idl_value_variant(&arena, 0, &ok_field);
+        idl_value *items[2] = {ok_variant, err_variant};
+        idl_value *vec_val = idl_value_vec(arena, items, 2);
 
-    idl_value_field err_field;
-    err_field.label = result_fields[1].label;
-    err_field.value = idl_value_text_cstr(&arena, "duplicate id");
-    idl_value *err_variant = idl_value_variant(&arena, 1, &err_field);
-
-    idl_value *items[2] = {ok_variant, err_variant};
-    idl_value *vec_val = idl_value_vec(&arena, items, 2);
-
-    idl_builder_arg(&builder, vec_result, vec_val);
-    reply_with_builder(&builder);
-
-    idl_arena_destroy(&arena);
+        idl_builder_arg(builder, vec_result, vec_val);
+    }
+    IC_API_BUILDER_END(api);
 }
 
 // -----------------------------------------------------------------------------
@@ -351,48 +324,42 @@ IC_API_QUERY(
     find_profile,
     "(nat) -> (opt record { id : nat; name : text; emails : vec text; age : "
     "opt nat; status : variant { Active; Inactive; Banned : text } })") {
-    idl_arena arena;
-    idl_arena_init(&arena, 4096);
+    // Parse input argument using simplified API
+    uint64_t profile_id = 0;
+    IC_API_PARSE_SIMPLE(api, nat, profile_id);
 
-    idl_builder builder;
-    idl_builder_init(&builder, &arena);
+    // Build reply using simplified API (arena is automatically managed)
+    IC_API_BUILDER_BEGIN(api) {
+        idl_type  *status_type = build_status_type(arena);
+        idl_type  *profile_type = build_profile_type(arena, status_type);
+        idl_type  *opt_profile = idl_type_opt(arena, profile_type);
+        idl_value *profile_val = idl_value_opt_some(
+            arena, build_profile_value(arena, build_status_value_active(arena)));
 
-    idl_type  *status_type = build_status_type(&arena);
-    idl_type  *profile_type = build_profile_type(&arena, status_type);
-    idl_type  *opt_profile = idl_type_opt(&arena, profile_type);
-    idl_value *profile_val = idl_value_opt_some(
-        &arena, build_profile_value(&arena, build_status_value_active(&arena)));
-
-    idl_builder_arg(&builder, opt_profile, profile_val);
-    reply_with_builder(&builder);
-
-    idl_arena_destroy(&arena);
+        idl_builder_arg(builder, opt_profile, profile_val);
+    }
+    IC_API_BUILDER_END(api);
 }
 
 // -----------------------------------------------------------------------------
 // Query: stats () -> (nat, vec nat, text)
 // -----------------------------------------------------------------------------
 IC_API_QUERY(stats, "() -> (nat, vec nat, text)") {
-    idl_arena arena;
-    idl_arena_init(&arena, 1024);
+    // Build reply using simplified API (arena is automatically managed)
+    IC_API_BUILDER_BEGIN(api) {
+        idl_builder_arg_nat64(builder, 3); // count
 
-    idl_builder builder;
-    idl_builder_init(&builder, &arena);
+        uint64_t   numbers_raw[3] = {1, 2, 3};
+        idl_value *num_vals[3];
+        num_vals[0] = idl_value_nat64(arena, numbers_raw[0]);
+        num_vals[1] = idl_value_nat64(arena, numbers_raw[1]);
+        num_vals[2] = idl_value_nat64(arena, numbers_raw[2]);
 
-    idl_builder_arg_nat64(&builder, 3); // count
+        idl_type  *vec_nat_type = idl_type_vec(arena, idl_type_nat(arena));
+        idl_value *vec_val = idl_value_vec(arena, num_vals, 3);
+        idl_builder_arg(builder, vec_nat_type, vec_val);
 
-    uint64_t   numbers_raw[3] = {1, 2, 3};
-    idl_value *num_vals[3];
-    num_vals[0] = idl_value_nat64(&arena, numbers_raw[0]);
-    num_vals[1] = idl_value_nat64(&arena, numbers_raw[1]);
-    num_vals[2] = idl_value_nat64(&arena, numbers_raw[2]);
-
-    idl_type  *vec_nat_type = idl_type_vec(&arena, idl_type_nat(&arena));
-    idl_value *vec_val = idl_value_vec(&arena, num_vals, 3);
-    idl_builder_arg(&builder, vec_nat_type, vec_val);
-
-    idl_builder_arg_text_cstr(&builder, "ok");
-
-    reply_with_builder(&builder);
-    idl_arena_destroy(&arena);
+        idl_builder_arg_text_cstr(builder, "ok");
+    }
+    IC_API_BUILDER_END(api);
 }

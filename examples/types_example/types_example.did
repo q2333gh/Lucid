@@ -1,9 +1,9 @@
 service : {
     "greet": (text) -> (text) query;
-    "add_user": (text, nat, bool) -> ();
-    "set_address": (text, record { street : text; city : text; zip : nat }) -> ();
+    "add_user": (text, nat, bool) -> (text);
+    "set_address": (text, record { street : text; city : text; zip : nat }) -> (text);
     "get_address": (text) -> (opt record { street : text; city : text; zip : nat }) query;
-    "set_status": (text, variant { Active; Inactive; Banned : text }) -> ();
+    "set_status": (text, variant { Active; Inactive; Banned : text }) -> (text);
     "get_status": (text) -> (variant { Active; Inactive; Banned : text }) query;
     "create_profiles": (vec record { id : nat; name : text; emails : vec text; age : opt nat; status : variant { Active; Inactive; Banned : text } }) -> (vec variant { Ok : record { id : nat; name : text; emails : vec text; age : opt nat; status : variant { Active; Inactive; Banned : text } }; Err : text });
     "find_profile": (nat) -> (opt record { id : nat; name : text; emails : vec text; age : opt nat; status : variant { Active; Inactive; Banned : text } }) query;

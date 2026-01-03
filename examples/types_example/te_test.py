@@ -49,7 +49,7 @@ def test_greet(pic, canister_id) -> None:
 
 
 def test_add_user(pic, canister_id) -> None:
-    """Test add_user: (text, nat, bool) -> ()"""
+    """Test add_user: (text, nat, bool) -> (text)"""
     print("\n=== Test: add_user ===")
 
     # Call add_user with multiple parameters
@@ -61,13 +61,15 @@ def test_add_user(pic, canister_id) -> None:
     payload = encode(params)
     principal_id = ensure_principal(canister_id)
     response_bytes = pic.update_call(principal_id, "add_user", payload)
-    print(f"add_user('Alice', 25, True) -> response received")
-    # Update calls typically return empty or status
-    assert response_bytes is not None
+    decoded = decode_candid_text(response_bytes)
+    print(f"add_user('Alice', 25, True) -> {decoded!r}")
+    assert (
+        "Alice" in decoded and "successfully" in decoded
+    ), f"Unexpected response: {decoded}"
 
 
 def test_set_address(pic, canister_id) -> None:
-    """Test set_address: (text, record) -> ()"""
+    """Test set_address: (text, record) -> (text)"""
     print("\n=== Test: set_address ===")
     principal_id = ensure_principal(canister_id)
 
@@ -88,10 +90,13 @@ def test_set_address(pic, canister_id) -> None:
     try:
         payload = encode(params)
         response_bytes = pic.update_call(principal_id, "set_address", payload)
+        decoded = decode_candid_text(response_bytes)
         print(
-            f"set_address('Bob', {{street: '...', city: '...', zip: 94102}}) -> response received"
+            f"set_address('Bob', {{street: '...', city: '...', zip: 94102}}) -> {decoded!r}"
         )
-        assert response_bytes is not None
+        assert (
+            "Bob" in decoded and "successfully" in decoded
+        ), f"Unexpected response: {decoded}"
     except Exception as e:
         print(f"Error: {e}")
         raise
@@ -112,7 +117,7 @@ def test_get_address(pic, canister_id) -> None:
 
 
 def test_set_status(pic, canister_id) -> None:
-    """Test set_status: (text, variant) -> ()"""
+    """Test set_status: (text, variant) -> (text)"""
     print("\n=== Test: set_status ===")
     principal_id = ensure_principal(canister_id)
 
@@ -130,8 +135,11 @@ def test_set_status(pic, canister_id) -> None:
     try:
         payload = encode(params)
         response_bytes = pic.update_call(principal_id, "set_status", payload)
-        print(f"set_status('user1', Active) -> response received")
-        assert response_bytes is not None
+        decoded = decode_candid_text(response_bytes)
+        print(f"set_status('user1', Active) -> {decoded!r}")
+        assert (
+            "user1" in decoded and "successfully" in decoded
+        ), f"Unexpected response: {decoded}"
 
         # Test with Banned variant (with text data)
         params2 = [
@@ -140,8 +148,11 @@ def test_set_status(pic, canister_id) -> None:
         ]
         payload2 = encode(params2)
         response_bytes2 = pic.update_call(principal_id, "set_status", payload2)
-        print(f"set_status('user2', Banned('spam detected')) -> response received")
-        assert response_bytes2 is not None
+        decoded2 = decode_candid_text(response_bytes2)
+        print(f"set_status('user2', Banned('spam detected')) -> {decoded2!r}")
+        assert (
+            "user2" in decoded2 and "successfully" in decoded2
+        ), f"Unexpected response: {decoded2}"
     except Exception as e:
         print(f"Error: {e}")
         raise

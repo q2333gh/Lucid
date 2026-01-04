@@ -47,7 +47,23 @@ def build_example_ic_wasm(example_name: str) -> None:
         example_name,
     ]
     print(f"[build] Running: {' '.join(cmd)} (cwd={repo_root})")
-    subprocess.run(cmd, cwd=repo_root, check=True)
+    # Capture and display build output in real-time
+    process = subprocess.Popen(
+        cmd,
+        cwd=repo_root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,  # Line buffered
+    )
+    
+    # Print output line by line
+    for line in process.stdout:
+        print(f"[build] {line.rstrip()}")
+    
+    process.wait()
+    if process.returncode != 0:
+        raise subprocess.CalledProcessError(process.returncode, cmd)
 
 
 def get_wasm_and_did_paths(example_name: str) -> Tuple[Path, Path]:

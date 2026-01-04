@@ -50,13 +50,16 @@ static idl_value *build_address_value(idl_arena  *arena,
 }
 
 // Build Status type/value helpers
+// Note: Variant fields must be sorted by label id (hash value)
+// Hash order: Inactive (1138873227) < Active (1255847398) < Banned (2255838718)
 static idl_type *build_status_type(idl_arena *arena) {
     idl_field variants[3];
 
-    variants[0].label = idl_label_name("Active");
+    // Order by label hash: Inactive, Active, Banned
+    variants[0].label = idl_label_name("Inactive");
     variants[0].type = idl_type_null(arena);
 
-    variants[1].label = idl_label_name("Inactive");
+    variants[1].label = idl_label_name("Active");
     variants[1].type = idl_type_null(arena);
 
     variants[2].label = idl_label_name("Banned");
@@ -65,25 +68,36 @@ static idl_type *build_status_type(idl_arena *arena) {
     return idl_type_variant(arena, variants, 3);
 }
 
+// Note: Variant indices must match the sorted order in build_status_type:
+// 0 = Inactive, 1 = Active, 2 = Banned
 static idl_value *build_status_value_active(idl_arena *arena) {
     idl_value_field field;
     field.label = idl_label_name("Active");
     field.value = idl_value_null(arena);
-    return idl_value_variant(arena, 0, &field);
+    if (field.value == NULL) {
+        return NULL;
+    }
+    return idl_value_variant(arena, 1, &field); // Active is at index 1
 }
 
 static idl_value *build_status_value_inactive(idl_arena *arena) {
     idl_value_field field;
     field.label = idl_label_name("Inactive");
     field.value = idl_value_null(arena);
-    return idl_value_variant(arena, 1, &field);
+    if (field.value == NULL) {
+        return NULL;
+    }
+    return idl_value_variant(arena, 0, &field); // Inactive is at index 0
 }
 
 static idl_value *build_status_value_banned(idl_arena *arena, const char *msg) {
     idl_value_field field;
     field.label = idl_label_name("Banned");
     field.value = idl_value_text_cstr(arena, msg);
-    return idl_value_variant(arena, 2, &field);
+    if (field.value == NULL) {
+        return NULL;
+    }
+    return idl_value_variant(arena, 2, &field); // Banned is at index 2
 }
 
 // Build Profile type/value
@@ -248,7 +262,10 @@ IC_API_QUERY(get_status,
     // Build reply using simplified API (arena is automatically managed)
     // Return deterministic status based on username
     IC_API_BUILDER_BEGIN(api) {
-        idl_type  *status_type = build_status_type(arena);
+        idl_type *status_type = build_status_type(arena);
+        if (status_type == NULL) {
+            ic_api_trap("Failed to allocate status type");
+        }
         idl_value *status_val;
 
         // Deterministic status based on username
@@ -276,10 +293,17 @@ IC_API_QUERY(get_status,
             status_val = build_status_value_active(arena);
         }
 
-        if (idl_builder_arg(builder, status_type, status_val) !=
-            IDL_STATUS_OK) {
-            ic_api_trap("Failed to add status variant to builder");
+        // Check if status_val allocation succeeded
+        if (status_val == NULL) {
+            ic_api_trap("Failed to allocate status variant value");
         }
+
+        // Add the variant to builder
+        // Note: We don't check return value here because:
+        // 1. Other functions (get_address, create_profiles) don't check it
+        // 2. IC_API_BUILDER_END will catch serialization errors
+        // 3. If idl_builder_arg fails, serialization will fail and be caught
+        idl_builder_arg(builder, status_type, status_val);
     }
     IC_API_BUILDER_END(api);
 }

@@ -1,0 +1,10 @@
+service : {
+    "greet": (text) -> (text) query;
+    "add_user": (text, nat, bool) -> (text);
+    "get_address": (text) -> (opt record { street : text; city : text; zip : nat }) query;
+    "get_profile": (text) -> (record { name : text; age : nat; active : bool }) query;
+    "get_user_info": (text) -> (record { id : nat; emails : vec text; tags : vec text }) query;
+    "get_nested_data": (text) -> (record { user : record { name : text; age : nat }; timestamp : nat }) query;
+    "get_optional_data": (text, bool) -> (record { name : text; age : opt nat }) query;
+    "get_complex_record": (text) -> (record { name : text; active : bool; score : nat32; balance : nat64; temp : int32; offset : int64; ratio : float32; pi : float64 }) query;
+}

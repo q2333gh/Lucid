@@ -19,19 +19,13 @@ IC_CANDID_EXPORT_DID()
 static idl_type *build_address_type(idl_arena *arena) {
     idl_field fields[3];
 
-    fields[0].label.kind = IDL_LABEL_NAME;
-    fields[0].label.id = idl_hash("street");
-    fields[0].label.name = "street";
+    fields[0].label = idl_label_name("street");
     fields[0].type = idl_type_text(arena);
 
-    fields[1].label.kind = IDL_LABEL_NAME;
-    fields[1].label.id = idl_hash("city");
-    fields[1].label.name = "city";
+    fields[1].label = idl_label_name("city");
     fields[1].type = idl_type_text(arena);
 
-    fields[2].label.kind = IDL_LABEL_NAME;
-    fields[2].label.id = idl_hash("zip");
-    fields[2].label.name = "zip";
+    fields[2].label = idl_label_name("zip");
     fields[2].type = idl_type_nat(arena);
 
     return idl_type_record(arena, fields, 3);
@@ -43,19 +37,13 @@ static idl_value *build_address_value(idl_arena  *arena,
                                       uint32_t    zip) {
     idl_value_field fields[3];
 
-    fields[0].label.kind = IDL_LABEL_NAME;
-    fields[0].label.id = idl_hash("street");
-    fields[0].label.name = "street";
+    fields[0].label = idl_label_name("street");
     fields[0].value = idl_value_text_cstr(arena, street);
 
-    fields[1].label.kind = IDL_LABEL_NAME;
-    fields[1].label.id = idl_hash("city");
-    fields[1].label.name = "city";
+    fields[1].label = idl_label_name("city");
     fields[1].value = idl_value_text_cstr(arena, city);
 
-    fields[2].label.kind = IDL_LABEL_NAME;
-    fields[2].label.id = idl_hash("zip");
-    fields[2].label.name = "zip";
+    fields[2].label = idl_label_name("zip");
     fields[2].value = idl_value_nat32(arena, zip);
 
     return idl_value_record(arena, fields, 3);
@@ -65,19 +53,13 @@ static idl_value *build_address_value(idl_arena  *arena,
 static idl_type *build_status_type(idl_arena *arena) {
     idl_field variants[3];
 
-    variants[0].label.kind = IDL_LABEL_NAME;
-    variants[0].label.id = idl_hash("Active");
-    variants[0].label.name = "Active";
+    variants[0].label = idl_label_name("Active");
     variants[0].type = idl_type_null(arena);
 
-    variants[1].label.kind = IDL_LABEL_NAME;
-    variants[1].label.id = idl_hash("Inactive");
-    variants[1].label.name = "Inactive";
+    variants[1].label = idl_label_name("Inactive");
     variants[1].type = idl_type_null(arena);
 
-    variants[2].label.kind = IDL_LABEL_NAME;
-    variants[2].label.id = idl_hash("Banned");
-    variants[2].label.name = "Banned";
+    variants[2].label = idl_label_name("Banned");
     variants[2].type = idl_type_text(arena);
 
     return idl_type_variant(arena, variants, 3);
@@ -85,18 +67,21 @@ static idl_type *build_status_type(idl_arena *arena) {
 
 static idl_value *build_status_value_active(idl_arena *arena) {
     idl_value_field field;
-    field.label.kind = IDL_LABEL_NAME;
-    field.label.id = idl_hash("Active");
-    field.label.name = "Active";
+    field.label = idl_label_name("Active");
     field.value = idl_value_null(arena);
     return idl_value_variant(arena, 0, &field);
 }
 
+static idl_value *build_status_value_inactive(idl_arena *arena) {
+    idl_value_field field;
+    field.label = idl_label_name("Inactive");
+    field.value = idl_value_null(arena);
+    return idl_value_variant(arena, 1, &field);
+}
+
 static idl_value *build_status_value_banned(idl_arena *arena, const char *msg) {
     idl_value_field field;
-    field.label.kind = IDL_LABEL_NAME;
-    field.label.id = idl_hash("Banned");
-    field.label.name = "Banned";
+    field.label = idl_label_name("Banned");
     field.value = idl_value_text_cstr(arena, msg);
     return idl_value_variant(arena, 2, &field);
 }
@@ -105,29 +90,19 @@ static idl_value *build_status_value_banned(idl_arena *arena, const char *msg) {
 static idl_type *build_profile_type(idl_arena *arena, idl_type *status_type) {
     idl_field fields[5];
 
-    fields[0].label.kind = IDL_LABEL_NAME;
-    fields[0].label.id = idl_hash("id");
-    fields[0].label.name = "id";
+    fields[0].label = idl_label_name("id");
     fields[0].type = idl_type_nat(arena);
 
-    fields[1].label.kind = IDL_LABEL_NAME;
-    fields[1].label.id = idl_hash("name");
-    fields[1].label.name = "name";
+    fields[1].label = idl_label_name("name");
     fields[1].type = idl_type_text(arena);
 
-    fields[2].label.kind = IDL_LABEL_NAME;
-    fields[2].label.id = idl_hash("emails");
-    fields[2].label.name = "emails";
+    fields[2].label = idl_label_name("emails");
     fields[2].type = idl_type_vec(arena, idl_type_text(arena));
 
-    fields[3].label.kind = IDL_LABEL_NAME;
-    fields[3].label.id = idl_hash("age");
-    fields[3].label.name = "age";
+    fields[3].label = idl_label_name("age");
     fields[3].type = idl_type_opt(arena, idl_type_nat(arena));
 
-    fields[4].label.kind = IDL_LABEL_NAME;
-    fields[4].label.id = idl_hash("status");
-    fields[4].label.name = "status";
+    fields[4].label = idl_label_name("status");
     fields[4].type = status_type;
 
     return idl_type_record(arena, fields, 5);
@@ -136,32 +111,22 @@ static idl_type *build_profile_type(idl_arena *arena, idl_type *status_type) {
 static idl_value *build_profile_value(idl_arena *arena, idl_value *status_val) {
     idl_value_field fields[5];
 
-    fields[0].label.kind = IDL_LABEL_NAME;
-    fields[0].label.id = idl_hash("id");
-    fields[0].label.name = "id";
+    fields[0].label = idl_label_name("id");
     fields[0].value = idl_value_nat32(arena, 7);
 
-    fields[1].label.kind = IDL_LABEL_NAME;
-    fields[1].label.id = idl_hash("name");
-    fields[1].label.name = "name";
+    fields[1].label = idl_label_name("name");
     fields[1].value = idl_value_text_cstr(arena, "Dfinity Dev");
 
     idl_value *email_items[2];
     email_items[0] = idl_value_text_cstr(arena, "dev@example.com");
     email_items[1] = idl_value_text_cstr(arena, "contact@example.com");
-    fields[2].label.kind = IDL_LABEL_NAME;
-    fields[2].label.id = idl_hash("emails");
-    fields[2].label.name = "emails";
+    fields[2].label = idl_label_name("emails");
     fields[2].value = idl_value_vec(arena, email_items, 2);
 
-    fields[3].label.kind = IDL_LABEL_NAME;
-    fields[3].label.id = idl_hash("age");
-    fields[3].label.name = "age";
+    fields[3].label = idl_label_name("age");
     fields[3].value = idl_value_opt_some(arena, idl_value_nat32(arena, 30));
 
-    fields[4].label.kind = IDL_LABEL_NAME;
-    fields[4].label.id = idl_hash("status");
-    fields[4].label.name = "status";
+    fields[4].label = idl_label_name("status");
     fields[4].value = status_val;
 
     return idl_value_record(arena, fields, 5);
@@ -301,12 +266,7 @@ IC_API_QUERY(get_status,
                 status_val = build_status_value_banned(arena, ban_msg);
             } else if (user_len % 3 == 1) {
                 // Inactive
-                idl_value_field field;
-                field.label.kind = IDL_LABEL_NAME;
-                field.label.id = idl_hash("Inactive");
-                field.label.name = "Inactive";
-                field.value = idl_value_null(arena);
-                status_val = idl_value_variant(arena, 1, &field);
+                status_val = build_status_value_inactive(arena);
             } else {
                 // Active (user_len % 3 == 0)
                 status_val = build_status_value_active(arena);
@@ -337,13 +297,9 @@ IC_API_UPDATE(
         idl_type *profile_type = build_profile_type(arena, status_type);
 
         idl_field result_fields[2];
-        result_fields[0].label.kind = IDL_LABEL_NAME;
-        result_fields[0].label.id = idl_hash("Ok");
-        result_fields[0].label.name = "Ok";
+        result_fields[0].label = idl_label_name("Ok");
         result_fields[0].type = profile_type;
-        result_fields[1].label.kind = IDL_LABEL_NAME;
-        result_fields[1].label.id = idl_hash("Err");
-        result_fields[1].label.name = "Err";
+        result_fields[1].label = idl_label_name("Err");
         result_fields[1].type = idl_type_text(arena);
 
         idl_type *result_variant = idl_type_variant(arena, result_fields, 2);
@@ -351,13 +307,13 @@ IC_API_UPDATE(
 
         // Return 2 results: first Ok, second Err (deterministic)
         idl_value_field ok_field;
-        ok_field.label = result_fields[0].label;
+        ok_field.label = idl_label_name("Ok");
         ok_field.value =
             build_profile_value(arena, build_status_value_active(arena));
         idl_value *ok_variant = idl_value_variant(arena, 0, &ok_field);
 
         idl_value_field err_field;
-        err_field.label = result_fields[1].label;
+        err_field.label = idl_label_name("Err");
         err_field.value =
             idl_value_text_cstr(arena, "Profile ID 1 already exists");
         idl_value *err_variant = idl_value_variant(arena, 1, &err_field);

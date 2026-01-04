@@ -30,20 +30,24 @@ def setup_pocketic_binary() -> None:
     script_dir = Path(__file__).parent.resolve()
     candidate = script_dir / "pocket-ic"
 
+    import sys
     if "POCKET_IC_BIN" not in os.environ:
         if candidate.exists():
             os.environ["POCKET_IC_BIN"] = str(candidate)
-            print(f"[pocket-ic] Using local binary: {candidate}")
+            sys.stderr.write(f"[pocket-ic] Using local binary: {candidate}\n")
+            sys.stderr.flush()
         else:
             cwd_candidate = Path.cwd() / "pocket-ic"
             if cwd_candidate.exists():
                 os.environ["POCKET_IC_BIN"] = str(cwd_candidate)
-                print(f"[pocket-ic] Using CWD binary: {cwd_candidate}")
+                sys.stderr.write(f"[pocket-ic] Using CWD binary: {cwd_candidate}\n")
+                sys.stderr.flush()
             else:
-                print(
+                sys.stderr.write(
                     "[pocket-ic] Warning: pocket-ic binary not found next to tests or in CWD.\n"
-                    "            Set POCKET_IC_BIN or place a `pocket-ic` binary accordingly."
+                    "            Set POCKET_IC_BIN or place a `pocket-ic` binary accordingly.\n"
                 )
+                sys.stderr.flush()
 
 
 def install_example_canister(
@@ -64,11 +68,15 @@ def install_example_canister(
 
     wasm_path, did_path = get_wasm_and_did_paths(example_name)
 
-    print(f"[install] WASM: {wasm_path}")
-    print(f"[install] DID:  {did_path}")
+    import sys
+    # Use stderr to ensure output is visible even when pytest captures stdout
+    sys.stderr.write(f"[install] WASM: {wasm_path}\n")
+    sys.stderr.write(f"[install] DID:  {did_path}\n")
+    sys.stderr.flush()
 
     pic = PocketIC()
-    print("[install] PocketIC initialized")
+    sys.stderr.write("[install] PocketIC initialized\n")
+    sys.stderr.flush()
 
     with open(wasm_path, "rb") as f:
         wasm_module = f.read()
@@ -80,7 +88,8 @@ def install_example_canister(
         wasm_module=wasm_module,
     )
     canister_id = canister.canister_id
-    print(f"[install] Canister ID: {canister_id}")
+    sys.stderr.write(f"[install] Canister ID: {canister_id}\n")
+    sys.stderr.flush()
     return pic, canister_id
 
 

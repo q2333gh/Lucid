@@ -46,7 +46,11 @@ def build_example_ic_wasm(example_name: str) -> None:
         "--examples",
         example_name,
     ]
-    print(f"[build] Running: {' '.join(cmd)} (cwd={repo_root})")
+    # Use sys.stderr to bypass pytest's stdout capture
+    # This ensures build output is always visible
+    sys.stderr.write(f"[build] Running: {' '.join(cmd)} (cwd={repo_root})\n")
+    sys.stderr.flush()
+    
     # Capture and display build output in real-time
     process = subprocess.Popen(
         cmd,
@@ -57,9 +61,10 @@ def build_example_ic_wasm(example_name: str) -> None:
         bufsize=1,  # Line buffered
     )
     
-    # Print output line by line
+    # Print output line by line to stderr to bypass pytest capture
     for line in process.stdout:
-        print(f"[build] {line.rstrip()}")
+        sys.stderr.write(f"[build] {line}")
+        sys.stderr.flush()
     
     process.wait()
     if process.returncode != 0:

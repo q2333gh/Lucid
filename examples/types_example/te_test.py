@@ -18,6 +18,7 @@ Usage:
     pytest examples/types_example/te_test.py::test_greet
 
     # Run tests matching a pattern
+    # Note: Use -s flag to see build output: pytest -s examples/types_example/te_test.py
     pytest examples/types_example/te_test.py -k greet
 
     # Run all tests (backward compatibility)
@@ -48,6 +49,17 @@ from test.support.test_support_pocketic import (
 )
 
 
+# Pytest hook to ensure build output is visible
+# This runs before test collection, so output is always visible
+def pytest_configure(config):
+    """Pytest configuration hook - runs before test collection."""
+    # Force stderr to be unbuffered so build output appears immediately
+    import sys
+
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(line_buffering=True)
+
+
 def ensure_principal(canister_id) -> Principal:
     """Convert canister_id to Principal if needed"""
     if isinstance(canister_id, Principal):
@@ -58,9 +70,14 @@ def ensure_principal(canister_id) -> Principal:
 @pytest.fixture(scope="module")
 def pic_and_canister():
     """Pytest fixture: Build and install canister once for all tests in this module."""
-    print("\n[Setup] Building and installing canister...")
+    import sys
+
+    # Use stderr to ensure output is visible even when pytest captures stdout
+    sys.stderr.write("\n[Setup] Building and installing canister...\n")
+    sys.stderr.flush()
     pic, canister_id = install_example_canister("types_example", auto_build=True)
-    print(f"[Setup] Canister installed: {canister_id}\n")
+    sys.stderr.write(f"[Setup] Canister installed: {canister_id}\n\n")
+    sys.stderr.flush()
     return pic, canister_id
 
 

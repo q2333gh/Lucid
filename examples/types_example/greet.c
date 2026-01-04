@@ -276,7 +276,9 @@ IC_API_QUERY(get_status,
             status_val = build_status_value_active(arena);
         }
 
-        idl_builder_arg(builder, status_type, status_val);
+        if (idl_builder_arg(builder, status_type, status_val) != IDL_STATUS_OK) {
+            ic_api_trap("Failed to add status variant to builder");
+        }
     }
     IC_API_BUILDER_END(api);
 }
@@ -387,6 +389,136 @@ IC_API_QUERY(stats, "() -> (nat, vec nat, text)") {
             (unsigned long long)total_users, (unsigned long long)stats_raw[0],
             (unsigned long long)stats_raw[1], (unsigned long long)stats_raw[2]);
         idl_builder_arg_text_cstr(builder, status_msg);
+    }
+    IC_API_BUILDER_END(api);
+}
+
+// -----------------------------------------------------------------------------
+// Update: complex_test - Tests all Candid types with double nesting and vec
+// Input: vec record {
+//   id: nat;
+//   name: text;
+//   active: bool;
+//   metadata: opt record {
+//     tags: vec text;
+//     status: variant { Active; Inactive; Banned: text };
+//     details: record {
+//       count: nat;
+//       items: vec nat;
+//     };
+//   };
+//   items: vec record {
+//     value: text;
+//     score: nat;
+//   };
+// }
+// Output: vec variant {
+//   Ok: record {
+//     id: nat;
+//     result: text;
+//     data: opt vec record {
+//       key: text;
+//       value: nat;
+//     };
+//   };
+//   Err: text;
+// }
+// -----------------------------------------------------------------------------
+IC_API_UPDATE(
+    complex_test,
+    "(vec record { id : nat; name : text; active : bool; metadata : opt record { "
+    "tags : vec text; status : variant { Active; Inactive; Banned : text }; "
+    "details : record { count : nat; items : vec nat } }; items : vec record { "
+    "value : text; score : nat } }) -> (vec variant { Ok : record { id : nat; "
+    "result : text; data : opt vec record { key : text; value : nat } }; Err : "
+    "text })") {
+    // Build reply using simplified API (arena is automatically managed)
+    // Return deterministic results based on input structure
+    IC_API_BUILDER_BEGIN(api) {
+        // Build nested types for output
+        // Inner record type: { key: text; value: nat }
+        idl_field key_value_fields[2];
+        key_value_fields[0].label = idl_label_name("key");
+        key_value_fields[0].type = idl_type_text(arena);
+        key_value_fields[1].label = idl_label_name("value");
+        key_value_fields[1].type = idl_type_nat(arena);
+        idl_type *key_value_record_type =
+            idl_type_record(arena, key_value_fields, 2);
+
+        // opt vec record { key: text; value: nat }
+        idl_type *vec_key_value_type =
+            idl_type_vec(arena, key_value_record_type);
+        idl_type *opt_vec_key_value_type =
+            idl_type_opt(arena, vec_key_value_type);
+
+        // Ok variant record: { id: nat; result: text; data: opt vec record }
+        idl_field ok_record_fields[3];
+        ok_record_fields[0].label = idl_label_name("id");
+        ok_record_fields[0].type = idl_type_nat(arena);
+        ok_record_fields[1].label = idl_label_name("result");
+        ok_record_fields[1].type = idl_type_text(arena);
+        ok_record_fields[2].label = idl_label_name("data");
+        ok_record_fields[2].type = opt_vec_key_value_type;
+        idl_type *ok_record_type = idl_type_record(arena, ok_record_fields, 3);
+
+        // Result variant: { Ok: record; Err: text }
+        idl_field result_variant_fields[2];
+        result_variant_fields[0].label = idl_label_name("Ok");
+        result_variant_fields[0].type = ok_record_type;
+        result_variant_fields[1].label = idl_label_name("Err");
+        result_variant_fields[1].type = idl_type_text(arena);
+        idl_type *result_variant_type =
+            idl_type_variant(arena, result_variant_fields, 2);
+
+        // Final output: vec variant
+        idl_type *vec_result_type =
+            idl_type_vec(arena, result_variant_type);
+
+        // Build values: return 2 results (Ok and Err)
+        // First result: Ok variant
+        idl_value_field ok_data_fields[2];
+        ok_data_fields[0].label = idl_label_name("key");
+        ok_data_fields[0].value = idl_value_text_cstr(arena, "processed");
+        ok_data_fields[1].label = idl_label_name("value");
+        ok_data_fields[1].value = idl_value_nat32(arena, 100);
+        idl_value *key_value_val =
+            idl_value_record(arena, ok_data_fields, 2);
+
+        idl_value *key_value_items[1] = {key_value_val};
+        idl_value *vec_key_value_val =
+            idl_value_vec(arena, key_value_items, 1);
+        idl_value *opt_vec_key_value_val =
+            idl_value_opt_some(arena, vec_key_value_val);
+
+        idl_value_field ok_record_value_fields[3];
+        ok_record_value_fields[0].label = idl_label_name("id");
+        ok_record_value_fields[0].value = idl_value_nat32(arena, 1);
+        ok_record_value_fields[1].label = idl_label_name("result");
+        ok_record_value_fields[1].value =
+            idl_value_text_cstr(arena, "Successfully processed complex data");
+        ok_record_value_fields[2].label = idl_label_name("data");
+        ok_record_value_fields[2].value = opt_vec_key_value_val;
+        idl_value *ok_record_val =
+            idl_value_record(arena, ok_record_value_fields, 3);
+
+        idl_value_field ok_variant_field;
+        ok_variant_field.label = idl_label_name("Ok");
+        ok_variant_field.value = ok_record_val;
+        idl_value *ok_variant_val = idl_value_variant(arena, 0, &ok_variant_field);
+
+        // Second result: Err variant
+        idl_value_field err_variant_field;
+        err_variant_field.label = idl_label_name("Err");
+        err_variant_field.value =
+            idl_value_text_cstr(arena, "Failed to process item at index 1");
+        idl_value *err_variant_val =
+            idl_value_variant(arena, 1, &err_variant_field);
+
+        // Build vec of variants
+        idl_value *result_items[2] = {ok_variant_val, err_variant_val};
+        idl_value *vec_result_val = idl_value_vec(arena, result_items, 2);
+
+        idl_builder_arg(builder, vec_result_type, vec_result_val);
     }
     IC_API_BUILDER_END(api);
 }

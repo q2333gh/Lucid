@@ -145,6 +145,8 @@
 #define IC_API_BUILDER_END(api)                                                \
     while (0)                                                                  \
         ;                                                                      \
-    ic_api_reply_builder(api, (void *)&_builder);                              \
+    if (ic_api_reply_builder(api, (void *)&_builder) != IC_OK) {               \
+        ic_api_trap("cdk-c: ic_api_reply_builder() failed");                   \
+    }                                                                          \
     }                                                                          \
     while (0)

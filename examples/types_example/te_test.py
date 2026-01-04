@@ -257,6 +257,78 @@ def test_stats(pic, canister_id) -> None:
     assert len(response_bytes) > 0
 
 
+def test_complex_test(pic, canister_id) -> None:
+    """Test complex_test: (vec record with all types, double nesting) -> (vec variant)"""
+    print("\n=== Test: complex_test ===")
+    principal_id = ensure_principal(canister_id)
+
+    # Define nested types for input
+    # Status variant
+    status_type = Types.Variant(
+        {"Active": Types.Null, "Inactive": Types.Null, "Banned": Types.Text}
+    )
+
+    # Details record: { count: nat; items: vec nat }
+    details_type = Types.Record({"count": Types.Nat, "items": Types.Vec(Types.Nat)})
+
+    # Metadata record: { tags: vec text; status: variant; details: record }
+    metadata_type = Types.Record(
+        {
+            "tags": Types.Vec(Types.Text),
+            "status": status_type,
+            "details": details_type,
+        }
+    )
+
+    # Item record: { value: text; score: nat }
+    item_type = Types.Record({"value": Types.Text, "score": Types.Nat})
+
+    # Main input record: { id: nat; name: text; active: bool; metadata: opt record; items: vec record }
+    input_record_type = Types.Record(
+        {
+            "id": Types.Nat,
+            "name": Types.Text,
+            "active": Types.Bool,
+            "metadata": Types.Opt(metadata_type),
+            "items": Types.Vec(item_type),
+        }
+    )
+
+    # Build input value with all types and double nesting
+    input_value = {
+        "id": 1,
+        "name": "Test Complex",
+        "active": True,
+        "metadata": [
+            {
+                "tags": ["tag1", "tag2", "tag3"],
+                "status": {"Active": None},
+                "details": {"count": 5, "items": [10, 20, 30, 40, 50]},
+            }
+        ],  # Opt: [value] means Some(value)
+        "items": [
+            {"value": "item1", "score": 100},
+            {"value": "item2", "score": 200},
+        ],
+    }
+
+    # Encode vec of records
+    params = [{"type": Types.Vec(input_record_type), "value": [input_value]}]
+
+    try:
+        payload = encode(params)
+        response_bytes = pic.update_call(principal_id, "complex_test", payload)
+        decoded = decode_candid_text(response_bytes)
+        print(f"complex_test([complex_record]) -> {decoded!r}")
+        # Should return vec of Result variants (Ok/Err)
+        assert response_bytes is not None
+        assert len(response_bytes) > 0
+        print("✅ Complex test passed: all types with double nesting and vec")
+    except Exception as e:
+        print(f"Error: {e}")
+        raise
+
+
 def run_all_tests() -> None:
     """Run all test cases"""
     print("=" * 60)
@@ -279,6 +351,7 @@ def run_all_tests() -> None:
         ("create_profiles", test_create_profiles),
         ("find_profile", test_find_profile),
         ("stats", test_stats),
+        ("complex_test", test_complex_test),
     ]
 
     passed = 0

@@ -8,4 +8,5 @@ service : {
     "create_profiles": (vec record { id : nat; name : text; emails : vec text; age : opt nat; status : variant { Active; Inactive; Banned : text } }) -> (vec variant { Ok : record { id : nat; name : text; emails : vec text; age : opt nat; status : variant { Active; Inactive; Banned : text } }; Err : text });
     "find_profile": (nat) -> (opt record { id : nat; name : text; emails : vec text; age : opt nat; status : variant { Active; Inactive; Banned : text } }) query;
     "stats": () -> (nat, vec nat, text) query;
+    "complex_test": (vec record { id : nat; name : text; active : bool; metadata : opt record { tags : vec text; status : variant { Active; Inactive; Banned : text }; details : record { count : nat; items : vec nat } }; items : vec record { value : text; score : nat } }) -> (vec variant { Ok : record { id : nat; result : text; data : opt vec record { key : text; value : nat } }; Err : text });
 }

@@ -24,7 +24,7 @@ pocket-ic
 
 # IDEs
 .cursorignore
-
+.cursorrules
 ####
 ## Other common ignores
 .env

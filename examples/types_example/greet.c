@@ -276,7 +276,8 @@ IC_API_QUERY(get_status,
             status_val = build_status_value_active(arena);
         }
 
-        if (idl_builder_arg(builder, status_type, status_val) != IDL_STATUS_OK) {
+        if (idl_builder_arg(builder, status_type, status_val) !=
+            IDL_STATUS_OK) {
             ic_api_trap("Failed to add status variant to builder");
         }
     }
@@ -426,7 +427,8 @@ IC_API_QUERY(stats, "() -> (nat, vec nat, text)") {
 // -----------------------------------------------------------------------------
 IC_API_UPDATE(
     complex_test,
-    "(vec record { id : nat; name : text; active : bool; metadata : opt record { "
+    "(vec record { id : nat; name : text; active : bool; metadata : opt record "
+    "{ "
     "tags : vec text; status : variant { Active; Inactive; Banned : text }; "
     "details : record { count : nat; items : vec nat } }; items : vec record { "
     "value : text; score : nat } }) -> (vec variant { Ok : record { id : nat; "
@@ -471,8 +473,7 @@ IC_API_UPDATE(
             idl_type_variant(arena, result_variant_fields, 2);
 
         // Final output: vec variant
-        idl_type *vec_result_type =
-            idl_type_vec(arena, result_variant_type);
+        idl_type *vec_result_type = idl_type_vec(arena, result_variant_type);
 
         // Build values: return 2 results (Ok and Err)
         // First result: Ok variant
@@ -481,12 +482,10 @@ IC_API_UPDATE(
         ok_data_fields[0].value = idl_value_text_cstr(arena, "processed");
         ok_data_fields[1].label = idl_label_name("value");
         ok_data_fields[1].value = idl_value_nat32(arena, 100);
-        idl_value *key_value_val =
-            idl_value_record(arena, ok_data_fields, 2);
+        idl_value *key_value_val = idl_value_record(arena, ok_data_fields, 2);
 
         idl_value *key_value_items[1] = {key_value_val};
-        idl_value *vec_key_value_val =
-            idl_value_vec(arena, key_value_items, 1);
+        idl_value *vec_key_value_val = idl_value_vec(arena, key_value_items, 1);
         idl_value *opt_vec_key_value_val =
             idl_value_opt_some(arena, vec_key_value_val);
 
@@ -504,7 +503,8 @@ IC_API_UPDATE(
         idl_value_field ok_variant_field;
         ok_variant_field.label = idl_label_name("Ok");
         ok_variant_field.value = ok_record_val;
-        idl_value *ok_variant_val = idl_value_variant(arena, 0, &ok_variant_field);
+        idl_value *ok_variant_val =
+            idl_value_variant(arena, 0, &ok_variant_field);
 
         // Second result: Err variant
         idl_value_field err_variant_field;

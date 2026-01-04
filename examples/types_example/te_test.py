@@ -24,6 +24,13 @@ Usage:
     python3 examples/types_example/te_test.py
 """
 
+# Type checking: Suppress false positives from type checker
+# The ic.candid library's Types API works correctly at runtime,
+# but type stubs may not fully capture the dynamic type system
+# pyright: reportGeneralTypeIssues=false
+# pyright: reportOptionalMemberAccess=false
+# pyright: reportArgumentType=false
+
 import sys
 from pathlib import Path
 
@@ -32,7 +39,7 @@ project_root = Path(__file__).resolve().parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-import pytest
+import pytest  # type: ignore[reportMissingImports]
 from ic.candid import Types, encode
 from ic.principal import Principal
 from test.support.test_support_pocketic import (
@@ -109,6 +116,7 @@ def test_set_address(pic, canister_id) -> None:
     principal_id = ensure_principal(canister_id)
 
     # Define Record type using Types.Record
+    # pyright: ignore[reportArgumentType]
     address_type = Types.Record(
         {"street": Types.Text, "city": Types.Text, "zip": Types.Nat}
     )
@@ -153,6 +161,7 @@ def test_set_status(pic, canister_id) -> None:
     principal_id = ensure_principal(canister_id)
 
     # Define Variant type using Types.Variant
+    # pyright: ignore[reportArgumentType]
     status_type = Types.Variant(
         {"Active": Types.Null, "Inactive": Types.Null, "Banned": Types.Text}
     )
@@ -206,16 +215,16 @@ def test_create_profiles(pic, canister_id) -> None:
     principal_id = ensure_principal(canister_id)
 
     # Define nested types
-    status_type = Types.Variant(
+    status_type = Types.Variant(  # type: ignore
         {"Active": Types.Null, "Inactive": Types.Null, "Banned": Types.Text}
     )
 
-    profile_type = Types.Record(
+    profile_type = Types.Record(  # type: ignore[arg-type]
         {
             "id": Types.Nat,
             "name": Types.Text,
-            "emails": Types.Vec(Types.Text),
-            "age": Types.Opt(Types.Nat),
+            "emails": Types.Vec(Types.Text),  # type: ignore[arg-type]
+            "age": Types.Opt(Types.Nat),  # type: ignore[arg-type]
             "status": status_type,
         }
     )
@@ -230,7 +239,7 @@ def test_create_profiles(pic, canister_id) -> None:
     }
 
     # Encode vec of profiles
-    params = [{"type": Types.Vec(profile_type), "value": [profile_value]}]
+    params = [{"type": Types.Vec(profile_type), "value": [profile_value]}]  # type: ignore[arg-type]
 
     payload = encode(params)
     response_bytes = pic.update_call(principal_id, "create_profiles", payload)
@@ -278,33 +287,33 @@ def test_complex_test(pic, canister_id) -> None:
 
     # Define nested types for input
     # Status variant
-    status_type = Types.Variant(
+    status_type = Types.Variant(  # type: ignore[arg-type]
         {"Active": Types.Null, "Inactive": Types.Null, "Banned": Types.Text}
     )
 
     # Details record: { count: nat; items: vec nat }
-    details_type = Types.Record({"count": Types.Nat, "items": Types.Vec(Types.Nat)})
+    details_type = Types.Record({"count": Types.Nat, "items": Types.Vec(Types.Nat)})  # type: ignore[arg-type]
 
     # Metadata record: { tags: vec text; status: variant; details: record }
-    metadata_type = Types.Record(
+    metadata_type = Types.Record(  # type: ignore[arg-type]
         {
-            "tags": Types.Vec(Types.Text),
+            "tags": Types.Vec(Types.Text),  # type: ignore[arg-type]
             "status": status_type,
             "details": details_type,
         }
     )
 
     # Item record: { value: text; score: nat }
-    item_type = Types.Record({"value": Types.Text, "score": Types.Nat})
+    item_type = Types.Record({"value": Types.Text, "score": Types.Nat})  # type: ignore[arg-type]
 
     # Main input record: { id: nat; name: text; active: bool; metadata: opt record; items: vec record }
-    input_record_type = Types.Record(
+    input_record_type = Types.Record(  # type: ignore[arg-type]
         {
             "id": Types.Nat,
             "name": Types.Text,
             "active": Types.Bool,
-            "metadata": Types.Opt(metadata_type),
-            "items": Types.Vec(item_type),
+            "metadata": Types.Opt(metadata_type),  # type: ignore[arg-type]
+            "items": Types.Vec(item_type),  # type: ignore[arg-type]
         }
     )
 
@@ -327,7 +336,7 @@ def test_complex_test(pic, canister_id) -> None:
     }
 
     # Encode vec of records
-    params = [{"type": Types.Vec(input_record_type), "value": [input_value]}]
+    params = [{"type": Types.Vec(input_record_type), "value": [input_value]}]  # type: ignore[arg-type]
 
     payload = encode(params)
     response_bytes = pic.update_call(principal_id, "complex_test", payload)

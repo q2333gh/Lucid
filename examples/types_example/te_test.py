@@ -57,7 +57,7 @@ def pytest_configure(config):
     import sys
 
     if hasattr(sys.stderr, "reconfigure"):
-        sys.stderr.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)  # type: ignore[attr-defined]
 
 
 def ensure_principal(canister_id) -> Principal:

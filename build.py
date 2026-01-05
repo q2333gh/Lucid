@@ -149,7 +149,7 @@ def run_cmake_build(
         cmake_args.extend(["-G", "Ninja"])
 
     if wasi:
-        cmake_args.extend(["-DBUILD_WASI=ON", "-DCMAKE_BUILD_TYPE=MinSizeRel"])
+        cmake_args.extend(["-DCMAKE_BUILD_TYPE=MinSizeRel"])
     else:
         # Use Clang for native builds (better clang-tidy integration)
         if shutil.which("clang"):
@@ -332,7 +332,7 @@ Examples:
   python build.py --new my_canister  Create a new minimal project
         """,
     )
-    # TODO if any step goes err,early exit with RED COLOR FATAL MESSAGE 
+    # TODO if any step goes err,early exit with RED COLOR FATAL MESSAGE
     parser.add_argument(
         "--icwasm",
         action="store_true",

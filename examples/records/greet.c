@@ -77,6 +77,39 @@ IC_API_QUERY(
             IDL_VALUE_FIELD("zip", idl_value_nat32(arena, zip)));
         idl_value *opt_val = idl_value_opt_some(arena, addr_val);
 
+        // Debug: Print built information
+        char debug_buf[256];
+        tfp_snprintf(debug_buf, sizeof(debug_buf),
+                     "[DEBUG] get_address: name='%s'", name);
+        ic_api_debug_print(debug_buf);
+        tfp_snprintf(
+            debug_buf, sizeof(debug_buf),
+            "[DEBUG] Built address record: street='%s', city='%s', zip=%u",
+            street, city, zip);
+        ic_api_debug_print(debug_buf);
+        ic_api_debug_print("[DEBUG] Address type: opt record { street : text; "
+                           "city : text; zip : nat }");
+        if (addr_val && addr_val->kind == IDL_VALUE_RECORD) {
+            tfp_snprintf(debug_buf, sizeof(debug_buf),
+                         "[DEBUG] Record fields count: %zu",
+                         addr_val->data.record.len);
+            ic_api_debug_print(debug_buf);
+            for (size_t i = 0; i < addr_val->data.record.len; i++) {
+                idl_value_field *f = &addr_val->data.record.fields[i];
+                if (f->label.kind == IDL_LABEL_NAME && f->label.name) {
+                    tfp_snprintf(debug_buf, sizeof(debug_buf),
+                                 "[DEBUG]   Field[%zu]: label='%s'", i,
+                                 f->label.name);
+                    ic_api_debug_print(debug_buf);
+                } else {
+                    tfp_snprintf(debug_buf, sizeof(debug_buf),
+                                 "[DEBUG]   Field[%zu]: label_id=%lu", i,
+                                 (unsigned long)f->label.id);
+                    ic_api_debug_print(debug_buf);
+                }
+            }
+        }
+
         idl_builder_arg(builder, opt_addr, opt_val);
     }
     IC_API_BUILDER_END(api);

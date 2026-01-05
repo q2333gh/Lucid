@@ -136,11 +136,45 @@ def test_get_address(pic, canister_id) -> None:
 
     params = [{"type": Types.Text, "value": "Main"}]
     payload = encode(params)
+
+    # Debug: Print payload information
+    print(f"[DEBUG] Request params: {params}")
+    print(f"[DEBUG] Payload length: {len(payload)} bytes")
+    payload_hex = payload.hex()
+    if len(payload_hex) > 64:
+        print(f"[DEBUG] Payload (hex, first 32 bytes): {payload_hex[:64]}...")
+        print(f"[DEBUG] Payload (hex, full): {payload_hex}")
+    else:
+        print(f"[DEBUG] Payload (hex): {payload_hex}")
+
     response_bytes = pic.query_call(principal_id, "get_address", payload)
 
-    # Use decode_candid_text to avoid Python candid library issues with field sorting
-    decoded = decode_candid_text(response_bytes)
-    print(f"get_address('Main') -> {decoded!r}")
+    # Debug: Print response information
+    print(f"[DEBUG] Response length: {len(response_bytes)} bytes")
+    response_hex = response_bytes.hex()
+    print(f"[DEBUG] Response (hex, full {len(response_bytes)} bytes): {response_hex}")
+    if len(response_hex) > 64:
+        print(f"[DEBUG] Response (hex, first 32 bytes preview): {response_hex[:64]}...")
+
+    # Try to decode with standard decode() to get structured data
+    try:
+        decoded_result = decode(response_bytes)
+        print(f"[DEBUG] Decoded result (structured): {decoded_result}")
+        if decoded_result and len(decoded_result) > 0:
+            opt_record = decoded_result[0]
+            if opt_record is not None:
+                print(f"[DEBUG] Address record fields: {opt_record}")
+                if isinstance(opt_record, dict):
+                    print(f"[DEBUG]   - street: {opt_record.get('street', 'N/A')}")
+                    print(f"[DEBUG]   - city: {opt_record.get('city', 'N/A')}")
+                    print(f"[DEBUG]   - zip: {opt_record.get('zip', 'N/A')}")
+    except Exception as e:
+        print(f"[DEBUG] Standard decode() failed (may have field sorting issues): {e}")
+
+    # Also use decode_candid_text as fallback/alternative view
+    decoded_text = decode_candid_text(response_bytes)
+    print(f"[DEBUG] Decoded (text extraction): {decoded_text!r}")
+    print(f"get_address('Main') -> {decoded_text!r}")
 
     # Basic validation - response should not be empty
     assert response_bytes is not None

@@ -4,7 +4,7 @@
 
 #include "ic_principal.h"
 
-// Happy-path: bytes → principals → equality comparison stays stable. 
+// Happy-path: bytes → principals → equality comparison stays stable.
 Test(ic_principal, from_bytes_and_equality) {
     ic_principal_t left = {0};
     ic_principal_t right = {0};

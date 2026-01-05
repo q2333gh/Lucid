@@ -21,7 +21,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "tinyprintf.h"
 
-
 /*
  * Configuration
  */
@@ -43,51 +42,49 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #endif
 
 #ifdef PRINTF_LONG_LONG_SUPPORT
-# define PRINTF_LONG_SUPPORT
+#define PRINTF_LONG_SUPPORT
 #endif
 
 /* __SIZEOF_<type>__ defined at least by gcc */
 #ifdef __SIZEOF_POINTER__
-# define SIZEOF_POINTER __SIZEOF_POINTER__
+#define SIZEOF_POINTER __SIZEOF_POINTER__
 #endif
 #ifdef __SIZEOF_LONG_LONG__
-# define SIZEOF_LONG_LONG __SIZEOF_LONG_LONG__
+#define SIZEOF_LONG_LONG __SIZEOF_LONG_LONG__
 #endif
 #ifdef __SIZEOF_LONG__
-# define SIZEOF_LONG __SIZEOF_LONG__
+#define SIZEOF_LONG __SIZEOF_LONG__
 #endif
 #ifdef __SIZEOF_INT__
-# define SIZEOF_INT __SIZEOF_INT__
+#define SIZEOF_INT __SIZEOF_INT__
 #endif
 
 #ifdef __GNUC__
-# define _TFP_GCC_NO_INLINE_  __attribute__ ((noinline))
+#define _TFP_GCC_NO_INLINE_ __attribute__((noinline))
 #else
-# define _TFP_GCC_NO_INLINE_
+#define _TFP_GCC_NO_INLINE_
 #endif
 
 /*
  * Implementation
  */
 struct param {
-    char lz:1;          /**<  Leading zeros */
-    char alt:1;         /**<  alternate form */
-    char uc:1;          /**<  Upper case (for base16 only) */
-    char align_left:1;  /**<  0 == align right (default), 1 == align left */
-    unsigned int width; /**<  field width */
-    char sign;          /**<  The sign to display (if any) */
-    unsigned int base;  /**<  number base (e.g.: 8, 10, 16) */
-    char *bf;           /**<  Buffer to output */
+    char lz : 1;         /**<  Leading zeros */
+    char alt : 1;        /**<  alternate form */
+    char uc : 1;         /**<  Upper case (for base16 only) */
+    char align_left : 1; /**<  0 == align right (default), 1 == align left */
+    unsigned int width;  /**<  field width */
+    char         sign;   /**<  The sign to display (if any) */
+    unsigned int base;   /**<  number base (e.g.: 8, 10, 16) */
+    char        *bf;     /**<  Buffer to output */
 };
 
-
 #ifdef PRINTF_LONG_LONG_SUPPORT
-static void _TFP_GCC_NO_INLINE_ ulli2a(
-    unsigned long long int num, struct param *p)
-{
-    int n = 0;
+static void _TFP_GCC_NO_INLINE_ ulli2a(unsigned long long int num,
+                                       struct param          *p) {
+    int                    n = 0;
     unsigned long long int d = 1;
-    char *bf = p->bf;
+    char                  *bf = p->bf;
     while (num / d >= p->base)
         d *= p->base;
     while (d != 0) {
@@ -102,8 +99,7 @@ static void _TFP_GCC_NO_INLINE_ ulli2a(
     *bf = 0;
 }
 
-static void lli2a(long long int num, struct param *p)
-{
+static void lli2a(long long int num, struct param *p) {
     if (num < 0) {
         num = -num;
         p->sign = '-';
@@ -113,11 +109,10 @@ static void lli2a(long long int num, struct param *p)
 #endif
 
 #ifdef PRINTF_LONG_SUPPORT
-static void uli2a(unsigned long int num, struct param *p)
-{
-    int n = 0;
+static void uli2a(unsigned long int num, struct param *p) {
+    int               n = 0;
     unsigned long int d = 1;
-    char *bf = p->bf;
+    char             *bf = p->bf;
     while (num / d >= p->base)
         d *= p->base;
     while (d != 0) {
@@ -132,8 +127,7 @@ static void uli2a(unsigned long int num, struct param *p)
     *bf = 0;
 }
 
-static void li2a(long num, struct param *p)
-{
+static void li2a(long num, struct param *p) {
     if (num < 0) {
         num = -num;
         p->sign = '-';
@@ -142,11 +136,10 @@ static void li2a(long num, struct param *p)
 }
 #endif
 
-static void ui2a(unsigned int num, struct param *p)
-{
-    int n = 0;
+static void ui2a(unsigned int num, struct param *p) {
+    int          n = 0;
     unsigned int d = 1;
-    char *bf = p->bf;
+    char        *bf = p->bf;
     while (num / d >= p->base)
         d *= p->base;
     while (d != 0) {
@@ -161,8 +154,7 @@ static void ui2a(unsigned int num, struct param *p)
     *bf = 0;
 }
 
-static void i2a(int num, struct param *p)
-{
+static void i2a(int num, struct param *p) {
     if (num < 0) {
         num = -num;
         p->sign = '-';
@@ -170,8 +162,7 @@ static void i2a(int num, struct param *p)
     ui2a(num, p);
 }
 
-static int a2d(char ch)
-{
+static int a2d(char ch) {
     if (ch >= '0' && ch <= '9')
         return ch - '0';
     else if (ch >= 'a' && ch <= 'f')
@@ -182,11 +173,10 @@ static int a2d(char ch)
         return -1;
 }
 
-static char a2u(char ch, const char **src, int base, unsigned int *nump)
-{
-    const char *p = *src;
+static char a2u(char ch, const char **src, int base, unsigned int *nump) {
+    const char  *p = *src;
     unsigned int num = 0;
-    int digit;
+    int          digit;
     while ((digit = a2d(ch)) >= 0) {
         if (digit > base)
             break;
@@ -198,10 +188,9 @@ static char a2u(char ch, const char **src, int base, unsigned int *nump)
     return ch;
 }
 
-static void putchw(void *putp, putcf putf, struct param *p)
-{
-    char ch;
-    int n = p->width;
+static void putchw(void *putp, putcf putf, struct param *p) {
+    char  ch;
+    int   n = p->width;
     char *bf = p->bf;
 
     /* Number of filling characters */
@@ -250,13 +239,12 @@ static void putchw(void *putp, putcf putf, struct param *p)
     }
 }
 
-void tfp_format(void *putp, putcf putf, const char *fmt, va_list va)
-{
+void tfp_format(void *putp, putcf putf, const char *fmt, va_list va) {
     struct param p;
 #ifdef PRINTF_LONG_SUPPORT
-    char bf[23];  /* long = 64b on some architectures */
+    char bf[23]; /* long = 64b on some architectures */
 #else
-    char bf[12];  /* int = 32b on some architectures */
+    char bf[12]; /* int = 32b on some architectures */
 #endif
     char ch;
     p.bf = bf;
@@ -266,7 +254,7 @@ void tfp_format(void *putp, putcf putf, const char *fmt, va_list va)
             putf(putp, ch);
         } else {
 #ifdef PRINTF_LONG_SUPPORT
-            char lng = 0;  /* 1 for long, 2 for long long */
+            char lng = 0; /* 1 for long, 2 for long long */
 #endif
             /* Init parameter struct */
             p.lz = 0;
@@ -302,35 +290,35 @@ void tfp_format(void *putp, putcf putf, const char *fmt, va_list va)
              * we ignore the 'y' digit => this ignores 0-fill
              * size and makes it == width (ie. 'x') */
             if (ch == '.') {
-              p.lz = 1;  /* zero-padding */
-              /* ignore actual 0-fill size: */
-              do {
-                ch = *(fmt++);
-              } while ((ch >= '0') && (ch <= '9'));
+                p.lz = 1; /* zero-padding */
+                /* ignore actual 0-fill size: */
+                do {
+                    ch = *(fmt++);
+                } while ((ch >= '0') && (ch <= '9'));
             }
 
 #ifdef PRINTF_SIZE_T_SUPPORT
-# ifdef PRINTF_LONG_SUPPORT
+#ifdef PRINTF_LONG_SUPPORT
             if (ch == 'z') {
                 ch = *(fmt++);
                 if (sizeof(size_t) == sizeof(unsigned long int))
                     lng = 1;
-#  ifdef PRINTF_LONG_LONG_SUPPORT
+#ifdef PRINTF_LONG_LONG_SUPPORT
                 else if (sizeof(size_t) == sizeof(unsigned long long int))
                     lng = 2;
-#  endif
+#endif
             } else
-# endif
+#endif
 #endif
 
 #ifdef PRINTF_LONG_SUPPORT
-            if (ch == 'l') {
+                if (ch == 'l') {
                 ch = *(fmt++);
                 lng = 1;
 #ifdef PRINTF_LONG_LONG_SUPPORT
                 if (ch == 'l') {
-                  ch = *(fmt++);
-                  lng = 2;
+                    ch = *(fmt++);
+                    lng = 2;
                 }
 #endif
             }
@@ -346,7 +334,7 @@ void tfp_format(void *putp, putcf putf, const char *fmt, va_list va)
                     ulli2a(va_arg(va, unsigned long long int), &p);
                 else
 #endif
-                  if (1 == lng)
+                    if (1 == lng)
                     uli2a(va_arg(va, unsigned long int), &p);
                 else
 #endif
@@ -362,7 +350,7 @@ void tfp_format(void *putp, putcf putf, const char *fmt, va_list va)
                     lli2a(va_arg(va, long long int), &p);
                 else
 #endif
-                  if (1 == lng)
+                    if (1 == lng)
                     li2a(va_arg(va, long int), &p);
                 else
 #endif
@@ -372,25 +360,25 @@ void tfp_format(void *putp, putcf putf, const char *fmt, va_list va)
 #ifdef SIZEOF_POINTER
             case 'p':
                 p.alt = 1;
-# if defined(SIZEOF_INT) && SIZEOF_POINTER <= SIZEOF_INT
+#if defined(SIZEOF_INT) && SIZEOF_POINTER <= SIZEOF_INT
                 lng = 0;
-# elif defined(SIZEOF_LONG) && SIZEOF_POINTER <= SIZEOF_LONG
+#elif defined(SIZEOF_LONG) && SIZEOF_POINTER <= SIZEOF_LONG
                 lng = 1;
-# elif defined(SIZEOF_LONG_LONG) && SIZEOF_POINTER <= SIZEOF_LONG_LONG
+#elif defined(SIZEOF_LONG_LONG) && SIZEOF_POINTER <= SIZEOF_LONG_LONG
                 lng = 2;
-# endif
+#endif
 #endif
             case 'x':
             case 'X':
                 p.base = 16;
-                p.uc = (ch == 'X')?1:0;
+                p.uc = (ch == 'X') ? 1 : 0;
 #ifdef PRINTF_LONG_SUPPORT
 #ifdef PRINTF_LONG_LONG_SUPPORT
                 if (2 == lng)
                     ulli2a(va_arg(va, unsigned long long int), &p);
                 else
 #endif
-                  if (1 == lng)
+                    if (1 == lng)
                     uli2a(va_arg(va, unsigned long int), &p);
                 else
 #endif
@@ -417,21 +405,19 @@ void tfp_format(void *putp, putcf putf, const char *fmt, va_list va)
             }
         }
     }
- abort:;
+abort:;
 }
 
 #if TINYPRINTF_DEFINE_TFP_PRINTF
 static putcf stdout_putf;
 static void *stdout_putp;
 
-void init_printf(void *putp, putcf putf)
-{
+void init_printf(void *putp, putcf putf) {
     stdout_putf = putf;
     stdout_putp = putp;
 }
 
-void tfp_printf(char *fmt, ...)
-{
+void tfp_printf(char *fmt, ...) {
     va_list va;
     va_start(va, fmt);
     tfp_format(stdout_putp, stdout_putf, fmt, va);
@@ -440,82 +426,74 @@ void tfp_printf(char *fmt, ...)
 #endif
 
 #if TINYPRINTF_DEFINE_TFP_SPRINTF
-struct _vsnprintf_putcf_data
-{
-  size_t dest_capacity;
-  char *dest;
-  size_t num_chars;
+struct _vsnprintf_putcf_data {
+    size_t dest_capacity;
+    char  *dest;
+    size_t num_chars;
 };
 
-static void _vsnprintf_putcf(void *p, char c)
-{
-  struct _vsnprintf_putcf_data *data = (struct _vsnprintf_putcf_data*)p;
-  if (data->num_chars < data->dest_capacity)
-    data->dest[data->num_chars] = c;
-  data->num_chars ++;
+static void _vsnprintf_putcf(void *p, char c) {
+    struct _vsnprintf_putcf_data *data = (struct _vsnprintf_putcf_data *)p;
+    if (data->num_chars < data->dest_capacity)
+        data->dest[data->num_chars] = c;
+    data->num_chars++;
 }
 
-int tfp_vsnprintf(char *str, size_t size, const char *format, va_list ap)
-{
-  struct _vsnprintf_putcf_data data;
+int tfp_vsnprintf(char *str, size_t size, const char *format, va_list ap) {
+    struct _vsnprintf_putcf_data data;
 
-  if (size < 1)
-    return 0;
+    if (size < 1)
+        return 0;
 
-  data.dest = str;
-  data.dest_capacity = size-1;
-  data.num_chars = 0;
-  tfp_format(&data, _vsnprintf_putcf, format, ap);
+    data.dest = str;
+    data.dest_capacity = size - 1;
+    data.num_chars = 0;
+    tfp_format(&data, _vsnprintf_putcf, format, ap);
 
-  if (data.num_chars < data.dest_capacity)
+    if (data.num_chars < data.dest_capacity)
+        data.dest[data.num_chars] = '\0';
+    else
+        data.dest[data.dest_capacity] = '\0';
+
+    return data.num_chars;
+}
+
+int tfp_snprintf(char *str, size_t size, const char *format, ...) {
+    va_list ap;
+    int     retval;
+
+    va_start(ap, format);
+    retval = tfp_vsnprintf(str, size, format, ap);
+    va_end(ap);
+    return retval;
+}
+
+struct _vsprintf_putcf_data {
+    char  *dest;
+    size_t num_chars;
+};
+
+static void _vsprintf_putcf(void *p, char c) {
+    struct _vsprintf_putcf_data *data = (struct _vsprintf_putcf_data *)p;
+    data->dest[data->num_chars++] = c;
+}
+
+int tfp_vsprintf(char *str, const char *format, va_list ap) {
+    struct _vsprintf_putcf_data data;
+    data.dest = str;
+    data.num_chars = 0;
+    tfp_format(&data, _vsprintf_putcf, format, ap);
     data.dest[data.num_chars] = '\0';
-  else
-    data.dest[data.dest_capacity] = '\0';
-
-  return data.num_chars;
+    return data.num_chars;
 }
 
-int tfp_snprintf(char *str, size_t size, const char *format, ...)
-{
-  va_list ap;
-  int retval;
+int tfp_sprintf(char *str, const char *format, ...) {
+    va_list ap;
+    int     retval;
 
-  va_start(ap, format);
-  retval = tfp_vsnprintf(str, size, format, ap);
-  va_end(ap);
-  return retval;
-}
-
-struct _vsprintf_putcf_data
-{
-  char *dest;
-  size_t num_chars;
-};
-
-static void _vsprintf_putcf(void *p, char c)
-{
-  struct _vsprintf_putcf_data *data = (struct _vsprintf_putcf_data*)p;
-  data->dest[data->num_chars++] = c;
-}
-
-int tfp_vsprintf(char *str, const char *format, va_list ap)
-{
-  struct _vsprintf_putcf_data data;
-  data.dest = str;
-  data.num_chars = 0;
-  tfp_format(&data, _vsprintf_putcf, format, ap);
-  data.dest[data.num_chars] = '\0';
-  return data.num_chars;
-}
-
-int tfp_sprintf(char *str, const char *format, ...)
-{
-  va_list ap;
-  int retval;
-
-  va_start(ap, format);
-  retval = tfp_vsprintf(str, format, ap);
-  va_end(ap);
-  return retval;
+    va_start(ap, format);
+    retval = tfp_vsprintf(str, format, ap);
+    va_end(ap);
+    return retval;
 }
 #endif

@@ -3,7 +3,6 @@
 
 #include <stddef.h>
 
-
 void *cdk_malloc(size_t size);
 void *cdk_calloc(size_t nmemb, size_t size);
 void *cdk_realloc(void *ptr, size_t size);

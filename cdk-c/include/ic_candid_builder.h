@@ -108,14 +108,14 @@ static inline void idl_value_fields_sort_inplace(idl_value_field *fields,
  * Usage: IDL_FIELD("fieldname", type_expr)
  */
 #define IDL_FIELD(name, type_expr)                                             \
-    {.label = idl_label_name(name), .type = (type_expr)}
+    { .label = idl_label_name(name), .type = (type_expr) }
 
 /**
  * IDL_VALUE_FIELD - Create a field for value definitions
  * Usage: IDL_VALUE_FIELD("fieldname", value_expr)
  */
 #define IDL_VALUE_FIELD(name, value_expr)                                      \
-    {.label = idl_label_name(name), .value = (value_expr)}
+    { .label = idl_label_name(name), .value = (value_expr) }
 
 /**
  * Internal helper to count variadic arguments

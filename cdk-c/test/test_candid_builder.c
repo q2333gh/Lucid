@@ -18,12 +18,12 @@ static int tests_passed = 0;
 static int tests_failed = 0;
 
 #define TEST(name)                                                             \
-    printf("\n🧪 Testing: %s\n", name);                                        \
+    printf("\n🧪 Testing: %s\n", name);                                      \
     static void test_##name(void);                                             \
     void        test_##name##_wrapper(void) {                                  \
-        test_##name();                                                  \
-        tests_passed++;                                                 \
-        printf("✅ PASS: %s\n", name);                                  \
+               test_##name();                                                  \
+               tests_passed++;                                                 \
+               printf("✅ PASS: %s\n", name);                                   \
     }                                                                          \
     void test_##name(void)
 
@@ -32,7 +32,7 @@ static int tests_failed = 0;
 #define ASSERT(cond)                                                           \
     do {                                                                       \
         if (!(cond)) {                                                         \
-            printf("❌ FAIL: %s:%d: Assertion failed: %s\n", __FILE__,         \
+            printf("❌ FAIL: %s:%d: Assertion failed: %s\n", __FILE__,          \
                    __LINE__, #cond);                                           \
             tests_failed++;                                                    \
             return;                                                            \

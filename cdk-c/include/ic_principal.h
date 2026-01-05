@@ -29,5 +29,4 @@ static inline bool ic_principal_is_valid(const ic_principal_t *principal) {
 // Parses a principal from its text (base32) representation.
 // Returns IC_OK on success or IC_ERROR on failure.
 // The text should be a valid null-terminated principal string.
-ic_result_t ic_principal_from_text(ic_principal_t *principal,
-                                   const char     *text);
+ic_result_t ic_principal_from_text(ic_principal_t *principal, const char *text);

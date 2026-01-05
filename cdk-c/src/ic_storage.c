@@ -33,7 +33,7 @@ int64_t ic_stable_grow(int64_t new_pages) {
 
 void ic_stable_write(int64_t offset, const uint8_t *src, int64_t size) {
     if (src == NULL || size < 0) {
-        ic0_trap((uintptr_t)"ic_stable_write: invalid arguments", 35);
+        ic0_trap((uintptr_t) "ic_stable_write: invalid arguments", 35);
     }
     if (size == 0) {
         return;
@@ -43,7 +43,7 @@ void ic_stable_write(int64_t offset, const uint8_t *src, int64_t size) {
 
 void ic_stable_read(uint8_t *dst, int64_t offset, int64_t size) {
     if (dst == NULL || size < 0) {
-        ic0_trap((uintptr_t)"ic_stable_read: invalid arguments", 34);
+        ic0_trap((uintptr_t) "ic_stable_read: invalid arguments", 34);
     }
     if (size == 0) {
         return;

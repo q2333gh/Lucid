@@ -1,11 +1,11 @@
 // Principal type implementation
 #include "ic_principal.h"
 
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
 
 // =============================================================================
 // CRC32 Implementation (ISO 3309)
@@ -33,7 +33,7 @@ static uint32_t crc32(const uint8_t *data, size_t len) {
 static const char BASE32_ALPHABET[] = "abcdefghijklmnopqrstuvwxyz234567";
 
 // Lookup table for Base32 decoding, initialized on first use
-static int base32_decode_table_initialized = 0;
+static int    base32_decode_table_initialized = 0;
 static int8_t BASE32_DECODE_TABLE[256];
 
 static void init_base32_decode_table() {
@@ -76,12 +76,13 @@ static size_t base32_encode(const uint8_t *data, size_t len, char *out) {
 
 // Decode base32 string (continuous, not with dashes)
 // Returns the number of bytes written to out, or -1 on error
-static int base32_decode(const char *in, size_t in_len, uint8_t *out, size_t out_cap) {
+static int
+base32_decode(const char *in, size_t in_len, uint8_t *out, size_t out_cap) {
     init_base32_decode_table();
 
     uint32_t buffer = 0;
-    int bits_left = 0;
-    size_t out_len = 0;
+    int      bits_left = 0;
+    size_t   out_len = 0;
     for (size_t i = 0; i < in_len; i++) {
         char ch = in[i];
         if (ch == '\0')
@@ -102,7 +103,7 @@ static int base32_decode(const char *in, size_t in_len, uint8_t *out, size_t out
     }
     // Note: RFC 4648 (section 6) says any leftover bits must be 0
     if (bits_left > 0) {
-        if ( (buffer & ((1 << bits_left) - 1)) != 0 )
+        if ((buffer & ((1 << bits_left) - 1)) != 0)
             return -1;
     }
     return (int)out_len;
@@ -143,7 +144,8 @@ ic_result_t ic_principal_from_bytes(ic_principal_t *principal,
 }
 
 // New: from text principal string (e.g., "uxrrr-q7777-77774-qaaaq-cai")
-ic_result_t ic_principal_from_text(ic_principal_t *principal, const char *text) {
+ic_result_t ic_principal_from_text(ic_principal_t *principal,
+                                   const char     *text) {
     if (principal == NULL || text == NULL) {
         return IC_ERR_INVALID_ARG;
     }
@@ -152,7 +154,7 @@ ic_result_t ic_principal_from_text(ic_principal_t *principal, const char *text) 
         return IC_ERR_INVALID_ARG;
 
     // Remove dashes
-    char b32_buf[72];
+    char   b32_buf[72];
     size_t b32_len = remove_dashes(text, text_len, b32_buf);
 
     // Check valid length
@@ -168,8 +170,7 @@ ic_result_t ic_principal_from_text(ic_principal_t *principal, const char *text) 
     // Split CRC32 (first 4 bytes), then the remaining = principal
     uint32_t crc_in = ((uint32_t)full_buf[0] << 24) |
                       ((uint32_t)full_buf[1] << 16) |
-                      ((uint32_t)full_buf[2] << 8) |
-                      ((uint32_t)full_buf[3]);
+                      ((uint32_t)full_buf[2] << 8) | ((uint32_t)full_buf[3]);
 
     size_t principal_len = buf_len - 4;
     if (principal_len == 0 || principal_len > IC_PRINCIPAL_MAX_LEN)

@@ -25,9 +25,7 @@ IC_API_QUERY(greet, "() -> (text)") {
 // Example: Simple counter state on RAM
 static uint64_t counter = 3;
 
-IC_EXPORT_INIT(init) {
-    ic_api_debug_print("canister_init function called");
-}
+IC_EXPORT_INIT(init) { ic_api_debug_print("canister_init function called"); }
 
 // Forward declaration
 void restore_state(void);

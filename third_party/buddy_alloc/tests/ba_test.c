@@ -12,7 +12,8 @@ void try_alloc_bytes_sysmalloc(const char *label, size_t bytes) {
         memset(p, 0, bytes); // Test fill
         free(p);
     } else {
-        printf("%s: (system malloc) failed to allocate %zu bytes\n", label, bytes);
+        printf("%s: (system malloc) failed to allocate %zu bytes\n", label,
+               bytes);
     }
 }
 
@@ -23,7 +24,8 @@ void try_alloc_bytes(const char *label, struct buddy *buddy, size_t bytes) {
         memset(p, 0, bytes); // Test fill
         buddy_free(buddy, p);
     } else {
-        printf("%s: (buddy_alloc) failed to allocate %zu bytes\n", label, bytes);
+        printf("%s: (buddy_alloc) failed to allocate %zu bytes\n", label,
+               bytes);
     }
 }
 
@@ -35,14 +37,16 @@ int main() {
     void         *buddy_arena = malloc(arena_size);
     struct buddy *buddy = buddy_init(buddy_metadata, buddy_arena, arena_size);
 
-    // Auto test (external metadata): start from 128 bytes, double each time, stop at >10MB
+    // Auto test (external metadata): start from 128 bytes, double each time,
+    // stop at >10MB
     size_t bytes;
     printf("==== buddy_alloc external metadata test ====\n");
     for (bytes = 128; bytes <= 10 * 1024 * 1024; bytes *= 2) {
         try_alloc_bytes("buddy_alloc", buddy, bytes);
     }
 
-    // Compare directly with system malloc: start from 128 bytes, double each time, stop at >10MB
+    // Compare directly with system malloc: start from 128 bytes, double each
+    // time, stop at >10MB
     printf("==== system malloc test ====\n");
     for (bytes = 128; bytes <= 10 * 1024 * 1024; bytes *= 2) {
         try_alloc_bytes_sysmalloc("sysmalloc", bytes);
@@ -55,7 +59,8 @@ int main() {
     buddy_arena = malloc(arena_size);
     buddy = buddy_embed(buddy_arena, arena_size);
 
-    // Auto test (embedded metadata): start from 128 bytes, double each time, stop at >128MB
+    // Auto test (embedded metadata): start from 128 bytes, double each time,
+    // stop at >128MB
     printf("==== buddy_alloc embedded metadata test ====\n");
     for (bytes = 128; bytes <= 128 * 1024 * 1024; bytes *= 2) {
         try_alloc_bytes("[embedded] buddy_alloc", buddy, bytes);

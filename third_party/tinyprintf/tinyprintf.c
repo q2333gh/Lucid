@@ -72,8 +72,8 @@ struct param {
     unsigned char lz : 1;  /**<  Leading zeros */
     unsigned char alt : 1; /**<  alternate form */
     unsigned char uc : 1;  /**<  Upper case (for base16 only) */
-    unsigned char align_left
-        : 1;            /**<  0 == align right (default), 1 == align left */
+    unsigned char
+        align_left : 1; /**<  0 == align right (default), 1 == align left */
     unsigned int width; /**<  field width */
     char         sign;  /**<  The sign to display (if any) */
     unsigned int base;  /**<  number base (e.g.: 8, 10, 16) */

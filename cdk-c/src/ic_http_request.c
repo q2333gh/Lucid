@@ -268,112 +268,128 @@ build_transform_context_value(idl_arena                    *arena,
     return idl_value_record(arena, fields, 2);
 }
 
-// Build complete HttpRequestArgs
-static ic_result_t
-build_http_request_args_candid(idl_arena                    *arena,
-                               const ic_http_request_args_t *args,
-                               idl_value                   **value_out) {
-    // HttpRequestArgs = record {
-    //   url: text;
-    //   max_response_bytes: opt nat64;
-    //   method: variant { get; post; head };
-    //   headers: vec record { name: text; value: text };
-    //   body: opt blob;
-    //   transform: opt record { function: func; context: blob };
-    //   is_replicated: opt bool;
-    // }
-
-    idl_value_field fields[7];
-    size_t          field_idx = 0;
-
-    // 1. url: text (required)
-    fields[field_idx++] = (idl_value_field){
+/* Build url field */
+static idl_value_field build_url_field(idl_arena *arena, const char *url) {
+    return (idl_value_field){
         .label = {.kind = IDL_LABEL_NAME, .id = idl_hash("url"), .name = "url"},
-        .value = idl_value_text_cstr(arena, args->url)
+        .value = idl_value_text_cstr(arena, url)
     };
+}
 
-    // 2. max_response_bytes: opt nat64
+/* Build max_response_bytes field */
+static idl_value_field build_max_response_bytes_field(idl_arena *arena,
+                                                      uint64_t   max_bytes) {
     idl_value *max_bytes_val;
-    if (args->max_response_bytes > 0) {
-        max_bytes_val = idl_value_opt_some(
-            arena, idl_value_nat64(arena, args->max_response_bytes));
+    if (max_bytes > 0) {
+        max_bytes_val =
+            idl_value_opt_some(arena, idl_value_nat64(arena, max_bytes));
     } else {
         max_bytes_val = idl_value_opt_none(arena);
     }
-    fields[field_idx++] = (idl_value_field){
+    return (idl_value_field){
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("max_response_bytes"),
                   .name = "max_response_bytes"},
         .value = max_bytes_val
     };
+}
 
-    // 3. method: variant { get; post; head }
-    fields[field_idx++] = (idl_value_field){
+/* Build method field */
+static idl_value_field build_method_field(idl_arena       *arena,
+                                          ic_http_method_t method) {
+    return (idl_value_field){
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("method"),
                   .name = "method"},
-        .value = build_http_method_value(arena, args->method)
+        .value = build_http_method_value(arena, method)
     };
+}
 
-    // 4. headers: vec record { name: text; value: text }
+/* Build headers field */
+static idl_value_field build_headers_field(idl_arena              *arena,
+                                           const ic_http_header_t *headers,
+                                           size_t headers_count) {
     idl_value **header_values = NULL;
-    if (args->headers_count > 0) {
+    if (headers_count > 0) {
         header_values =
-            idl_arena_alloc(arena, sizeof(idl_value *) * args->headers_count);
-        for (size_t i = 0; i < args->headers_count; i++) {
-            header_values[i] =
-                build_http_header_value(arena, &args->headers[i]);
+            idl_arena_alloc(arena, sizeof(idl_value *) * headers_count);
+        for (size_t i = 0; i < headers_count; i++) {
+            header_values[i] = build_http_header_value(arena, &headers[i]);
         }
     }
-    fields[field_idx++] = (idl_value_field){
+    return (idl_value_field){
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("headers"),
                   .name = "headers"},
-        .value = idl_value_vec(arena, header_values, args->headers_count)
+        .value = idl_value_vec(arena, header_values, headers_count)
     };
+}
 
-    // 5. body: opt blob
+/* Build body field */
+static idl_value_field
+build_body_field(idl_arena *arena, const uint8_t *body, size_t body_len) {
     idl_value *body_val;
-    if (args->body && args->body_len > 0) {
-        body_val = idl_value_opt_some(
-            arena, idl_value_blob(arena, args->body, args->body_len));
+    if (body && body_len > 0) {
+        body_val =
+            idl_value_opt_some(arena, idl_value_blob(arena, body, body_len));
     } else {
         body_val = idl_value_opt_none(arena);
     }
-    fields[field_idx++] = (idl_value_field){
+    return (idl_value_field){
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("body"),
                   .name = "body"},
         .value = body_val
     };
+}
 
-    // 6. transform: opt record { function: func; context: blob }
+/* Build transform field */
+static idl_value_field
+build_transform_field(idl_arena                    *arena,
+                      const ic_transform_context_t *transform) {
     idl_value *transform_val;
-    if (args->transform) {
+    if (transform) {
         transform_val = idl_value_opt_some(
-            arena, build_transform_context_value(arena, args->transform));
+            arena, build_transform_context_value(arena, transform));
     } else {
         transform_val = idl_value_opt_none(arena);
     }
-    fields[field_idx++] = (idl_value_field){
+    return (idl_value_field){
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("transform"),
                   .name = "transform"},
         .value = transform_val
     };
+}
 
-    // 7. is_replicated: opt bool
-    // Note: Default should be None (not Some(false))
-    // Only set to Some if explicitly configured
-    idl_value *replicated_val = idl_value_opt_none(arena);
-    fields[field_idx++] = (idl_value_field){
+/* Build is_replicated field */
+static idl_value_field build_is_replicated_field(idl_arena *arena) {
+    return (idl_value_field){
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("is_replicated"),
                   .name = "is_replicated"},
-        .value = replicated_val
+        .value = idl_value_opt_none(arena)
     };
+}
 
-    // Sort fields and create record
+// Build complete HttpRequestArgs
+static ic_result_t
+build_http_request_args_candid(idl_arena                    *arena,
+                               const ic_http_request_args_t *args,
+                               idl_value                   **value_out) {
+    idl_value_field fields[7];
+    size_t          field_idx = 0;
+
+    fields[field_idx++] = build_url_field(arena, args->url);
+    fields[field_idx++] =
+        build_max_response_bytes_field(arena, args->max_response_bytes);
+    fields[field_idx++] = build_method_field(arena, args->method);
+    fields[field_idx++] =
+        build_headers_field(arena, args->headers, args->headers_count);
+    fields[field_idx++] = build_body_field(arena, args->body, args->body_len);
+    fields[field_idx++] = build_transform_field(arena, args->transform);
+    fields[field_idx++] = build_is_replicated_field(arena);
+
     idl_value_fields_sort_inplace(fields, field_idx);
     *value_out = idl_value_record(arena, fields, field_idx);
 

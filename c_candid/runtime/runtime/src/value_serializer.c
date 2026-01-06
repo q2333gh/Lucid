@@ -266,6 +266,67 @@ idl_status idl_value_serializer_write_int(idl_value_serializer *ser,
     return idl_value_serializer_write(ser, sleb_data, len);
 }
 
+/* Serialize OPT value */
+static idl_status write_opt_value(idl_value_serializer *ser,
+                                  const idl_value      *value) {
+    if (value->data.opt == NULL) {
+        return idl_value_serializer_write_opt_none(ser);
+    }
+
+    idl_status st = idl_value_serializer_write_opt_some(ser);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+    return idl_value_serializer_write_value(ser, value->data.opt);
+}
+
+/* Serialize VEC value */
+static idl_status write_vec_value(idl_value_serializer *ser,
+                                  const idl_value      *value) {
+    idl_status st =
+        idl_value_serializer_write_vec_len(ser, value->data.vec.len);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    for (size_t i = 0; i < value->data.vec.len; i++) {
+        st = idl_value_serializer_write_value(ser, value->data.vec.items[i]);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+    }
+    return IDL_STATUS_OK;
+}
+
+/* Serialize RECORD value */
+static idl_status write_record_value(idl_value_serializer *ser,
+                                     const idl_value      *value) {
+    for (size_t i = 0; i < value->data.record.len; i++) {
+        idl_status st = idl_value_serializer_write_value(
+            ser, value->data.record.fields[i].value);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+    }
+    return IDL_STATUS_OK;
+}
+
+/* Serialize VARIANT value */
+static idl_status write_variant_value(idl_value_serializer *ser,
+                                      const idl_value      *value) {
+    idl_status st = idl_value_serializer_write_variant_index(
+        ser, value->data.record.variant_index);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    if (value->data.record.len > 0) {
+        return idl_value_serializer_write_value(
+            ser, value->data.record.fields[0].value);
+    }
+    return IDL_STATUS_OK;
+}
+
 /* Recursive value serialization */
 
 idl_status idl_value_serializer_write_value(idl_value_serializer *ser,
@@ -273,8 +334,6 @@ idl_status idl_value_serializer_write_value(idl_value_serializer *ser,
     if (!ser || !value) {
         return IDL_STATUS_ERR_INVALID_ARG;
     }
-
-    idl_status st;
 
     switch (value->kind) {
     case IDL_VALUE_NULL:
@@ -337,53 +396,16 @@ idl_status idl_value_serializer_write_value(idl_value_serializer *ser,
                                               value->data.bignum.len);
 
     case IDL_VALUE_OPT:
-        if (value->data.opt == NULL) {
-            return idl_value_serializer_write_opt_none(ser);
-        } else {
-            st = idl_value_serializer_write_opt_some(ser);
-            if (st != IDL_STATUS_OK) {
-                return st;
-            }
-            return idl_value_serializer_write_value(ser, value->data.opt);
-        }
+        return write_opt_value(ser, value);
 
     case IDL_VALUE_VEC:
-        st = idl_value_serializer_write_vec_len(ser, value->data.vec.len);
-        if (st != IDL_STATUS_OK) {
-            return st;
-        }
-        for (size_t i = 0; i < value->data.vec.len; i++) {
-            st =
-                idl_value_serializer_write_value(ser, value->data.vec.items[i]);
-            if (st != IDL_STATUS_OK) {
-                return st;
-            }
-        }
-        return IDL_STATUS_OK;
+        return write_vec_value(ser, value);
 
     case IDL_VALUE_RECORD:
-        /* Record fields are already sorted; just serialize each value */
-        for (size_t i = 0; i < value->data.record.len; i++) {
-            st = idl_value_serializer_write_value(
-                ser, value->data.record.fields[i].value);
-            if (st != IDL_STATUS_OK) {
-                return st;
-            }
-        }
-        return IDL_STATUS_OK;
+        return write_record_value(ser, value);
 
     case IDL_VALUE_VARIANT:
-        /* Variant: write index then the single field value */
-        st = idl_value_serializer_write_variant_index(
-            ser, value->data.record.variant_index);
-        if (st != IDL_STATUS_OK) {
-            return st;
-        }
-        if (value->data.record.len > 0) {
-            return idl_value_serializer_write_value(
-                ser, value->data.record.fields[0].value);
-        }
-        return IDL_STATUS_OK;
+        return write_variant_value(ser, value);
 
     default:
         return IDL_STATUS_ERR_UNSUPPORTED;

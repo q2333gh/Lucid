@@ -149,6 +149,402 @@ static idl_status index_to_type(idl_arena *arena,
     return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
 }
 
+/* Parse OPT type */
+static idl_status parse_opt_type(const uint8_t *data,
+                                 size_t         data_len,
+                                 size_t        *pos,
+                                 idl_arena     *arena,
+                                 uint64_t       table_len,
+                                 idl_type     **out) {
+    int64_t    inner_idx;
+    idl_status st = read_sleb128(data, data_len, pos, &inner_idx);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    idl_type *inner;
+    st = index_to_type(arena, inner_idx, table_len, &inner);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    *out = idl_type_opt(arena, inner);
+    return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
+}
+
+/* Parse VEC type */
+static idl_status parse_vec_type(const uint8_t *data,
+                                 size_t         data_len,
+                                 size_t        *pos,
+                                 idl_arena     *arena,
+                                 uint64_t       table_len,
+                                 idl_type     **out) {
+    int64_t    inner_idx;
+    idl_status st = read_sleb128(data, data_len, pos, &inner_idx);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    idl_type *inner;
+    st = index_to_type(arena, inner_idx, table_len, &inner);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    *out = idl_type_vec(arena, inner);
+    return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
+}
+
+/* Parse a single record/variant field */
+static idl_status parse_record_field(const uint8_t *data,
+                                     size_t         data_len,
+                                     size_t        *pos,
+                                     idl_arena     *arena,
+                                     uint64_t       table_len,
+                                     uint32_t      *prev_id,
+                                     idl_field     *field) {
+    uint64_t   field_id;
+    idl_status st = read_uleb128(data, data_len, pos, &field_id);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    if (field_id > UINT32_MAX) {
+        return IDL_STATUS_ERR_INVALID_ARG;
+    }
+
+    if (*prev_id > 0 && (uint32_t)field_id <= *prev_id) {
+        return IDL_STATUS_ERR_INVALID_ARG;
+    }
+    *prev_id = (uint32_t)field_id;
+
+    int64_t type_idx;
+    st = read_sleb128(data, data_len, pos, &type_idx);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    idl_type *field_type;
+    st = index_to_type(arena, type_idx, table_len, &field_type);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    field->label = idl_label_id((uint32_t)field_id);
+    field->type = field_type;
+    return IDL_STATUS_OK;
+}
+
+/* Parse RECORD or VARIANT type */
+static idl_status parse_record_variant_type(const uint8_t *data,
+                                            size_t         data_len,
+                                            size_t        *pos,
+                                            idl_arena     *arena,
+                                            uint64_t       table_len,
+                                            int64_t        opcode,
+                                            idl_type     **out) {
+    uint64_t   field_count;
+    idl_status st = read_uleb128(data, data_len, pos, &field_count);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    idl_field *fields = idl_arena_alloc(arena, sizeof(idl_field) * field_count);
+    if (!fields && field_count > 0) {
+        return IDL_STATUS_ERR_ALLOC;
+    }
+
+    uint32_t prev_id = 0;
+    for (uint64_t i = 0; i < field_count; i++) {
+        st = parse_record_field(data, data_len, pos, arena, table_len, &prev_id,
+                                &fields[i]);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+    }
+
+    if (opcode == IDL_TYPE_RECORD) {
+        *out = idl_type_record(arena, fields, (size_t)field_count);
+    } else {
+        *out = idl_type_variant(arena, fields, (size_t)field_count);
+    }
+    return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
+}
+
+/* Parse function arguments */
+static idl_status parse_func_args(const uint8_t *data,
+                                  size_t         data_len,
+                                  size_t        *pos,
+                                  idl_arena     *arena,
+                                  uint64_t       table_len,
+                                  idl_type    ***args,
+                                  size_t        *args_len) {
+    uint64_t   arg_count;
+    idl_status st = read_uleb128(data, data_len, pos, &arg_count);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    idl_type **arg_types =
+        idl_arena_alloc(arena, sizeof(idl_type *) * arg_count);
+    if (!arg_types && arg_count > 0) {
+        return IDL_STATUS_ERR_ALLOC;
+    }
+
+    for (uint64_t i = 0; i < arg_count; i++) {
+        int64_t type_idx;
+        st = read_sleb128(data, data_len, pos, &type_idx);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+
+        st = index_to_type(arena, type_idx, table_len, &arg_types[i]);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+    }
+
+    *args = arg_types;
+    *args_len = (size_t)arg_count;
+    return IDL_STATUS_OK;
+}
+
+/* Parse function returns */
+static idl_status parse_func_rets(const uint8_t *data,
+                                  size_t         data_len,
+                                  size_t        *pos,
+                                  idl_arena     *arena,
+                                  uint64_t       table_len,
+                                  idl_type    ***rets,
+                                  size_t        *rets_len) {
+    uint64_t   ret_count;
+    idl_status st = read_uleb128(data, data_len, pos, &ret_count);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    idl_type **ret_types =
+        idl_arena_alloc(arena, sizeof(idl_type *) * ret_count);
+    if (!ret_types && ret_count > 0) {
+        return IDL_STATUS_ERR_ALLOC;
+    }
+
+    for (uint64_t i = 0; i < ret_count; i++) {
+        int64_t type_idx;
+        st = read_sleb128(data, data_len, pos, &type_idx);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+
+        st = index_to_type(arena, type_idx, table_len, &ret_types[i]);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+    }
+
+    *rets = ret_types;
+    *rets_len = (size_t)ret_count;
+    return IDL_STATUS_OK;
+}
+
+/* Parse function modes */
+static idl_status parse_func_modes(const uint8_t  *data,
+                                   size_t          data_len,
+                                   size_t         *pos,
+                                   idl_arena      *arena,
+                                   idl_func_mode **modes,
+                                   size_t         *modes_len) {
+    uint64_t   mode_count;
+    idl_status st = read_uleb128(data, data_len, pos, &mode_count);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    if (mode_count > 1) {
+        return IDL_STATUS_ERR_INVALID_ARG;
+    }
+
+    idl_func_mode *mode_array = NULL;
+    if (mode_count > 0) {
+        mode_array = idl_arena_alloc(arena, sizeof(idl_func_mode) * mode_count);
+        if (!mode_array) {
+            return IDL_STATUS_ERR_ALLOC;
+        }
+
+        for (uint64_t i = 0; i < mode_count; i++) {
+            uint64_t mode;
+            st = read_uleb128(data, data_len, pos, &mode);
+            if (st != IDL_STATUS_OK) {
+                return st;
+            }
+
+            if (mode < 1 || mode > 3) {
+                return IDL_STATUS_ERR_INVALID_ARG;
+            }
+
+            mode_array[i] = (idl_func_mode)mode;
+        }
+    }
+
+    *modes = mode_array;
+    *modes_len = (size_t)mode_count;
+    return IDL_STATUS_OK;
+}
+
+/* Parse FUNC type */
+static idl_status parse_func_type(const uint8_t *data,
+                                  size_t         data_len,
+                                  size_t        *pos,
+                                  idl_arena     *arena,
+                                  uint64_t       table_len,
+                                  idl_type     **out) {
+    idl_type **args;
+    size_t     args_len;
+    idl_status st = parse_func_args(data, data_len, pos, arena, table_len,
+                                    &args, &args_len);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    idl_type **rets;
+    size_t     rets_len;
+    st = parse_func_rets(data, data_len, pos, arena, table_len, &rets,
+                         &rets_len);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    idl_func_mode *modes;
+    size_t         modes_len;
+    st = parse_func_modes(data, data_len, pos, arena, &modes, &modes_len);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    idl_func func = {
+        .args = args,
+        .args_len = args_len,
+        .rets = rets,
+        .rets_len = rets_len,
+        .modes = modes,
+        .modes_len = modes_len,
+    };
+
+    *out = idl_type_func(arena, &func);
+    return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
+}
+
+/* Parse a single service method */
+static idl_status parse_service_method(const uint8_t *data,
+                                       size_t         data_len,
+                                       size_t        *pos,
+                                       idl_arena     *arena,
+                                       uint64_t       table_len,
+                                       const char   **prev_name,
+                                       idl_method    *method) {
+    uint64_t   name_len;
+    idl_status st = read_uleb128(data, data_len, pos, &name_len);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    if (*pos + name_len > data_len) {
+        return IDL_STATUS_ERR_TRUNCATED;
+    }
+
+    char *name = idl_arena_alloc(arena, name_len + 1);
+    if (!name) {
+        return IDL_STATUS_ERR_ALLOC;
+    }
+    memcpy(name, data + *pos, name_len);
+    name[name_len] = '\0';
+    *pos += name_len;
+
+    if (*prev_name && strcmp(*prev_name, name) >= 0) {
+        return IDL_STATUS_ERR_INVALID_ARG;
+    }
+    *prev_name = name;
+
+    int64_t type_idx;
+    st = read_sleb128(data, data_len, pos, &type_idx);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    idl_type *method_type;
+    st = index_to_type(arena, type_idx, table_len, &method_type);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    method->name = name;
+    method->type = method_type;
+    return IDL_STATUS_OK;
+}
+
+/* Parse SERVICE type */
+static idl_status parse_service_type(const uint8_t *data,
+                                     size_t         data_len,
+                                     size_t        *pos,
+                                     idl_arena     *arena,
+                                     uint64_t       table_len,
+                                     idl_type     **out) {
+    uint64_t   method_count;
+    idl_status st = read_uleb128(data, data_len, pos, &method_count);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    idl_method *methods =
+        idl_arena_alloc(arena, sizeof(idl_method) * method_count);
+    if (!methods && method_count > 0) {
+        return IDL_STATUS_ERR_ALLOC;
+    }
+
+    const char *prev_name = NULL;
+    for (uint64_t i = 0; i < method_count; i++) {
+        st = parse_service_method(data, data_len, pos, arena, table_len,
+                                  &prev_name, &methods[i]);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+    }
+
+    idl_service service = {
+        .methods = methods,
+        .methods_len = (size_t)method_count,
+    };
+
+    *out = idl_type_service(arena, &service);
+    return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
+}
+
+/* Parse unknown/future type */
+static idl_status parse_unknown_type(const uint8_t *data,
+                                     size_t         data_len,
+                                     size_t        *pos,
+                                     idl_arena     *arena,
+                                     int64_t        opcode,
+                                     idl_type     **out) {
+    if (opcode < -24) {
+        uint64_t   blob_len;
+        idl_status st = read_uleb128(data, data_len, pos, &blob_len);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+
+        if (*pos + blob_len > data_len) {
+            return IDL_STATUS_ERR_TRUNCATED;
+        }
+
+        *pos += blob_len;
+        *out = idl_type_reserved(arena);
+        return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
+    }
+
+    return IDL_STATUS_ERR_INVALID_ARG;
+}
+
 /* Parse a composite type from the type table */
 static idl_status parse_cons_type(const uint8_t *data,
                                   size_t         data_len,
@@ -158,251 +554,31 @@ static idl_status parse_cons_type(const uint8_t *data,
                                   idl_type     **out) {
     int64_t    opcode;
     idl_status st = read_sleb128(data, data_len, pos, &opcode);
-    if (st != IDL_STATUS_OK)
+    if (st != IDL_STATUS_OK) {
         return st;
+    }
 
     switch (opcode) {
-    case IDL_TYPE_OPT: {
-        int64_t inner_idx;
-        st = read_sleb128(data, data_len, pos, &inner_idx);
-        if (st != IDL_STATUS_OK)
-            return st;
+    case IDL_TYPE_OPT:
+        return parse_opt_type(data, data_len, pos, arena, table_len, out);
 
-        idl_type *inner;
-        st = index_to_type(arena, inner_idx, table_len, &inner);
-        if (st != IDL_STATUS_OK)
-            return st;
-
-        *out = idl_type_opt(arena, inner);
-        break;
-    }
-
-    case IDL_TYPE_VEC: {
-        int64_t inner_idx;
-        st = read_sleb128(data, data_len, pos, &inner_idx);
-        if (st != IDL_STATUS_OK)
-            return st;
-
-        idl_type *inner;
-        st = index_to_type(arena, inner_idx, table_len, &inner);
-        if (st != IDL_STATUS_OK)
-            return st;
-
-        *out = idl_type_vec(arena, inner);
-        break;
-    }
+    case IDL_TYPE_VEC:
+        return parse_vec_type(data, data_len, pos, arena, table_len, out);
 
     case IDL_TYPE_RECORD:
-    case IDL_TYPE_VARIANT: {
-        uint64_t field_count;
-        st = read_uleb128(data, data_len, pos, &field_count);
-        if (st != IDL_STATUS_OK)
-            return st;
+    case IDL_TYPE_VARIANT:
+        return parse_record_variant_type(data, data_len, pos, arena, table_len,
+                                         opcode, out);
 
-        idl_field *fields =
-            idl_arena_alloc(arena, sizeof(idl_field) * field_count);
-        if (!fields && field_count > 0)
-            return IDL_STATUS_ERR_ALLOC;
+    case IDL_TYPE_FUNC:
+        return parse_func_type(data, data_len, pos, arena, table_len, out);
 
-        uint32_t prev_id = 0;
-        for (uint64_t i = 0; i < field_count; i++) {
-            uint64_t field_id;
-            st = read_uleb128(data, data_len, pos, &field_id);
-            if (st != IDL_STATUS_OK)
-                return st;
-
-            if (field_id > UINT32_MAX)
-                return IDL_STATUS_ERR_INVALID_ARG;
-
-            /* Check sorting and uniqueness */
-            if (i > 0 && (uint32_t)field_id <= prev_id) {
-                return IDL_STATUS_ERR_INVALID_ARG;
-            }
-            prev_id = (uint32_t)field_id;
-
-            int64_t type_idx;
-            st = read_sleb128(data, data_len, pos, &type_idx);
-            if (st != IDL_STATUS_OK)
-                return st;
-
-            idl_type *field_type;
-            st = index_to_type(arena, type_idx, table_len, &field_type);
-            if (st != IDL_STATUS_OK)
-                return st;
-
-            fields[i].label = idl_label_id((uint32_t)field_id);
-            fields[i].type = field_type;
-        }
-
-        if (opcode == IDL_TYPE_RECORD) {
-            *out = idl_type_record(arena, fields, (size_t)field_count);
-        } else {
-            *out = idl_type_variant(arena, fields, (size_t)field_count);
-        }
-        break;
-    }
-
-    case IDL_TYPE_FUNC: {
-        uint64_t arg_count;
-        st = read_uleb128(data, data_len, pos, &arg_count);
-        if (st != IDL_STATUS_OK)
-            return st;
-
-        idl_type **args =
-            idl_arena_alloc(arena, sizeof(idl_type *) * arg_count);
-        if (!args && arg_count > 0)
-            return IDL_STATUS_ERR_ALLOC;
-
-        for (uint64_t i = 0; i < arg_count; i++) {
-            int64_t type_idx;
-            st = read_sleb128(data, data_len, pos, &type_idx);
-            if (st != IDL_STATUS_OK)
-                return st;
-
-            st = index_to_type(arena, type_idx, table_len, &args[i]);
-            if (st != IDL_STATUS_OK)
-                return st;
-        }
-
-        uint64_t ret_count;
-        st = read_uleb128(data, data_len, pos, &ret_count);
-        if (st != IDL_STATUS_OK)
-            return st;
-
-        idl_type **rets =
-            idl_arena_alloc(arena, sizeof(idl_type *) * ret_count);
-        if (!rets && ret_count > 0)
-            return IDL_STATUS_ERR_ALLOC;
-
-        for (uint64_t i = 0; i < ret_count; i++) {
-            int64_t type_idx;
-            st = read_sleb128(data, data_len, pos, &type_idx);
-            if (st != IDL_STATUS_OK)
-                return st;
-
-            st = index_to_type(arena, type_idx, table_len, &rets[i]);
-            if (st != IDL_STATUS_OK)
-                return st;
-        }
-
-        uint64_t mode_count;
-        st = read_uleb128(data, data_len, pos, &mode_count);
-        if (st != IDL_STATUS_OK)
-            return st;
-
-        if (mode_count > 1)
-            return IDL_STATUS_ERR_INVALID_ARG;
-
-        idl_func_mode *modes = NULL;
-        if (mode_count > 0) {
-            modes = idl_arena_alloc(arena, sizeof(idl_func_mode) * mode_count);
-            if (!modes)
-                return IDL_STATUS_ERR_ALLOC;
-
-            for (uint64_t i = 0; i < mode_count; i++) {
-                uint64_t mode;
-                st = read_uleb128(data, data_len, pos, &mode);
-                if (st != IDL_STATUS_OK)
-                    return st;
-
-                if (mode < 1 || mode > 3)
-                    return IDL_STATUS_ERR_INVALID_ARG;
-
-                modes[i] = (idl_func_mode)mode;
-            }
-        }
-
-        idl_func func = {
-            .args = args,
-            .args_len = (size_t)arg_count,
-            .rets = rets,
-            .rets_len = (size_t)ret_count,
-            .modes = modes,
-            .modes_len = (size_t)mode_count,
-        };
-
-        *out = idl_type_func(arena, &func);
-        break;
-    }
-
-    case IDL_TYPE_SERVICE: {
-        uint64_t method_count;
-        st = read_uleb128(data, data_len, pos, &method_count);
-        if (st != IDL_STATUS_OK)
-            return st;
-
-        idl_method *methods =
-            idl_arena_alloc(arena, sizeof(idl_method) * method_count);
-        if (!methods && method_count > 0)
-            return IDL_STATUS_ERR_ALLOC;
-
-        const char *prev_name = NULL;
-        for (uint64_t i = 0; i < method_count; i++) {
-            uint64_t name_len;
-            st = read_uleb128(data, data_len, pos, &name_len);
-            if (st != IDL_STATUS_OK)
-                return st;
-
-            if (*pos + name_len > data_len)
-                return IDL_STATUS_ERR_TRUNCATED;
-
-            char *name = idl_arena_alloc(arena, name_len + 1);
-            if (!name)
-                return IDL_STATUS_ERR_ALLOC;
-            memcpy(name, data + *pos, name_len);
-            name[name_len] = '\0';
-            *pos += name_len;
-
-            /* Check sorting and uniqueness */
-            if (prev_name && strcmp(prev_name, name) >= 0) {
-                return IDL_STATUS_ERR_INVALID_ARG;
-            }
-            prev_name = name;
-
-            int64_t type_idx;
-            st = read_sleb128(data, data_len, pos, &type_idx);
-            if (st != IDL_STATUS_OK)
-                return st;
-
-            idl_type *method_type;
-            st = index_to_type(arena, type_idx, table_len, &method_type);
-            if (st != IDL_STATUS_OK)
-                return st;
-
-            methods[i].name = name;
-            methods[i].type = method_type;
-        }
-
-        idl_service service = {
-            .methods = methods,
-            .methods_len = (size_t)method_count,
-        };
-
-        *out = idl_type_service(arena, &service);
-        break;
-    }
+    case IDL_TYPE_SERVICE:
+        return parse_service_type(data, data_len, pos, arena, table_len, out);
 
     default:
-        /* Unknown or future type - skip blob */
-        if (opcode < -24) {
-            uint64_t blob_len;
-            st = read_uleb128(data, data_len, pos, &blob_len);
-            if (st != IDL_STATUS_OK)
-                return st;
-
-            if (*pos + blob_len > data_len)
-                return IDL_STATUS_ERR_TRUNCATED;
-
-            *pos += blob_len;
-            /* Create a reserved type as placeholder */
-            *out = idl_type_reserved(arena);
-        } else {
-            return IDL_STATUS_ERR_INVALID_ARG;
-        }
-        break;
+        return parse_unknown_type(data, data_len, pos, arena, opcode, out);
     }
-
-    return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
 }
 
 idl_status idl_header_parse(const uint8_t *data,

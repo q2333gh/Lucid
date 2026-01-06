@@ -217,21 +217,31 @@ ic_result_t candid_deserialize_nat(const uint8_t *data,
     }
 
     ic_result_t res = IC_OK;
-    if (val->kind == IDL_VALUE_NAT64)
+    if (val->kind == IDL_VALUE_NAT64) {
         *value = val->data.nat64_val;
-    else if (val->kind == IDL_VALUE_NAT32)
+        return IC_OK;
+    }
+    if (val->kind == IDL_VALUE_NAT32) {
         *value = val->data.nat32_val;
-    else if (val->kind == IDL_VALUE_NAT16)
+        return IC_OK;
+    }
+    if (val->kind == IDL_VALUE_NAT16) {
         *value = val->data.nat16_val;
-    else if (val->kind == IDL_VALUE_NAT8)
+        return IC_OK;
+    }
+    if (val->kind == IDL_VALUE_NAT8) {
         *value = val->data.nat8_val;
-    else if (val->kind == IDL_VALUE_NAT) {
+        return IC_OK;
+    }
+    if (val->kind == IDL_VALUE_NAT) {
         size_t consumed;
         if (idl_uleb128_decode(val->data.bignum.data, val->data.bignum.len,
-                               &consumed, value) != IDL_STATUS_OK)
-            res = IC_ERR_INVALID_ARG;
-    } else
-        res = IC_ERR_INVALID_ARG;
+                               &consumed, value) != IDL_STATUS_OK) {
+            return IC_ERR_INVALID_ARG;
+        }
+        return IC_OK;
+    }
+    return IC_ERR_INVALID_ARG;
 
     idl_arena_destroy(&arena);
     return res;
@@ -250,25 +260,39 @@ ic_result_t candid_deserialize_int(const uint8_t *data,
         return IC_ERR_INVALID_ARG;
     }
 
-    ic_result_t res = IC_OK;
-    if (val->kind == IDL_VALUE_INT64)
+    if (val->kind == IDL_VALUE_INT64) {
         *value = val->data.int64_val;
-    else if (val->kind == IDL_VALUE_INT32)
+        idl_arena_destroy(&arena);
+        return IC_OK;
+    }
+    if (val->kind == IDL_VALUE_INT32) {
         *value = val->data.int32_val;
-    else if (val->kind == IDL_VALUE_INT16)
+        idl_arena_destroy(&arena);
+        return IC_OK;
+    }
+    if (val->kind == IDL_VALUE_INT16) {
         *value = val->data.int16_val;
-    else if (val->kind == IDL_VALUE_INT8)
+        idl_arena_destroy(&arena);
+        return IC_OK;
+    }
+    if (val->kind == IDL_VALUE_INT8) {
         *value = val->data.int8_val;
-    else if (val->kind == IDL_VALUE_INT) {
+        idl_arena_destroy(&arena);
+        return IC_OK;
+    }
+    if (val->kind == IDL_VALUE_INT) {
         size_t consumed;
         if (idl_sleb128_decode(val->data.bignum.data, val->data.bignum.len,
-                               &consumed, value) != IDL_STATUS_OK)
-            res = IC_ERR_INVALID_ARG;
-    } else
-        res = IC_ERR_INVALID_ARG;
+                               &consumed, value) != IDL_STATUS_OK) {
+            idl_arena_destroy(&arena);
+            return IC_ERR_INVALID_ARG;
+        }
+        idl_arena_destroy(&arena);
+        return IC_OK;
+    }
 
     idl_arena_destroy(&arena);
-    return res;
+    return IC_ERR_INVALID_ARG;
 }
 
 ic_result_t candid_deserialize_blob(const uint8_t *data,
@@ -324,9 +348,10 @@ ic_result_t candid_deserialize_principal(const uint8_t  *data,
 }
 
 ic_result_t candid_write_leb128(ic_buffer_t *buf, uint64_t value) {
-    if (buf == NULL)
+    if (buf == NULL) {
         return IC_ERR_INVALID_ARG; // Fix: Check for NULL buffer
-    uint8_t tmp[10];               // Max for uint64
+    }
+    uint8_t tmp[10]; // Max for uint64
     size_t  written;
     if (idl_uleb128_encode(value, tmp, sizeof(tmp), &written) ==
         IDL_STATUS_OK) {
@@ -340,8 +365,9 @@ ic_result_t candid_read_leb128(const uint8_t *data,
                                size_t         len,
                                size_t        *offset,
                                uint64_t      *value) {
-    if (data == NULL)
+    if (data == NULL) {
         return IC_ERR_INVALID_ARG;
+    }
     size_t consumed;
     if (idl_uleb128_decode(data + *offset, len - *offset, &consumed, value) ==
         IDL_STATUS_OK) {
@@ -355,8 +381,9 @@ ic_result_t candid_read_sleb128(const uint8_t *data,
                                 size_t         len,
                                 size_t        *offset,
                                 int64_t       *value) {
-    if (data == NULL)
+    if (data == NULL) {
         return IC_ERR_INVALID_ARG;
+    }
     size_t consumed;
     if (idl_sleb128_decode(data + *offset, len - *offset, &consumed, value) ==
         IDL_STATUS_OK) {
@@ -367,7 +394,8 @@ ic_result_t candid_read_sleb128(const uint8_t *data,
 }
 
 bool candid_check_magic(const uint8_t *data, size_t len) {
-    if (len < 4)
+    if (len < 4) {
         return false;
+    }
     return memcmp(data, "DIDL", 4) == 0;
 }

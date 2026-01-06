@@ -279,8 +279,9 @@ ic_entry_type_t ic_api_get_entry_type(const ic_api_t *api) {
 
 static ic_result_t ic_api_from_wire_generic(ic_api_t   *api,
                                             idl_value **out_val) {
-    if (api == NULL || out_val == NULL)
+    if (api == NULL || out_val == NULL) {
         return IC_ERR_INVALID_ARG;
+    }
 
     if (api->called_from_wire) {
         ic_api_trap(
@@ -307,11 +308,13 @@ ic_result_t
 ic_api_from_wire_text(ic_api_t *api, char **text, size_t *text_len) {
     idl_value  *val;
     ic_result_t res = ic_api_from_wire_generic(api, &val);
-    if (res != IC_OK)
+    if (res != IC_OK) {
         return res;
+    }
 
-    if (val->kind != IDL_VALUE_TEXT)
+    if (val->kind != IDL_VALUE_TEXT) {
         return IC_ERR_INVALID_ARG;
+    }
 
     *text = (char *)val->data.text.data;
     *text_len = val->data.text.len;
@@ -321,22 +324,27 @@ ic_api_from_wire_text(ic_api_t *api, char **text, size_t *text_len) {
 ic_result_t ic_api_from_wire_nat(ic_api_t *api, uint64_t *value) {
     idl_value  *val;
     ic_result_t res = ic_api_from_wire_generic(api, &val);
-    if (res != IC_OK)
+    if (res != IC_OK) {
         return res;
+    }
 
     if (val->kind == IDL_VALUE_NAT64) {
         *value = val->data.nat64_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_NAT32) {
+    }
+    if (val->kind == IDL_VALUE_NAT32) {
         *value = val->data.nat32_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_NAT16) {
+    }
+    if (val->kind == IDL_VALUE_NAT16) {
         *value = val->data.nat16_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_NAT8) {
+    }
+    if (val->kind == IDL_VALUE_NAT8) {
         *value = val->data.nat8_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_NAT) {
+    }
+    if (val->kind == IDL_VALUE_NAT) {
         // Try to decode LEB128
         size_t consumed;
         if (idl_uleb128_decode(val->data.bignum.data, val->data.bignum.len,
@@ -352,22 +360,27 @@ ic_result_t ic_api_from_wire_nat(ic_api_t *api, uint64_t *value) {
 ic_result_t ic_api_from_wire_int(ic_api_t *api, int64_t *value) {
     idl_value  *val;
     ic_result_t res = ic_api_from_wire_generic(api, &val);
-    if (res != IC_OK)
+    if (res != IC_OK) {
         return res;
+    }
 
     if (val->kind == IDL_VALUE_INT64) {
         *value = val->data.int64_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_INT32) {
+    }
+    if (val->kind == IDL_VALUE_INT32) {
         *value = val->data.int32_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_INT16) {
+    }
+    if (val->kind == IDL_VALUE_INT16) {
         *value = val->data.int16_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_INT8) {
+    }
+    if (val->kind == IDL_VALUE_INT8) {
         *value = val->data.int8_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_INT) {
+    }
+    if (val->kind == IDL_VALUE_INT) {
         size_t consumed;
         if (idl_sleb128_decode(val->data.bignum.data, val->data.bignum.len,
                                &consumed, value) != IDL_STATUS_OK) {
@@ -383,8 +396,9 @@ ic_result_t
 ic_api_from_wire_blob(ic_api_t *api, uint8_t **blob, size_t *blob_len) {
     idl_value  *val;
     ic_result_t res = ic_api_from_wire_generic(api, &val);
-    if (res != IC_OK)
+    if (res != IC_OK) {
         return res;
+    }
 
     if (val->kind == IDL_VALUE_BLOB) {
         *blob = (uint8_t *)val->data.blob.data;
@@ -399,8 +413,9 @@ ic_result_t ic_api_from_wire_principal(ic_api_t       *api,
                                        ic_principal_t *principal) {
     idl_value  *val;
     ic_result_t res = ic_api_from_wire_generic(api, &val);
-    if (res != IC_OK)
+    if (res != IC_OK) {
         return res;
+    }
 
     if (val->kind == IDL_VALUE_PRINCIPAL) {
         return ic_principal_from_bytes(principal, val->data.principal.data,
@@ -437,12 +452,15 @@ ic_result_t ic_api_reply_builder(ic_api_t *api, void *builder_ptr) {
 }
 
 ic_result_t ic_api_to_wire_text(ic_api_t *api, const char *text) {
-    if (api == NULL || text == NULL)
+    if (api == NULL || text == NULL) {
         return IC_ERR_INVALID_ARG;
-    if (api->called_to_wire)
+    }
+    if (api->called_to_wire) {
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
-    if (!ic_entry_can_reply(api->entry_type))
+    }
+    if (!ic_entry_can_reply(api->entry_type)) {
         ic_api_trap("cdk-c: cannot reply");
+    }
 
     idl_builder builder;
     idl_builder_init(&builder, &api->arena);
@@ -452,12 +470,15 @@ ic_result_t ic_api_to_wire_text(ic_api_t *api, const char *text) {
 }
 
 ic_result_t ic_api_to_wire_nat(ic_api_t *api, uint64_t value) {
-    if (api == NULL)
+    if (api == NULL) {
         return IC_ERR_INVALID_ARG;
-    if (api->called_to_wire)
+    }
+    if (api->called_to_wire) {
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
-    if (!ic_entry_can_reply(api->entry_type))
+    }
+    if (!ic_entry_can_reply(api->entry_type)) {
         ic_api_trap("cdk-c: cannot reply");
+    }
 
     idl_builder builder;
     idl_builder_init(&builder, &api->arena);
@@ -467,12 +488,15 @@ ic_result_t ic_api_to_wire_nat(ic_api_t *api, uint64_t value) {
 }
 
 ic_result_t ic_api_to_wire_int(ic_api_t *api, int64_t value) {
-    if (api == NULL)
+    if (api == NULL) {
         return IC_ERR_INVALID_ARG;
-    if (api->called_to_wire)
+    }
+    if (api->called_to_wire) {
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
-    if (!ic_entry_can_reply(api->entry_type))
+    }
+    if (!ic_entry_can_reply(api->entry_type)) {
         ic_api_trap("cdk-c: cannot reply");
+    }
 
     idl_builder builder;
     idl_builder_init(&builder, &api->arena);
@@ -483,12 +507,15 @@ ic_result_t ic_api_to_wire_int(ic_api_t *api, int64_t value) {
 
 ic_result_t
 ic_api_to_wire_blob(ic_api_t *api, const uint8_t *blob, size_t blob_len) {
-    if (api == NULL || blob == NULL)
+    if (api == NULL || blob == NULL) {
         return IC_ERR_INVALID_ARG;
-    if (api->called_to_wire)
+    }
+    if (api->called_to_wire) {
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
-    if (!ic_entry_can_reply(api->entry_type))
+    }
+    if (!ic_entry_can_reply(api->entry_type)) {
         ic_api_trap("cdk-c: cannot reply");
+    }
 
     idl_builder builder;
     idl_builder_init(&builder, &api->arena);
@@ -499,12 +526,15 @@ ic_api_to_wire_blob(ic_api_t *api, const uint8_t *blob, size_t blob_len) {
 
 ic_result_t ic_api_to_wire_principal(ic_api_t             *api,
                                      const ic_principal_t *principal) {
-    if (api == NULL || principal == NULL)
+    if (api == NULL || principal == NULL) {
         return IC_ERR_INVALID_ARG;
-    if (api->called_to_wire)
+    }
+    if (api->called_to_wire) {
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
-    if (!ic_entry_can_reply(api->entry_type))
+    }
+    if (!ic_entry_can_reply(api->entry_type)) {
         ic_api_trap("cdk-c: cannot reply");
+    }
 
     idl_builder builder;
     idl_builder_init(&builder, &api->arena);
@@ -514,12 +544,15 @@ ic_result_t ic_api_to_wire_principal(ic_api_t             *api,
 }
 
 ic_result_t ic_api_to_wire_empty(ic_api_t *api) {
-    if (api == NULL)
+    if (api == NULL) {
         return IC_ERR_INVALID_ARG;
-    if (api->called_to_wire)
+    }
+    if (api->called_to_wire) {
         ic_api_trap("cdk-c: ic_api_to_wire() called twice");
-    if (!ic_entry_can_reply(api->entry_type))
+    }
+    if (!ic_entry_can_reply(api->entry_type)) {
         ic_api_trap("cdk-c: cannot reply");
+    }
 
     idl_builder builder;
     idl_builder_init(&builder, &api->arena);

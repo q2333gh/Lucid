@@ -11,9 +11,7 @@
 #include "ic_types.h"
 #include "idl/candid.h"
 
-// Forward declaration for internal arena access
-// This function is defined in ic_api.c but not exported to WASM
-extern idl_arena *ic_api_get_arena_internal(ic_api_t *api);
+// Forward declaration removed - function is declared in ic_api.h
 
 // Local structure definition matching ic_api_t for direct field access
 // This matches the structure definition in ic_api.c
@@ -139,16 +137,20 @@ ic_result_t ic_args_parse_nat(ic_args_parser_t *parser, uint64_t *value) {
     if (val->kind == IDL_VALUE_NAT64) {
         *value = val->data.nat64_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_NAT32) {
+    }
+    if (val->kind == IDL_VALUE_NAT32) {
         *value = val->data.nat32_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_NAT16) {
+    }
+    if (val->kind == IDL_VALUE_NAT16) {
         *value = val->data.nat16_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_NAT8) {
+    }
+    if (val->kind == IDL_VALUE_NAT8) {
         *value = val->data.nat8_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_NAT) {
+    }
+    if (val->kind == IDL_VALUE_NAT) {
         // Try to decode LEB128
         size_t consumed;
         if (idl_uleb128_decode(val->data.bignum.data, val->data.bignum.len,
@@ -177,16 +179,20 @@ ic_result_t ic_args_parse_int(ic_args_parser_t *parser, int64_t *value) {
     if (val->kind == IDL_VALUE_INT64) {
         *value = val->data.int64_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_INT32) {
+    }
+    if (val->kind == IDL_VALUE_INT32) {
         *value = val->data.int32_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_INT16) {
+    }
+    if (val->kind == IDL_VALUE_INT16) {
         *value = val->data.int16_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_INT8) {
+    }
+    if (val->kind == IDL_VALUE_INT8) {
         *value = val->data.int8_val;
         return IC_OK;
-    } else if (val->kind == IDL_VALUE_INT) {
+    }
+    if (val->kind == IDL_VALUE_INT) {
         size_t consumed;
         if (idl_sleb128_decode(val->data.bignum.data, val->data.bignum.len,
                                &consumed, value) != IDL_STATUS_OK) {

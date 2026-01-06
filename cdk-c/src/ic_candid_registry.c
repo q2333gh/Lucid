@@ -29,7 +29,7 @@ static void __wasm_call_ctors(void) {
 // =============================================================================
 // Helper: copy string and return pointer to end
 // =============================================================================
-static char *str_copy(char *dst, char *end, const char *src) {
+static char *str_copy(char *dst, const char *end, const char *src) {
     while (*src && dst < end) {
         *dst++ = *src++;
     }

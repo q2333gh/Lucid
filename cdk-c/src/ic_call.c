@@ -4,12 +4,14 @@
 #include <string.h>
 
 ic_call_t *ic_call_new(const ic_principal_t *callee, const char *method) {
-    if (!callee || !method)
+    if (!callee || !method) {
         return NULL;
+    }
 
     ic_call_t *call = malloc(sizeof(ic_call_t));
-    if (!call)
+    if (!call) {
         return NULL;
+    }
 
     memset(call, 0, sizeof(ic_call_t));
 
@@ -37,8 +39,9 @@ ic_call_t *ic_call_new(const ic_principal_t *callee, const char *method) {
 }
 
 void ic_call_free(ic_call_t *call) {
-    if (!call)
+    if (!call) {
         return;
+    }
 
     if (call->method_name) {
         free(call->method_name);
@@ -50,42 +53,48 @@ void ic_call_free(ic_call_t *call) {
 }
 
 ic_result_t ic_call_with_arg(ic_call_t *call, const uint8_t *data, size_t len) {
-    if (!call)
+    if (!call) {
         return IC_ERR_INVALID_ARG;
+    }
     return ic_buffer_append(&call->args, data, len);
 }
 
 void ic_call_with_cycles128(ic_call_t *call, uint64_t high, uint64_t low) {
-    if (!call)
+    if (!call) {
         return;
+    }
     call->cycles_high = high;
     call->cycles_low = low;
 }
 
 void ic_call_with_cycles(ic_call_t *call, uint64_t amount) {
-    if (!call)
+    if (!call) {
         return;
+    }
     call->cycles_high = 0;
     call->cycles_low = amount;
 }
 
 void ic_call_on_reply(ic_call_t *call, ic_call_cb_t callback, void *env) {
-    if (!call)
+    if (!call) {
         return;
+    }
     call->reply_fun = callback;
     call->reply_env = env;
 }
 
 void ic_call_on_reject(ic_call_t *call, ic_call_cb_t callback, void *env) {
-    if (!call)
+    if (!call) {
         return;
+    }
     call->reject_fun = callback;
     call->reject_env = env;
 }
 
 ic_result_t ic_call_perform(ic_call_t *call) {
-    if (!call)
+    if (!call) {
         return IC_ERR_INVALID_ARG;
+    }
 
     // 1. Start the call
     ic0_call_new((uintptr_t)call->callee.bytes, call->callee.len,

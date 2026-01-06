@@ -57,16 +57,20 @@ static ic_result_t extract_nat_value(const idl_value *value, uint64_t *out) {
             return IC_OK;
         }
         return IC_ERR_INVALID_STATE;
-    } else if (value->kind == IDL_VALUE_NAT64) {
+    }
+    if (value->kind == IDL_VALUE_NAT64) {
         *out = value->data.nat64_val;
         return IC_OK;
-    } else if (value->kind == IDL_VALUE_NAT32) {
+    }
+    if (value->kind == IDL_VALUE_NAT32) {
         *out = value->data.nat32_val;
         return IC_OK;
-    } else if (value->kind == IDL_VALUE_NAT16) {
+    }
+    if (value->kind == IDL_VALUE_NAT16) {
         *out = value->data.nat16_val;
         return IC_OK;
-    } else if (value->kind == IDL_VALUE_NAT8) {
+    }
+    if (value->kind == IDL_VALUE_NAT8) {
         *out = value->data.nat8_val;
         return IC_OK;
     }

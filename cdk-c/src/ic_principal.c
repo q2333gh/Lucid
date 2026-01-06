@@ -37,8 +37,9 @@ static int    base32_decode_table_initialized = 0;
 static int8_t BASE32_DECODE_TABLE[256];
 
 static void init_base32_decode_table() {
-    if (base32_decode_table_initialized)
+    if (base32_decode_table_initialized) {
         return;
+    }
     memset(BASE32_DECODE_TABLE, -1, sizeof(BASE32_DECODE_TABLE));
     for (int i = 0; i < 32; i++) {
         BASE32_DECODE_TABLE[(uint8_t)BASE32_ALPHABET[i]] = i;
@@ -85,26 +86,31 @@ base32_decode(const char *in, size_t in_len, uint8_t *out, size_t out_cap) {
     size_t   out_len = 0;
     for (size_t i = 0; i < in_len; i++) {
         char ch = in[i];
-        if (ch == '\0')
+        if (ch == '\0') {
             break;
-        if (isspace((unsigned char)ch))
+        }
+        if (isspace((unsigned char)ch)) {
             continue;
+        }
         int8_t val = BASE32_DECODE_TABLE[(uint8_t)ch];
-        if (val < 0)
+        if (val < 0) {
             return -1;
+        }
         buffer = (buffer << 5) | val;
         bits_left += 5;
         if (bits_left >= 8) {
             bits_left -= 8;
-            if (out_len >= out_cap)
+            if (out_len >= out_cap) {
                 return -1;
+            }
             out[out_len++] = (buffer >> bits_left) & 0xFF;
         }
     }
     // Note: RFC 4648 (section 6) says any leftover bits must be 0
     if (bits_left > 0) {
-        if ((buffer & ((1 << bits_left) - 1)) != 0)
+        if ((buffer & ((1 << bits_left) - 1)) != 0) {
             return -1;
+        }
     }
     return (int)out_len;
 }
@@ -154,22 +160,25 @@ ic_result_t ic_principal_from_text(ic_principal_t *principal,
         return IC_ERR_INVALID_ARG;
     }
     size_t text_len = strlen(text);
-    if (text_len == 0)
+    if (text_len == 0) {
         return IC_ERR_INVALID_ARG;
+    }
 
     // Remove dashes
     char   b32_buf[72];
     size_t b32_len = remove_dashes(text, text_len, b32_buf);
 
     // Check valid length
-    if (b32_len < 8 || b32_len > 64)
+    if (b32_len < 8 || b32_len > 64) {
         return IC_ERR_INVALID_ARG;
+    }
 
     // Decode base32
     uint8_t full_buf[IC_PRINCIPAL_MAX_LEN + 4];
     int buf_len = base32_decode(b32_buf, b32_len, full_buf, sizeof(full_buf));
-    if (buf_len < 5)
+    if (buf_len < 5) {
         return IC_ERR_INVALID_ARG;
+    }
 
     // Split CRC32 (first 4 bytes), then the remaining = principal
     uint32_t crc_in = ((uint32_t)full_buf[0] << 24) |
@@ -177,13 +186,15 @@ ic_result_t ic_principal_from_text(ic_principal_t *principal,
                       ((uint32_t)full_buf[2] << 8) | ((uint32_t)full_buf[3]);
 
     size_t principal_len = buf_len - 4;
-    if (principal_len == 0 || principal_len > IC_PRINCIPAL_MAX_LEN)
+    if (principal_len == 0 || principal_len > IC_PRINCIPAL_MAX_LEN) {
         return IC_ERR_INVALID_ARG;
+    }
 
     // Validate CRC32
     uint32_t crc_calc = crc32(full_buf + 4, principal_len);
-    if (crc_in != crc_calc)
+    if (crc_in != crc_calc) {
         return IC_ERR_INVALID_ARG;
+    }
 
     // Store decoded bytes
     memcpy(principal->bytes, full_buf + 4, principal_len);
@@ -231,14 +242,16 @@ int ic_principal_to_text(const ic_principal_t *principal,
     size_t out_idx = 0;
 
     for (size_t i = 0; i < b32_len; i++) {
-        if (out_idx >= text_len - 1)
+        if (out_idx >= text_len - 1) {
             return -1; // Buffer too small
+        }
 
         // Add dash every 5 characters, but not at start or end
         if (i > 0 && i % 5 == 0) {
             text[out_idx++] = '-';
-            if (out_idx >= text_len - 1)
+            if (out_idx >= text_len - 1) {
                 return -1;
+            }
         }
         text[out_idx++] = base32_str[i];
     }

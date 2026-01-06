@@ -53,19 +53,16 @@ static void handle_http_reject(ic_api_t                    *api,
  * No transform, minimal implementation
  */
 IC_API_UPDATE(http_get_simple, "() -> (text)") {
-    // Initialize HTTP request (minimal like Rust simple version)
     ic_http_request_args_t args;
     ic_http_request_args_init(&args,
                               "https://jsonplaceholder.typicode.com/todos/1");
 
-    // Add a simple header like Rust version
     static ic_http_header_t headers[1];
     headers[0].name = "User-Agent";
     headers[0].value = "ic-http-c-demo";
     args.headers = headers;
     args.headers_count = 1;
 
-    // Like Rust: max_response_bytes = None (use default)
     args.max_response_bytes = 0; // 0 means None
     args.transform = NULL;       // No transform for simplicity
 

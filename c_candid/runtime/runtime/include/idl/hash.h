@@ -9,7 +9,7 @@ extern "C" {
 
 /**
  * Hash a field name following Candid's specification.
- * Equivalent to the Rust `idl_hash` helper (multiplying by 223).
+ * Equivalent to the Rust `idl_hash` helper.
  */
 uint32_t idl_hash(const char *text);
 

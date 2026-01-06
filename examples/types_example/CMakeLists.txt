@@ -1,5 +1,5 @@
 if(BUILD_TARGET_WASI)
-    add_executable(types_example greet.c)
+    add_executable(types_example types_example.c)
     setup_ic_canister_target(types_example)
     target_include_directories(
         types_example PRIVATE "${CMAKE_SOURCE_DIR}/third_party/tinyprintf")

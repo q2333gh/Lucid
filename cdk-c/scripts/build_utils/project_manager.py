@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+
 def create_new_project(project_name: str, root_dir: Path) -> None:
     """
     Create a new minimal hello world project template in examples directory.

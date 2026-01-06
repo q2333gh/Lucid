@@ -1,5 +1,5 @@
 if(BUILD_TARGET_WASI)
-    add_executable(inter-canister-call greet.c)
+    add_executable(inter-canister-call inter-canister-call.c)
     setup_ic_canister_target(inter-canister-call)
     target_include_directories(
         inter-canister-call PRIVATE "${CMAKE_SOURCE_DIR}/third_party/tinyprintf")

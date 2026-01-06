@@ -1,0 +1,17 @@
+---
+Checks: >
+  readability-function-cognitive-complexity,
+  readability-function-size,
+  readability-misleading-indentation,
+  readability-*
+CheckOptions:
+  - key: readability-function-cognitive-complexity.Threshold
+    value: 25
+  - key: readability-function-size.LineThreshold
+    value: 100
+  - key: readability-function-size.ParameterThreshold
+    value: 8
+  # Note: readability-nested-conditional requires clang-tidy 15+
+  # If using clang-tidy 15+, uncomment below:
+  # - key: readability-nested-conditional.NestingThreshold
+  #   value: 3

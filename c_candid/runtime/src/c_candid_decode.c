@@ -51,8 +51,194 @@ hex_to_bytes(const char *hex, size_t hex_len, uint8_t *out, size_t *out_len) {
     return 1;
 }
 
+/* Print helpers for Candid values */
+static void print_value_null(void) { printf("null : null"); }
+
+static void print_value_bool(const idl_value *v) {
+    printf("%s", v->data.bool_val ? "true" : "false");
+}
+
+static void print_value_nat_primitive(const idl_value *v, const char *suffix) {
+    printf("%u : %s", v->data.nat32_val, suffix);
+}
+
+static void print_value_nat8(const idl_value *v) {
+    printf("%u : nat8", v->data.nat8_val);
+}
+
+static void print_value_nat16(const idl_value *v) {
+    printf("%u : nat16", v->data.nat16_val);
+}
+
+static void print_value_nat32(const idl_value *v) {
+    printf("%u : nat32", v->data.nat32_val);
+}
+
+static void print_value_nat64(const idl_value *v) {
+    printf("%lu : nat64", (unsigned long)v->data.nat64_val);
+}
+
+static void print_value_nat(const idl_value *v) {
+    if (v->data.bignum.len > 0) {
+        uint64_t val = 0;
+        size_t   consumed = 0;
+        if (idl_uleb128_decode(v->data.bignum.data, v->data.bignum.len,
+                               &consumed, &val) == IDL_STATUS_OK) {
+            printf("%lu", (unsigned long)val);
+        } else {
+            printf("<nat>");
+        }
+    } else {
+        printf("0");
+    }
+}
+
+static void print_value_int8(const idl_value *v) {
+    printf("%d : int8", v->data.int8_val);
+}
+
+static void print_value_int16(const idl_value *v) {
+    printf("%d : int16", v->data.int16_val);
+}
+
+static void print_value_int32(const idl_value *v) {
+    printf("%d : int32", v->data.int32_val);
+}
+
+static void print_value_int64(const idl_value *v) {
+    printf("%ld : int64", (long)v->data.int64_val);
+}
+
+static void print_value_int(const idl_value *v) {
+    if (v->data.bignum.len > 0) {
+        int64_t val = 0;
+        size_t  consumed = 0;
+        if (idl_sleb128_decode(v->data.bignum.data, v->data.bignum.len,
+                               &consumed, &val) == IDL_STATUS_OK) {
+            printf("%ld : int", (long)val);
+        } else {
+            printf("<int>");
+        }
+    } else {
+        printf("0 : int");
+    }
+}
+
+static void print_value_float32(const idl_value *v) {
+    printf("%g : float32", (double)v->data.float32_val);
+}
+
+static void print_value_float64(const idl_value *v) {
+    printf("%g", v->data.float64_val);
+}
+
+static void print_value_text(const idl_value *v) {
+    printf("\"");
+    for (size_t i = 0; i < v->data.text.len; i++) {
+        char c = v->data.text.data[i];
+        switch (c) {
+        case '\n':
+            printf("\\n");
+            break;
+        case '\r':
+            printf("\\r");
+            break;
+        case '\t':
+            printf("\\t");
+            break;
+        case '"':
+            printf("\\\"");
+            break;
+        case '\\':
+            printf("\\\\");
+            break;
+        default:
+            if (c >= 32 && c < 127) {
+                putchar(c);
+            } else {
+                printf("\\%02x", (unsigned char)c);
+            }
+            break;
+        }
+    }
+    printf("\"");
+}
+
+static void print_value_reserved(void) { printf("reserved"); }
+
+static void print_value_principal(const idl_value *v) {
+    printf("principal \"");
+    for (size_t i = 0; i < v->data.principal.len; i++) {
+        printf("%02x", v->data.principal.data[i]);
+    }
+    printf("\"");
+}
+
+static void print_value_blob(const idl_value *v) {
+    printf("blob \"");
+    for (size_t i = 0; i < v->data.blob.len; i++) {
+        printf("\\%02x", v->data.blob.data[i]);
+    }
+    printf("\"");
+}
+
+static void print_value(const idl_value *v, int in_tuple);
+
+static void print_value_opt(const idl_value *v) {
+    if (v->data.opt) {
+        printf("opt ");
+        print_value(v->data.opt, 0);
+    } else {
+        printf("null");
+    }
+}
+
+static void print_value_vec(const idl_value *v) {
+    printf("vec { ");
+    for (size_t i = 0; i < v->data.vec.len; i++) {
+        if (i > 0) {
+            printf("; ");
+        }
+        print_value(v->data.vec.items[i], 0);
+    }
+    printf(" }");
+}
+
+static void print_value_record(const idl_value *v) {
+    printf("record { ");
+    for (size_t i = 0; i < v->data.record.len; i++) {
+        if (i > 0) {
+            printf("; ");
+        }
+        idl_value_field *f = &v->data.record.fields[i];
+        if (f->label.kind == IDL_LABEL_NAME && f->label.name) {
+            printf("%s = ", f->label.name);
+        } else {
+            printf("%lu = ", (unsigned long)f->label.id);
+        }
+        print_value(f->value, 0);
+    }
+    printf(" }");
+}
+
+static void print_value_variant(const idl_value *v) {
+    printf("variant { ");
+    if (v->data.record.len > 0) {
+        idl_value_field *f = &v->data.record.fields[0];
+        if (f->label.kind == IDL_LABEL_NAME && f->label.name) {
+            printf("%s = ", f->label.name);
+        } else {
+            printf("%lu = ", (unsigned long)f->label.id);
+        }
+        print_value(f->value, 0);
+    }
+    printf(" }");
+}
+
 /* Print a value as Candid text */
 static void print_value(const idl_value *v, int in_tuple) {
+    (void)in_tuple;
+
     if (!v) {
         printf("null");
         return;
@@ -60,190 +246,72 @@ static void print_value(const idl_value *v, int in_tuple) {
 
     switch (v->kind) {
     case IDL_VALUE_NULL:
-        printf("null : null");
+        print_value_null();
         break;
-
     case IDL_VALUE_BOOL:
-        printf("%s", v->data.bool_val ? "true" : "false");
+        print_value_bool(v);
         break;
-
     case IDL_VALUE_NAT8:
-        printf("%u : nat8", v->data.nat8_val);
+        print_value_nat8(v);
         break;
-
     case IDL_VALUE_NAT16:
-        printf("%u : nat16", v->data.nat16_val);
+        print_value_nat16(v);
         break;
-
     case IDL_VALUE_NAT32:
-        printf("%u : nat32", v->data.nat32_val);
+        print_value_nat32(v);
         break;
-
     case IDL_VALUE_NAT64:
-        printf("%lu : nat64", (unsigned long)v->data.nat64_val);
+        print_value_nat64(v);
         break;
-
     case IDL_VALUE_NAT:
-        /* Decode NAT from LEB128 bytes */
-        if (v->data.bignum.len > 0) {
-            uint64_t val = 0;
-            size_t   consumed = 0;
-            if (idl_uleb128_decode(v->data.bignum.data, v->data.bignum.len,
-                                   &consumed, &val) == IDL_STATUS_OK) {
-                printf("%lu", (unsigned long)val);
-            } else {
-                printf("<nat>");
-            }
-        } else {
-            printf("0");
-        }
+        print_value_nat(v);
         break;
-
     case IDL_VALUE_INT8:
-        printf("%d : int8", v->data.int8_val);
+        print_value_int8(v);
         break;
-
     case IDL_VALUE_INT16:
-        printf("%d : int16", v->data.int16_val);
+        print_value_int16(v);
         break;
-
     case IDL_VALUE_INT32:
-        printf("%d : int32", v->data.int32_val);
+        print_value_int32(v);
         break;
-
     case IDL_VALUE_INT64:
-        printf("%ld : int64", (long)v->data.int64_val);
+        print_value_int64(v);
         break;
-
     case IDL_VALUE_INT:
-        /* Decode INT from SLEB128 bytes */
-        if (v->data.bignum.len > 0) {
-            int64_t val = 0;
-            size_t  consumed = 0;
-            if (idl_sleb128_decode(v->data.bignum.data, v->data.bignum.len,
-                                   &consumed, &val) == IDL_STATUS_OK) {
-                printf("%ld : int", (long)val);
-            } else {
-                printf("<int>");
-            }
-        } else {
-            printf("0 : int");
-        }
+        print_value_int(v);
         break;
-
     case IDL_VALUE_FLOAT32:
-        printf("%g : float32", (double)v->data.float32_val);
+        print_value_float32(v);
         break;
-
     case IDL_VALUE_FLOAT64:
-        printf("%g", v->data.float64_val);
+        print_value_float64(v);
         break;
-
     case IDL_VALUE_TEXT:
-        printf("\"");
-        for (size_t i = 0; i < v->data.text.len; i++) {
-            char c = v->data.text.data[i];
-            switch (c) {
-            case '\n':
-                printf("\\n");
-                break;
-            case '\r':
-                printf("\\r");
-                break;
-            case '\t':
-                printf("\\t");
-                break;
-            case '"':
-                printf("\\\"");
-                break;
-            case '\\':
-                printf("\\\\");
-                break;
-            default:
-                if (c >= 32 && c < 127) {
-                    putchar(c);
-                } else {
-                    printf("\\%02x", (unsigned char)c);
-                }
-                break;
-            }
-        }
-        printf("\"");
+        print_value_text(v);
         break;
-
     case IDL_VALUE_RESERVED:
-        printf("reserved");
+        print_value_reserved();
         break;
-
     case IDL_VALUE_PRINCIPAL:
-        /* TODO: proper principal encoding */
-        printf("principal \"");
-        for (size_t i = 0; i < v->data.principal.len; i++) {
-            printf("%02x", v->data.principal.data[i]);
-        }
-        printf("\"");
+        print_value_principal(v);
         break;
-
     case IDL_VALUE_BLOB:
-        printf("blob \"");
-        for (size_t i = 0; i < v->data.blob.len; i++) {
-            printf("\\%02x", v->data.blob.data[i]);
-        }
-        printf("\"");
+        print_value_blob(v);
         break;
-
     case IDL_VALUE_OPT:
-        if (v->data.opt) {
-            printf("opt ");
-            print_value(v->data.opt, 0);
-        } else {
-            printf("null");
-        }
+        print_value_opt(v);
         break;
-
     case IDL_VALUE_VEC:
-        printf("vec { ");
-        for (size_t i = 0; i < v->data.vec.len; i++) {
-            if (i > 0) {
-                printf("; ");
-            }
-            print_value(v->data.vec.items[i], 0);
-        }
-        printf(" }");
+        print_value_vec(v);
         break;
-
     case IDL_VALUE_RECORD:
-        printf("record { ");
-        for (size_t i = 0; i < v->data.record.len; i++) {
-            if (i > 0) {
-                printf("; ");
-            }
-            idl_value_field *f = &v->data.record.fields[i];
-            if (f->label.kind == IDL_LABEL_NAME && f->label.name) {
-                printf("%s = ", f->label.name);
-            } else {
-                printf("%lu = ", (unsigned long)f->label.id);
-            }
-            print_value(f->value, 0);
-        }
-        printf(" }");
+        print_value_record(v);
         break;
-
     case IDL_VALUE_VARIANT:
-        printf("variant { ");
-        if (v->data.record.len > 0) {
-            idl_value_field *f = &v->data.record.fields[0];
-            if (f->label.kind == IDL_LABEL_NAME && f->label.name) {
-                printf("%s = ", f->label.name);
-            } else {
-                printf("%lu = ", (unsigned long)f->label.id);
-            }
-            print_value(f->value, 0);
-        }
-        printf(" }");
+        print_value_variant(v);
         break;
     }
-    (void)in_tuple;
 }
 
 int main(void) {

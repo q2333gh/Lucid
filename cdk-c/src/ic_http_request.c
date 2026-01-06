@@ -740,3 +740,183 @@ void ic_http_free_result(ic_http_request_result_t *result) {
     result->headers_count = 0;
     result->body_len = 0;
 }
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Format HTTP response body preview (printable chars only)
+ */
+size_t ic_http_format_body_preview(const uint8_t *body,
+                                   size_t         body_len,
+                                   char          *buffer,
+                                   size_t         buffer_size) {
+    if (!body || body_len == 0 || !buffer || buffer_size == 0) {
+        return 0;
+    }
+
+    size_t preview_len = body_len < 500 ? body_len : 500;
+    size_t written = 0;
+
+    for (size_t i = 0; i < preview_len && written < buffer_size - 1; i++) {
+        if (body[i] >= 32 && body[i] < 127) {
+            buffer[written++] = body[i];
+        } else if (body[i] == '\n') {
+            buffer[written++] = '\n';
+        } else {
+            buffer[written++] = '.';
+        }
+    }
+
+    buffer[written] = '\0';
+    return written;
+}
+
+/**
+ * Get and parse HTTP response from callback
+ */
+ic_result_t
+ic_http_get_and_parse_response_from_callback(ic_http_request_result_t *result) {
+    if (!result) {
+        return IC_ERR_INVALID_ARG;
+    }
+
+    // Initialize result
+    result->status = 0;
+    result->headers = NULL;
+    result->headers_count = 0;
+    result->body = NULL;
+    result->body_len = 0;
+
+    // Get the raw Candid response data size from message arguments
+    uint32_t response_size = ic0_msg_arg_data_size();
+
+    if (response_size == 0) {
+        return IC_ERR_INVALID_STATE;
+    }
+
+    // Allocate buffer for response data
+    uint8_t *response_data = (uint8_t *)malloc(response_size);
+    if (!response_data) {
+        return IC_ERR_OUT_OF_MEMORY;
+    }
+
+    // Copy response data
+    ic0_msg_arg_data_copy((uintptr_t)response_data, 0, response_size);
+
+    // Parse HTTP response
+    ic_result_t parse_res =
+        ic_http_parse_response(response_data, response_size, result);
+
+    free(response_data);
+
+    return parse_res;
+}
+
+/**
+ * Get reject information from callback
+ */
+ic_result_t ic_http_get_reject_info(ic_http_reject_info_t *info) {
+    if (!info) {
+        return IC_ERR_INVALID_ARG;
+    }
+
+    // Initialize info
+    info->code = 0;
+    info->message = NULL;
+    info->message_len = 0;
+
+    // Get reject code
+    info->code = ic_api_msg_reject_code();
+
+    // Get reject message
+    // First, try to get message with a reasonable buffer size
+    char        temp_buf[512];
+    size_t      reject_len = 0;
+    ic_result_t msg_result =
+        ic_api_msg_reject_message(temp_buf, sizeof(temp_buf), &reject_len);
+
+    if (msg_result == IC_OK && reject_len > 0) {
+        // Allocate memory for message
+        info->message = (char *)malloc(reject_len + 1);
+        if (!info->message) {
+            return IC_ERR_OUT_OF_MEMORY;
+        }
+
+        // Copy message
+        memcpy(info->message, temp_buf, reject_len);
+        info->message[reject_len] = '\0';
+        info->message_len = reject_len;
+    }
+
+    return IC_OK;
+}
+
+/**
+ * Simplified reply callback wrapper
+ */
+void ic_http_reply_callback_wrapper(void *env) {
+    ic_http_reply_handler_t handler = (ic_http_reply_handler_t)env;
+    if (!handler) {
+        ic_api_trap("HTTP reply callback: handler is NULL");
+        return;
+    }
+
+    ic_api_t *api =
+        ic_api_init(IC_ENTRY_REPLY_CALLBACK, "ic_http_reply", false);
+    if (!api) {
+        ic_api_trap("Failed to initialize API in HTTP reply callback");
+        return;
+    }
+
+    // Get and parse HTTP response
+    ic_http_request_result_t result;
+    ic_result_t              parse_res =
+        ic_http_get_and_parse_response_from_callback(&result);
+
+    if (parse_res != IC_OK) {
+        ic_api_to_wire_text(api, "Failed to parse HTTP response");
+        ic_api_free(api);
+        return;
+    }
+
+    // Call user-provided handler
+    handler(api, &result);
+
+    // Cleanup
+    ic_http_free_result(&result);
+    ic_api_free(api);
+}
+
+/**
+ * Simplified reject callback wrapper
+ */
+void ic_http_reject_callback_wrapper(void *env) {
+    ic_http_reject_handler_t handler = (ic_http_reject_handler_t)env;
+    if (!handler) {
+        ic_api_trap("HTTP reject callback: handler is NULL");
+        return;
+    }
+
+    ic_api_t *api =
+        ic_api_init(IC_ENTRY_REJECT_CALLBACK, "ic_http_reject", false);
+    if (!api) {
+        ic_api_trap("Failed to initialize API in HTTP reject callback");
+        return;
+    }
+
+    // Get reject information
+    ic_http_reject_info_t reject_info;
+    ic_result_t           info_res = ic_http_get_reject_info(&reject_info);
+
+    if (info_res == IC_OK) {
+        // Call user-provided handler
+        handler(api, &reject_info);
+        ic_http_free_reject_info(&reject_info);
+    } else {
+        ic_api_to_wire_text(api, "HTTP request rejected");
+    }
+
+    ic_api_free(api);
+}

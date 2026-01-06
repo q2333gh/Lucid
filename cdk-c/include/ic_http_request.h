@@ -3,11 +3,13 @@
 // canister
 #pragma once
 
+#include "ic_api.h"
 #include "ic_principal.h"
 #include "ic_types.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -254,6 +256,202 @@ ic_http_transform_context_init(ic_transform_context_t *ctx,
     ctx->context = (uint8_t *)context;
     ctx->context_len = context_len;
 }
+
+/**
+ * Format HTTP response body preview (printable chars only)
+ *
+ * This function formats a preview of the HTTP response body, showing only
+ * printable ASCII characters. Non-printable characters are replaced with '.'.
+ * Newlines are preserved.
+ *
+ * @param body Response body data
+ * @param body_len Length of body data
+ * @param buffer Output buffer for formatted preview
+ * @param buffer_size Size of output buffer
+ * @return Number of bytes written to buffer (excluding null terminator)
+ */
+size_t ic_http_format_body_preview(const uint8_t *body,
+                                   size_t         body_len,
+                                   char          *buffer,
+                                   size_t         buffer_size);
+
+/**
+ * HTTP Reject Information
+ * Contains reject code and message from a failed HTTP request
+ */
+typedef struct {
+    uint32_t code;        // Reject code
+    char    *message;     // Reject message (allocated, must be freed by caller)
+    size_t   message_len; // Length of message
+} ic_http_reject_info_t;
+
+/**
+ * Get and parse HTTP response from callback
+ *
+ * This helper function extracts the HTTP response data from the callback's
+ * message arguments and parses it into an ic_http_request_result_t structure.
+ * Use this in your reply callback to simplify response handling.
+ *
+ * @param result Output: parsed HTTP response result (must be freed with
+ * ic_http_free_result)
+ * @return IC_OK on success, error code otherwise
+ *
+ * Example:
+ * ```c
+ * void on_http_reply(void *env) {
+ *     ic_api_t *api = ic_api_init(IC_ENTRY_REPLY_CALLBACK, "on_http_reply",
+ * true); if (!api) { ic_api_trap("Failed to initialize API"); return;
+ *     }
+ *
+ *     ic_http_request_result_t result;
+ *     ic_result_t res = ic_http_get_and_parse_response_from_callback(&result);
+ *     if (res != IC_OK) {
+ *         IC_API_REPLY_TEXT("Failed to parse response");
+ *         ic_api_free(api);
+ *         return;
+ *     }
+ *
+ *     // Use result.status, result.headers, result.body
+ *     ic_http_free_result(&result);
+ *     ic_api_free(api);
+ * }
+ * ```
+ */
+ic_result_t
+ic_http_get_and_parse_response_from_callback(ic_http_request_result_t *result);
+
+/**
+ * Get reject information from callback
+ *
+ * This helper function extracts the reject code and message from the callback's
+ * message arguments. Use this in your reject callback to simplify error
+ * handling.
+ *
+ * @param info Output: reject information (message must be freed by caller)
+ * @return IC_OK on success, error code otherwise
+ *
+ * Example:
+ * ```c
+ * void on_http_reject(void *env) {
+ *     ic_api_t *api = ic_api_init(IC_ENTRY_REJECT_CALLBACK, "on_http_reject",
+ * true); if (!api) { ic_api_trap("Failed to initialize API"); return;
+ *     }
+ *
+ *     ic_http_reject_info_t info;
+ *     ic_result_t res = ic_http_get_reject_info(&info);
+ *     if (res == IC_OK) {
+ *         // Use info.code and info.message
+ *         free(info.message);
+ *     }
+ *     ic_api_free(api);
+ * }
+ * ```
+ */
+ic_result_t ic_http_get_reject_info(ic_http_reject_info_t *info);
+
+/**
+ * Free reject information
+ *
+ * Frees the message string allocated by ic_http_get_reject_info().
+ *
+ * @param info Reject information structure to free
+ */
+static inline void ic_http_free_reject_info(ic_http_reject_info_t *info) {
+    if (info && info->message) {
+        free(info->message);
+        info->message = NULL;
+        info->message_len = 0;
+    }
+}
+
+/**
+ * User-provided callback for handling HTTP response
+ * This function is called with the parsed HTTP response result.
+ * The result will be automatically freed after this callback returns.
+ * The api parameter allows using IC_API_REPLY_TEXT and other reply macros.
+ *
+ * @param api API context (for replying)
+ * @param result Parsed HTTP response result (do not free manually)
+ */
+typedef void (*ic_http_reply_handler_t)(ic_api_t                       *api,
+                                        const ic_http_request_result_t *result);
+
+/**
+ * User-provided callback for handling HTTP reject
+ * This function is called with the reject information.
+ * The reject info will be automatically freed after this callback returns.
+ * The api parameter allows using IC_API_REPLY_TEXT and other reply macros.
+ *
+ * @param api API context (for replying)
+ * @param info Reject information (do not free manually)
+ */
+typedef void (*ic_http_reject_handler_t)(ic_api_t                    *api,
+                                         const ic_http_reject_info_t *info);
+
+/**
+ * Simplified reply callback wrapper
+ *
+ * This function automatically handles all boilerplate code (API initialization,
+ * parsing, error handling, resource cleanup) and calls the user-provided
+ * handler with the parsed result.
+ *
+ * Use this as your reply callback when calling ic_http_request_async().
+ *
+ * @param env User-provided handler function (cast from ic_http_reply_handler_t)
+ *
+ * Example:
+ * ```c
+ * static void handle_response(ic_api_t *api, const ic_http_request_result_t
+ * *result) {
+ *     // Build response message
+ *     char reply[2048];
+ *     tfp_snprintf(reply, sizeof(reply), "Status: %llu", result->status);
+ *     IC_API_REPLY_TEXT(reply);
+ * }
+ *
+ * IC_API_UPDATE(http_get, "() -> (text)") {
+ *     ic_http_request_args_t args;
+ *     ic_http_request_args_init(&args, "https://example.com");
+ *     ic_http_request_async(&args,
+ *                           ic_http_reply_callback_wrapper,
+ *                           ic_http_reject_callback_wrapper,
+ *                           (void *)handle_response);
+ * }
+ * ```
+ */
+void ic_http_reply_callback_wrapper(void *env);
+
+/**
+ * Simplified reject callback wrapper
+ *
+ * This function automatically handles all boilerplate code (API initialization,
+ * error handling, resource cleanup) and calls the user-provided handler with
+ * the reject information.
+ *
+ * Use this as your reject callback when calling ic_http_request_async().
+ *
+ * @param env User-provided handler function (cast from
+ * ic_http_reject_handler_t)
+ *
+ * Example:
+ * ```c
+ * static void handle_reject(ic_api_t *api, const ic_http_reject_info_t *info) {
+ *     char msg[512];
+ *     tfp_snprintf(msg, sizeof(msg), "Rejected: %u", info->code);
+ *     IC_API_REPLY_TEXT(msg);
+ * }
+ *
+ * IC_API_UPDATE(http_get, "() -> (text)") {
+ *     ic_http_request_args_t args;
+ *     ic_http_request_args_init(&args, "https://example.com");
+ *     ic_http_request_async(&args,
+ *                           ic_http_reply_callback_wrapper,
+ *                           ic_http_reject_callback_wrapper,
+ *                           (void *)handle_reject);
+ * }
+ * ```
+ */
+void ic_http_reject_callback_wrapper(void *env);
 
 #ifdef __cplusplus
 }

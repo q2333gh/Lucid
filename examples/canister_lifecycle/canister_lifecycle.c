@@ -89,7 +89,7 @@ void restore_state(void) {
     cdk_free(data);
 }
 
-// Example query funmction
+// Example query function
 IC_API_QUERY(get_counter, "() -> (nat64)") { IC_API_REPLY_NAT(counter); }
 
 // Read-only query that triggers restore_state once and prints debug info

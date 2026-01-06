@@ -1,4 +1,4 @@
 service : {
-    "greet2": () -> (text) query;
+    "greet": () -> (text) query;
     "request_running_memory": () -> (text);
 }

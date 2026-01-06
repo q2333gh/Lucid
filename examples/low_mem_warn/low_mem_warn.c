@@ -8,8 +8,8 @@ IC_CANDID_EXPORT_DID()
 #include <string.h>
 #include <tinyprintf.h>
 
-IC_API_QUERY(greet2, "() -> (text)") {
-    IC_API_REPLY_TEXT("Hello1 from minimal C canister!");
+IC_API_QUERY(greet, "() -> (text)") {
+    IC_API_REPLY_TEXT("Hello from minimal C canister!");
 }
 
 // --- Experimental code to consistently trigger the low-memory hook ---

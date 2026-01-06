@@ -5,6 +5,7 @@
 
 #include "ic_c_sdk.h"
 #include <string.h>
+#include <tinyprintf.h>
 
 IC_CANDID_EXPORT_DID()
 
@@ -22,25 +23,8 @@ void one_time_callback(void *user_data) {
 void periodic_callback(void *user_data) {
     periodic_count++;
     char msg[64];
-    // Simple integer to string conversion
-    uint64_t n = periodic_count;
-    int      i = 0;
-    char     buf[32];
-    if (n == 0) {
-        buf[i++] = '0';
-    } else {
-        while (n > 0) {
-            buf[i++] = '0' + (n % 10);
-            n /= 10;
-        }
-    }
-    msg[0] = '\0';
-    strcat(msg, "Periodic timer TIMER_FIRED #");
-    // Reverse the number string
-    for (int j = i - 1; j >= 0; j--) {
-        char c[2] = {buf[j], '\0'};
-        strcat(msg, c);
-    }
+    tfp_snprintf(msg, sizeof(msg), "Periodic timer TIMER_FIRED #%llu",
+                 periodic_count);
     ic_api_debug_print(msg);
 }
 

@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "ic_c_sdk.h"
+#include <tinyprintf.h>
 
 // =============================================================================
 // Candid Interface Description (Auto-generated via Registry)
@@ -34,8 +35,8 @@ IC_API_QUERY(greet_caller, "() -> (text)") {
     char           caller_text[64];
     ic_principal_to_text(&caller, caller_text, sizeof(caller_text));
 
-    char msg[256] = "caller: ";
-    strcat(msg, caller_text);
+    char msg[256];
+    tfp_snprintf(msg, sizeof(msg), "caller: %s", caller_text);
     ic_api_debug_print(msg);
 
     // Return as text
@@ -54,8 +55,7 @@ IC_API_QUERY(whoami, "() -> (text)") {
 
     if (len > 0) {
         char msg[128];
-        strcat(msg, "My Canister ID is: ");
-        strcat(msg, self_text);
+        tfp_snprintf(msg, sizeof(msg), "My Canister ID is: %s", self_text);
         ic_api_debug_print(msg);
 
         // Return as text

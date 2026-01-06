@@ -34,7 +34,7 @@ static void format_human_time(int64_t t_ns, char *out, size_t out_len) {
         // Print as integer seconds
         tfp_snprintf(out, out_len, "%lld", (long long)secs);
     } else {
-        // Format: YYYY-MM-DD HH:MM:SS without snprintf
+        // Format: YYYY-MM-DD HH:MM:SS
         out[0] = '\0';
         append_padded(out, out_len, tm_val.tm_year + 1900, 4); // YYYY
         strncat(out, "-", out_len - strlen(out) - 1);

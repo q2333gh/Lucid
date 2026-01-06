@@ -4,9 +4,9 @@
 IC_CANDID_EXPORT_DID()
 
 #include "idl/candid.h"
-#include "tinyprintf.h"
 #include <stdlib.h>
 #include <string.h>
+#include <tinyprintf.h>
 
 IC_API_QUERY(greet2, "() -> (text)") {
     IC_API_REPLY_TEXT("Hello1 from minimal C canister!");

@@ -12,10 +12,12 @@
 
 #include "ic_c_sdk.h"
 #include <string.h>
-IC_CANDID_EXPORT_DID()
+#include <tinyprintf.h>
 
 #include "idl/candid.h"
 #include "idl/cdk_alloc.h"
+
+IC_CANDID_EXPORT_DID()
 
 // Minimal Hello World
 IC_API_QUERY(greet, "() -> (text)") {
@@ -89,59 +91,14 @@ void restore_state(void) {
 
 // Example query funmction
 IC_API_QUERY(get_counter, "() -> (nat64)") { IC_API_REPLY_NAT(counter); }
-int int_to_str(int value, char *str) {
-    char buf[12]; // Enough to hold -2147483648 and '\0'
-    int  i = 0;
-    int  is_negative = 0;
 
-    if (value == 0) {
-        str[0] = '0';
-        str[1] = '\0';
-        return 1;
-    }
-
-    if (value < 0) {
-        is_negative = 1;
-        // Handle INT_MIN specially
-        if (value == INT32_MIN) {
-            value += 1; // Add 1 first to avoid overflow
-            value = -value;
-        } else {
-            value = -value;
-        }
-    }
-
-    // Generate reversed digit string
-    while (value > 0) {
-        buf[i++] = (value % 10) + '0';
-        value /= 10;
-    }
-
-    // If INT_MIN, fix first digit as 8
-    if (is_negative && i > 0 && buf[0] == '8')
-        buf[0] = '8';
-
-    if (is_negative)
-        buf[i++] = '-';
-
-    // Reverse into output string
-    int j;
-    for (j = 0; j < i; ++j) {
-        str[j] = buf[i - j - 1];
-    }
-    str[i] = '\0';
-
-    return i;
-}
 // Read-only query that triggers restore_state once and prints debug info
 IC_API_QUERY(restore_and_debug, "() -> (text)") {
     ic_api_debug_print("restore_and_debug: start");
     restore_state();
 
-    char msg[96] = "restore_and_debug: counter=";
-    char numbuf[32];
-    int_to_str((unsigned long long)counter, numbuf);
-    strcat(msg, numbuf);
+    char msg[96];
+    tfp_snprintf(msg, sizeof(msg), "restore_and_debug: counter=%llu", counter);
 
     ic_api_debug_print(msg);
 

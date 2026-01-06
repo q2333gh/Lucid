@@ -4,6 +4,7 @@
 #include "idl/type_table.h"
 /* #include <stdio.h> */
 #include <string.h>
+#include <tinyprintf.h>
 
 /* Helper to read ULEB128 from buffer */
 static idl_status read_uleb128(const uint8_t *data,
@@ -33,36 +34,11 @@ static idl_status read_sleb128(const uint8_t *data,
     return IDL_STATUS_OK;
 }
 
-/* Helper to stringify int */
-static void simple_int_to_str(long val, char *buf) {
-    if (val == 0) {
-        buf[0] = '0';
-        buf[1] = '\0';
-        return;
-    }
-    char temp[24];
-    int  i = 0;
-    int  neg = 0;
-    if (val < 0) {
-        neg = 1;
-        val = -val;
-    }
-    while (val > 0) {
-        temp[i++] = '0' + (val % 10);
-        val /= 10;
-    }
-    if (neg)
-        *buf++ = '-';
-    while (i > 0)
-        *buf++ = temp[--i];
-    *buf = '\0';
-}
-
 /* Generate table variable name from index */
 static const char *make_table_var(idl_arena *arena, int64_t index) {
     char buf[64];
     strcpy(buf, "table");
-    simple_int_to_str((long)index, buf + 5);
+    tfp_snprintf(buf + 5, sizeof(buf) - 5, "%ld", (long)index);
 
     size_t len = strlen(buf) + 1;
     char  *name = idl_arena_alloc(arena, len);

@@ -43,7 +43,8 @@ add_library(candid_runtime STATIC
     ${CANDID_RUNTIME_SOURCES}
 )
 target_include_directories(candid_runtime PUBLIC ${RUNTIME_DIR}/include)
-target_link_libraries(candid_runtime PUBLIC cdk_alloc)
+target_include_directories(candid_runtime PRIVATE "${CMAKE_SOURCE_DIR}/third_party/tinyprintf")
+target_link_libraries(candid_runtime PUBLIC cdk_alloc tinyprintf)
 
 # Examples
 option(C_CANDID_BUILD_EXAMPLES "Build C candid examples" ON)

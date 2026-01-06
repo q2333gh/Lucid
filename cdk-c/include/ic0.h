@@ -11,7 +11,17 @@
 // WASI polyfill must be initialized before using these functions
 #include "ic_wasi_polyfill.h"
 
+// For native builds, use stub implementations instead of WASM imports
+#ifdef __wasm__
 #include "wasm_symbol.h"
+#else
+// Native build: remove WASM import attributes, use stub implementations
+// Undefine first to avoid redefinition warning
+#ifdef WASM_SYMBOL_IMPORTED
+#undef WASM_SYMBOL_IMPORTED
+#endif
+#define WASM_SYMBOL_IMPORTED(module, name)
+#endif
 
 // Incoming message data and metadata
 uint32_t ic0_msg_arg_data_size(void)
@@ -135,6 +145,12 @@ uint32_t ic0_is_controller(uintptr_t src, uint32_t size)
 
 int32_t ic0_in_replicated_execution(void)
     WASM_SYMBOL_IMPORTED("ic0", "in_replicated_execution");
+
+// HTTP request cost calculation
+void ic0_cost_http_request(int64_t   request_size,
+                           int64_t   max_response_bytes,
+                           uintptr_t dst)
+    WASM_SYMBOL_IMPORTED("ic0", "cost_http_request");
 
 // Development and error reporting utilities
 void ic0_debug_print(uintptr_t src, uint32_t size)

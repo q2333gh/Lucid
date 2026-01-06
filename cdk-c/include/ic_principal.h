@@ -30,3 +30,8 @@ static inline bool ic_principal_is_valid(const ic_principal_t *principal) {
 // Returns IC_OK on success or IC_ERROR on failure.
 // The text should be a valid null-terminated principal string.
 ic_result_t ic_principal_from_text(ic_principal_t *principal, const char *text);
+
+// Get management canister principal ("aaaaa-aa")
+// The management canister is a special system canister with well-known
+// principal Returns IC_OK on success
+ic_result_t ic_principal_management_canister(ic_principal_t *principal);

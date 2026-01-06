@@ -1,4 +1,5 @@
-add_library(cdk_c STATIC
+# Source files for cdk_c library
+set(CDK_C_SOURCES
     src/ic_api.c
     src/ic_args.c
     src/ic_buffer.c
@@ -9,7 +10,16 @@ add_library(cdk_c STATIC
     src/ic_call.c
     src/ic_storage.c
     src/ic_timer.c
+    src/ic_http_request.c
+    src/ic_http_request_type.c
 )
+
+# Add IC0 stub for native builds (not WASI)
+if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "wasm32" AND NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
+    list(APPEND CDK_C_SOURCES src/ic0_stub.c)
+endif()
+
+add_library(cdk_c STATIC ${CDK_C_SOURCES})
 
 # Add c_candid dependency
 if(NOT TARGET candid_runtime)

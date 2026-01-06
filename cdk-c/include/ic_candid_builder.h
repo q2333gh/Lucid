@@ -645,6 +645,106 @@ idl_record_builder_build_value(idl_record_builder *rb) {
 #define V_SOME(v) idl_value_opt_some(arena, (v))
 #define V_NONE idl_value_opt_none(arena)
 
+/**
+ * Helper: Infer idl_type from idl_value
+ * This is a simple implementation for common cases
+ */
+static inline idl_type *idl_type_from_value(idl_arena       *arena,
+                                            const idl_value *value) {
+    if (!value) {
+        return NULL;
+    }
+
+    switch (value->kind) {
+    case IDL_VALUE_NULL:
+        return idl_type_null(arena);
+    case IDL_VALUE_BOOL:
+        return idl_type_bool(arena);
+    case IDL_VALUE_NAT:
+        return idl_type_nat(arena);
+    case IDL_VALUE_NAT8:
+        return idl_type_nat8(arena);
+    case IDL_VALUE_NAT16:
+        return idl_type_nat16(arena);
+    case IDL_VALUE_NAT32:
+        return idl_type_nat32(arena);
+    case IDL_VALUE_NAT64:
+        return idl_type_nat64(arena);
+    case IDL_VALUE_INT:
+        return idl_type_int(arena);
+    case IDL_VALUE_INT8:
+        return idl_type_int8(arena);
+    case IDL_VALUE_INT16:
+        return idl_type_int16(arena);
+    case IDL_VALUE_INT32:
+        return idl_type_int32(arena);
+    case IDL_VALUE_INT64:
+        return idl_type_int64(arena);
+    case IDL_VALUE_FLOAT32:
+        return idl_type_float32(arena);
+    case IDL_VALUE_FLOAT64:
+        return idl_type_float64(arena);
+    case IDL_VALUE_TEXT:
+        return idl_type_text(arena);
+    case IDL_VALUE_PRINCIPAL:
+        return idl_type_principal(arena);
+    case IDL_VALUE_RECORD: {
+        // Build record type from fields
+        if (value->data.record.len == 0) {
+            return idl_type_record(arena, NULL, 0);
+        }
+
+        idl_field *fields = (idl_field *)idl_arena_alloc(
+            arena, value->data.record.len * sizeof(idl_field));
+        if (!fields) {
+            return NULL;
+        }
+
+        for (size_t i = 0; i < value->data.record.len; i++) {
+            fields[i].label = value->data.record.fields[i].label;
+            fields[i].type =
+                idl_type_from_value(arena, value->data.record.fields[i].value);
+            if (!fields[i].type) {
+                return NULL;
+            }
+        }
+
+        return idl_type_record(arena, fields, value->data.record.len);
+    }
+    case IDL_VALUE_VARIANT: {
+        // For variant: build type with just the active field
+        // Note: This is simplified - full type would need all variants
+        idl_value_field *active_field =
+            &value->data.record.fields[value->data.record.variant_index];
+        idl_field variant_field = {
+            .label = active_field->label,
+            .type = idl_type_from_value(arena, active_field->value)};
+        return idl_type_variant(arena, &variant_field, 1);
+    }
+    case IDL_VALUE_OPT: {
+        if (value->data.opt) {
+            idl_type *inner = idl_type_from_value(arena, value->data.opt);
+            return idl_type_opt(arena, inner);
+        } else {
+            // None - can't infer inner type, default to null
+            return idl_type_opt(arena, idl_type_null(arena));
+        }
+    }
+    case IDL_VALUE_VEC: {
+        if (value->data.vec.len > 0) {
+            idl_type *elem =
+                idl_type_from_value(arena, value->data.vec.items[0]);
+            return idl_type_vec(arena, elem);
+        } else {
+            // Empty vec - can't infer element type, default to null
+            return idl_type_vec(arena, idl_type_null(arena));
+        }
+    }
+    default:
+        return NULL;
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif

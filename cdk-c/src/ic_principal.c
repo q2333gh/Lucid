@@ -129,15 +129,19 @@ static size_t remove_dashes(const char *src, size_t src_len, char *dst) {
 ic_result_t ic_principal_from_bytes(ic_principal_t *principal,
                                     const uint8_t  *bytes,
                                     size_t          len) {
-    if (principal == NULL || bytes == NULL) {
+    if (principal == NULL) {
         return IC_ERR_INVALID_ARG;
     }
 
-    if (len == 0 || len > IC_PRINCIPAL_MAX_LEN) {
+    // Length 0 is valid (management canister has empty principal)
+    // bytes can be NULL if len is 0
+    if ((len > 0 && bytes == NULL) || len > IC_PRINCIPAL_MAX_LEN) {
         return IC_ERR_INVALID_ARG;
     }
 
-    memcpy(principal->bytes, bytes, len);
+    if (len > 0) {
+        memcpy(principal->bytes, bytes, len);
+    }
     principal->len = len;
 
     return IC_OK;
@@ -187,6 +191,16 @@ ic_result_t ic_principal_from_text(ic_principal_t *principal,
     return IC_OK;
 }
 
+ic_result_t ic_principal_management_canister(ic_principal_t *principal) {
+    if (!principal) {
+        return IC_ERR_INVALID_ARG;
+    }
+    // Management canister: "aaaaa-aa" in text form
+    // The management canister has an EMPTY principal (0 bytes)
+    // This is a special case in the IC protocol
+    return ic_principal_from_bytes(principal, NULL, 0);
+}
+
 int ic_principal_to_text(const ic_principal_t *principal,
                          char                 *text,
                          size_t                text_len) {
@@ -214,7 +228,6 @@ int ic_principal_to_text(const ic_principal_t *principal,
     size_t b32_len = base32_encode(buf, buf_len, base32_str);
 
     // 4. Format with dashes (xxxxx-xxxxx-...)
-    size_t dash_count = 0;
     size_t out_idx = 0;
 
     for (size_t i = 0; i < b32_len; i++) {

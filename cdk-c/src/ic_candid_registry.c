@@ -17,7 +17,14 @@ static int __ic_ctors_called = 0;
 
 // WASM constructor initializer (provided by compiler runtime)
 // This function calls all __attribute__((constructor)) functions
+#ifdef __wasm__
 extern void __wasm_call_ctors(void);
+#else
+// Native build: stub implementation
+static void __wasm_call_ctors(void) {
+    // In native builds, constructors are called automatically by CRT
+}
+#endif
 
 // =============================================================================
 // Helper: copy string and return pointer to end

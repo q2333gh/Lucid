@@ -11,6 +11,9 @@ set(CDK_C_SOURCES
     src/ic_storage.c
     src/ic_timer.c
     src/ic_http_request.c
+    src/ic_http_request_cost.c
+    src/ic_http_request_build.c
+    src/ic_http_request_parse.c
     src/ic_http_request_type.c
 )
 

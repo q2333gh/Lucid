@@ -370,6 +370,42 @@ static idl_subtype_result check_service_subtype(idl_opt_report      report,
     return IDL_SUBTYPE_OK;
 }
 
+/* Handle VAR types with Gamma cache, coinductive rule */
+static int subtype_check_var_case(idl_opt_report      report,
+                                  idl_gamma          *gamma,
+                                  const idl_type_env *env,
+                                  const idl_type     *t1,
+                                  const idl_type     *t2,
+                                  idl_subtype_result *out_res) {
+    if (t1->kind != IDL_KIND_VAR && t2->kind != IDL_KIND_VAR) {
+        return 0;
+    }
+
+    if (!idl_gamma_insert(gamma, t1, t2)) {
+        *out_res = IDL_SUBTYPE_OK;
+        return 1;
+    }
+
+    const idl_type *resolved_t1 = resolve_type(env, t1);
+    const idl_type *resolved_t2 = resolve_type(env, t2);
+
+    if (!resolved_t1 || !resolved_t2) {
+        idl_gamma_remove(gamma, t1, t2);
+        *out_res = IDL_SUBTYPE_FAIL;
+        return 1;
+    }
+
+    idl_subtype_result res =
+        subtype_check_impl(report, gamma, env, resolved_t1, resolved_t2);
+
+    if (res == IDL_SUBTYPE_FAIL) {
+        idl_gamma_remove(gamma, t1, t2);
+    }
+
+    *out_res = res;
+    return 1;
+}
+
 static idl_subtype_result subtype_check_impl(idl_opt_report      report,
                                              idl_gamma          *gamma,
                                              const idl_type_env *env,
@@ -379,27 +415,9 @@ static idl_subtype_result subtype_check_impl(idl_opt_report      report,
         return IDL_SUBTYPE_OK;
     }
 
-    if (t1->kind == IDL_KIND_VAR || t2->kind == IDL_KIND_VAR) {
-        if (!idl_gamma_insert(gamma, t1, t2)) {
-            return IDL_SUBTYPE_OK;
-        }
-
-        const idl_type *resolved_t1 = resolve_type(env, t1);
-        const idl_type *resolved_t2 = resolve_type(env, t2);
-
-        if (!resolved_t1 || !resolved_t2) {
-            idl_gamma_remove(gamma, t1, t2);
-            return IDL_SUBTYPE_FAIL;
-        }
-
-        idl_subtype_result res =
-            subtype_check_impl(report, gamma, env, resolved_t1, resolved_t2);
-
-        if (res == IDL_SUBTYPE_FAIL) {
-            idl_gamma_remove(gamma, t1, t2);
-        }
-
-        return res;
+    idl_subtype_result var_res;
+    if (subtype_check_var_case(report, gamma, env, t1, t2, &var_res)) {
+        return var_res;
     }
 
     const idl_type *rt1 = resolve_type(env, t1);

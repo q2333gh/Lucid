@@ -1,0 +1,22 @@
+{
+  "canisters": {
+    "http_request": {
+      "candid": "http_request.did",
+      "wasm": "http_request_ic.wasm",
+      "type": "custom",
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

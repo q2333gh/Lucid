@@ -51,15 +51,23 @@ def optimize_wasm(
     original_size = input_file.stat().st_size
 
     try:
+        # Build optimization command with additional size-focused options
+        cmd = [
+            str(wasm_opt),
+            optimization_level,
+            "--strip-debug",
+            "--converge",  # Run passes to convergence for better optimization
+        ]
+
+        # Add zero-filled-memory optimization if optimizing for size
+        # This can reduce binary size by optimizing memory initialization
+        if optimization_level == "-Oz":
+            cmd.append("--zero-filled-memory")
+
+        cmd.extend([str(input_file), "-o", str(output_file)])
+
         subprocess.run(
-            [
-                str(wasm_opt),
-                optimization_level,
-                "--strip-debug",
-                str(input_file),
-                "-o",
-                str(output_file),
-            ],
+            cmd,
             check=True,
             capture_output=True,
         )

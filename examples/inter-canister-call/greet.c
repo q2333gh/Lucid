@@ -58,13 +58,27 @@ void my_reply(void *env) {
     // Note: IC_ENTRY_REPLY_CALLBACK allows replying to the original caller
     ic_api_t *api = ic_api_init(IC_ENTRY_REPLY_CALLBACK, "my_reply", true);
 
-    ic_api_debug_print("Call replied! Now replying to original caller.");
+    ic_api_debug_print("Call replied! Decoding callee response.");
 
-    // In a real app, we would decode the response from `increment` here.
-    // The response is in the input buffer of the callback context.
-    // For now, we just reply to the trigger_call caller with success.
+    char       *text = NULL;
+    size_t      text_len = 0;
+    ic_result_t res = ic_api_from_wire_text(api, &text, &text_len);
 
-    IC_API_REPLY_TEXT("Inter-canister call successful.");
+    if (res == IC_OK && text != NULL && text_len > 0) {
+        char   out[512] = {0};
+        size_t copy_len =
+            text_len < sizeof(out) - 1 ? text_len : sizeof(out) - 1;
+        memcpy(out, text, copy_len);
+        out[copy_len] = '\0';
+        ic_api_debug_print("Forwarding callee response to caller:");
+        ic_api_debug_print(out);
+        IC_API_REPLY_TEXT(out);
+    } else {
+        ic_api_debug_print(
+            "Failed to decode callee response, sending fallback.");
+        IC_API_REPLY_TEXT(
+            "Inter-canister call succeeded but response decode failed.");
+    }
 
     ic_api_free(api);
 }

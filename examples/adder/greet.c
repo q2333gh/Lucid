@@ -5,6 +5,7 @@ IC_CANDID_EXPORT_DID()
 
 #include "idl/candid.h"
 #include <string.h>
+#include <tinyprintf.h>
 // Minimal Hello World
 IC_API_QUERY(greet, "() -> (text)") {
     IC_API_REPLY_TEXT("Hello from minimal C canister!");
@@ -61,14 +62,11 @@ static unsigned int counter = 0;
 
 IC_API_UPDATE(increment, "() -> (text)") {
     counter++;
-    char msg[128];
-    strcat(msg, "increment called ,result is : ");
-    char buf[12];
-    int  x = counter;
-    int_to_str(x, buf);
-    strcat(msg, buf);
+    char msg[128] = {0};
+    tfp_snprintf(msg, sizeof msg, "increment called, result is: %u", counter);
     ic_api_debug_print(msg);
 
-    // Return status text
-    IC_API_REPLY_TEXT("Incremented!");
+    char reply[64] = {0};
+    tfp_snprintf(reply, sizeof reply, "Incremented! value=%u", counter);
+    IC_API_REPLY_TEXT(reply);
 }

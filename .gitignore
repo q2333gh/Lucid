@@ -85,4 +85,4 @@ yarn-error.log*
 .cache/
 .npm/
 .yarn/
-####
+####c_candid/build_native/

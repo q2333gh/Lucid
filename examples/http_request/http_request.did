@@ -1,0 +1,3 @@
+service : {
+    "http_get_simple": () -> (text);
+}

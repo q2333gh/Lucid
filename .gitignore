@@ -21,7 +21,9 @@ compile_commands.json
 ## tests
 src/c_canister_dev_kit/cdk-c-ic-syscall/examples/test/pocket-ic
 pocket-ic
-
+# py test 
+.pytest_cache
+.venv
 # IDEs
 .cursorignore
 .cursorrules

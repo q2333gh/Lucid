@@ -1,4 +1,4 @@
-# Common utilities for IC Canister targets in CMake
+# Common important utilities for IC Canister targets in CMake
 
 # Define a function to configure a target as an IC canister
 function(setup_ic_canister_target target_name)

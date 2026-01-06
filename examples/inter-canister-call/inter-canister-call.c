@@ -1,8 +1,6 @@
 // Example: Simple greet canister function
 // This demonstrates basic usage of the IC C SDK
 
-#include "greet.h"
-
 #include <stdlib.h>
 #include <string.h>
 

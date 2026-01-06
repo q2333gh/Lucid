@@ -10,11 +10,11 @@ set(CDK_C_SOURCES
     src/ic_call.c
     src/ic_storage.c
     src/ic_timer.c
-    src/ic_http_request.c
-    src/ic_http_request_cost.c
-    src/ic_http_request_build.c
-    src/ic_http_request_parse.c
-    src/ic_http_request_type.c
+    src/http/ic_http_request.c
+    src/http/ic_http_request_cost.c
+    src/http/ic_http_request_build.c
+    src/http/ic_http_request_parse.c
+    src/http/ic_http_request_type.c
 )
 
 # Add IC0 stub for native builds (not WASI)

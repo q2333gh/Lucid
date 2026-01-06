@@ -378,6 +378,160 @@ idl_status idl_coerce_value(idl_arena          *arena,
     return coerce_impl(arena, env, wire_type, expected_type, value, out);
 }
 
+/* Skip fixed-size types */
+static idl_status skip_fixed_size(const uint8_t *data,
+                                  size_t         data_len,
+                                  size_t        *pos,
+                                  size_t         size) {
+    if (*pos + size > data_len) {
+        return IDL_STATUS_ERR_TRUNCATED;
+    }
+    *pos += size;
+    return IDL_STATUS_OK;
+}
+
+/* Skip LEB128 encoded value */
+static idl_status
+skip_leb128(const uint8_t *data, size_t data_len, size_t *pos) {
+    while (*pos < data_len) {
+        uint8_t byte = data[(*pos)++];
+        if ((byte & 0x80) == 0) {
+            break;
+        }
+    }
+    return IDL_STATUS_OK;
+}
+
+/* Skip length-prefixed data */
+static idl_status skip_length_prefixed(const uint8_t *data,
+                                       size_t         data_len,
+                                       size_t        *pos,
+                                       int            skip_flag_byte) {
+    if (skip_flag_byte) {
+        if (*pos >= data_len) {
+            return IDL_STATUS_ERR_TRUNCATED;
+        }
+        (*pos)++;
+    }
+
+    uint64_t   len;
+    size_t     consumed;
+    idl_status st =
+        idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, &len);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+    *pos += consumed;
+
+    if (*pos + len > data_len) {
+        return IDL_STATUS_ERR_TRUNCATED;
+    }
+    *pos += (size_t)len;
+    return IDL_STATUS_OK;
+}
+
+/* Skip optional value */
+static idl_status skip_opt_value(const uint8_t      *data,
+                                 size_t              data_len,
+                                 size_t             *pos,
+                                 const idl_type_env *env,
+                                 const idl_type     *inner_type) {
+    if (*pos >= data_len) {
+        return IDL_STATUS_ERR_TRUNCATED;
+    }
+    uint8_t flag = data[(*pos)++];
+    if (flag == 1) {
+        size_t     inner_skipped;
+        idl_status st = idl_skip_value(data, data_len, pos, env, inner_type,
+                                       &inner_skipped);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+    }
+    return IDL_STATUS_OK;
+}
+
+/* Skip vector value */
+static idl_status skip_vec_value(const uint8_t      *data,
+                                 size_t              data_len,
+                                 size_t             *pos,
+                                 const idl_type_env *env,
+                                 const idl_type     *wire_type) {
+    uint64_t   len;
+    size_t     consumed;
+    idl_status st =
+        idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, &len);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+    *pos += consumed;
+
+    const idl_type *inner = resolve_type(env, wire_type->data.inner);
+    if (inner && inner->kind == IDL_KIND_NAT8) {
+        if (*pos + len > data_len) {
+            return IDL_STATUS_ERR_TRUNCATED;
+        }
+        *pos += (size_t)len;
+    } else {
+        for (uint64_t i = 0; i < len; i++) {
+            size_t elem_skipped;
+            st = idl_skip_value(data, data_len, pos, env, wire_type->data.inner,
+                                &elem_skipped);
+            if (st != IDL_STATUS_OK) {
+                return st;
+            }
+        }
+    }
+    return IDL_STATUS_OK;
+}
+
+/* Skip record value */
+static idl_status skip_record_value(const uint8_t      *data,
+                                    size_t              data_len,
+                                    size_t             *pos,
+                                    const idl_type_env *env,
+                                    const idl_type     *wire_type) {
+    for (size_t i = 0; i < wire_type->data.record.fields_len; i++) {
+        size_t     field_skipped;
+        idl_status st = idl_skip_value(data, data_len, pos, env,
+                                       wire_type->data.record.fields[i].type,
+                                       &field_skipped);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+    }
+    return IDL_STATUS_OK;
+}
+
+/* Skip variant value */
+static idl_status skip_variant_value(const uint8_t      *data,
+                                     size_t              data_len,
+                                     size_t             *pos,
+                                     const idl_type_env *env,
+                                     const idl_type     *wire_type) {
+    uint64_t   index;
+    size_t     consumed;
+    idl_status st =
+        idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, &index);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+    *pos += consumed;
+
+    if (index >= wire_type->data.record.fields_len) {
+        return IDL_STATUS_ERR_INVALID_ARG;
+    }
+
+    size_t field_skipped;
+    st = idl_skip_value(data, data_len, pos, env,
+                        wire_type->data.record.fields[index].type,
+                        &field_skipped);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+    return IDL_STATUS_OK;
+}
+
 /* Skip a value on the wire */
 idl_status idl_skip_value(const uint8_t      *data,
                           size_t              data_len,
@@ -396,159 +550,75 @@ idl_status idl_skip_value(const uint8_t      *data,
         return IDL_STATUS_ERR_INVALID_ARG;
     }
 
+    idl_status st = IDL_STATUS_OK;
+
     switch (wt->kind) {
     case IDL_KIND_NULL:
     case IDL_KIND_RESERVED:
-        /* No bytes to skip */
         break;
 
     case IDL_KIND_BOOL:
     case IDL_KIND_NAT8:
     case IDL_KIND_INT8:
-        if (*pos + 1 > data_len)
-            return IDL_STATUS_ERR_TRUNCATED;
-        (*pos)++;
+        st = skip_fixed_size(data, data_len, pos, 1);
         break;
 
     case IDL_KIND_NAT16:
     case IDL_KIND_INT16:
-        if (*pos + 2 > data_len)
-            return IDL_STATUS_ERR_TRUNCATED;
-        *pos += 2;
+        st = skip_fixed_size(data, data_len, pos, 2);
         break;
 
     case IDL_KIND_NAT32:
     case IDL_KIND_INT32:
     case IDL_KIND_FLOAT32:
-        if (*pos + 4 > data_len)
-            return IDL_STATUS_ERR_TRUNCATED;
-        *pos += 4;
+        st = skip_fixed_size(data, data_len, pos, 4);
         break;
 
     case IDL_KIND_NAT64:
     case IDL_KIND_INT64:
     case IDL_KIND_FLOAT64:
-        if (*pos + 8 > data_len)
-            return IDL_STATUS_ERR_TRUNCATED;
-        *pos += 8;
+        st = skip_fixed_size(data, data_len, pos, 8);
         break;
 
     case IDL_KIND_NAT:
-    case IDL_KIND_INT: {
-        /* Skip LEB128 */
-        while (*pos < data_len) {
-            uint8_t byte = data[(*pos)++];
-            if ((byte & 0x80) == 0) {
-                break;
-            }
-        }
+    case IDL_KIND_INT:
+        st = skip_leb128(data, data_len, pos);
         break;
-    }
 
     case IDL_KIND_TEXT:
-    case IDL_KIND_PRINCIPAL: {
-        /* Length-prefixed */
-        if (wt->kind == IDL_KIND_PRINCIPAL) {
-            /* Skip flag byte */
-            if (*pos >= data_len)
-                return IDL_STATUS_ERR_TRUNCATED;
-            (*pos)++;
-        }
-
-        uint64_t   len;
-        size_t     consumed;
-        idl_status st =
-            idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, &len);
-        if (st != IDL_STATUS_OK)
-            return st;
-        *pos += consumed;
-
-        if (*pos + len > data_len)
-            return IDL_STATUS_ERR_TRUNCATED;
-        *pos += (size_t)len;
+        st = skip_length_prefixed(data, data_len, pos, 0);
         break;
-    }
 
-    case IDL_KIND_OPT: {
-        if (*pos >= data_len)
-            return IDL_STATUS_ERR_TRUNCATED;
-        uint8_t flag = data[(*pos)++];
-        if (flag == 1) {
-            size_t     inner_skipped;
-            idl_status st = idl_skip_value(data, data_len, pos, env,
-                                           wt->data.inner, &inner_skipped);
-            if (st != IDL_STATUS_OK)
-                return st;
-        }
+    case IDL_KIND_PRINCIPAL:
+        st = skip_length_prefixed(data, data_len, pos, 1);
         break;
-    }
 
-    case IDL_KIND_VEC: {
-        uint64_t   len;
-        size_t     consumed;
-        idl_status st =
-            idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, &len);
-        if (st != IDL_STATUS_OK)
-            return st;
-        *pos += consumed;
-
-        /* Check if blob (vec nat8) */
-        const idl_type *inner = resolve_type(env, wt->data.inner);
-        if (inner && inner->kind == IDL_KIND_NAT8) {
-            if (*pos + len > data_len)
-                return IDL_STATUS_ERR_TRUNCATED;
-            *pos += (size_t)len;
-        } else {
-            for (uint64_t i = 0; i < len; i++) {
-                size_t elem_skipped;
-                st = idl_skip_value(data, data_len, pos, env, wt->data.inner,
-                                    &elem_skipped);
-                if (st != IDL_STATUS_OK)
-                    return st;
-            }
-        }
+    case IDL_KIND_OPT:
+        st = skip_opt_value(data, data_len, pos, env, wt->data.inner);
         break;
-    }
 
-    case IDL_KIND_RECORD: {
-        for (size_t i = 0; i < wt->data.record.fields_len; i++) {
-            size_t     field_skipped;
-            idl_status st =
-                idl_skip_value(data, data_len, pos, env,
-                               wt->data.record.fields[i].type, &field_skipped);
-            if (st != IDL_STATUS_OK)
-                return st;
-        }
+    case IDL_KIND_VEC:
+        st = skip_vec_value(data, data_len, pos, env, wt);
         break;
-    }
 
-    case IDL_KIND_VARIANT: {
-        uint64_t   index;
-        size_t     consumed;
-        idl_status st =
-            idl_uleb128_decode(data + *pos, data_len - *pos, &consumed, &index);
-        if (st != IDL_STATUS_OK)
-            return st;
-        *pos += consumed;
-
-        if (index >= wt->data.record.fields_len)
-            return IDL_STATUS_ERR_INVALID_ARG;
-
-        size_t field_skipped;
-        st = idl_skip_value(data, data_len, pos, env,
-                            wt->data.record.fields[index].type, &field_skipped);
-        if (st != IDL_STATUS_OK)
-            return st;
+    case IDL_KIND_RECORD:
+        st = skip_record_value(data, data_len, pos, env, wt);
         break;
-    }
+
+    case IDL_KIND_VARIANT:
+        st = skip_variant_value(data, data_len, pos, env, wt);
+        break;
 
     case IDL_KIND_FUNC:
     case IDL_KIND_SERVICE:
-        /* TODO: implement */
         return IDL_STATUS_ERR_UNSUPPORTED;
 
     default:
         return IDL_STATUS_ERR_UNSUPPORTED;
+    }
+
+    if (st != IDL_STATUS_OK) {
+        return st;
     }
 
     if (bytes_skipped) {

@@ -24,21 +24,9 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-try:
-    from config import WASI2IC_COMMIT
-except ImportError:
-    # Fallback if config not found
-    WASI2IC_COMMIT = "c0f5063e734f8365f1946baf2845d8322cc9bfec"
+from config import WASI2IC_COMMIT
 
-try:
-    from utils import run_streaming_cmd, command_exists, clone_repository_safe
-except ImportError:
-    # Attempt to import from build_utils if running from parent
-    try:
-        from build_utils.utils import run_streaming_cmd, command_exists, clone_repository_safe
-    except ImportError:
-        print("Error: Could not import utils module.")
-        sys.exit(1)
+from utils import run_streaming_cmd, command_exists, clone_repository_safe
 
 app = typer.Typer(help="Build wasi2ic tool from source")
 console = Console()
@@ -48,7 +36,7 @@ DEFAULT_OUTPUT_DIR = (PROJECT_ROOT / "build_lib").resolve()
 
 DEFAULT_WASI2IC_VERSION = WASI2IC_COMMIT
 
-
+# TODO consider using compiled release filesa
 def ensure_toolchain_ready():
     """Verify required tooling exists before running expensive work."""
     console.print("\n[bold]Checking dependencies...[/]")

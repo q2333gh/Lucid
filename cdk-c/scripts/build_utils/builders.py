@@ -29,7 +29,19 @@ except ImportError:
     from .utils import run_quiet_cmd, command_exists, clone_repository_safe
 
 
-CARGO_BUILD_JOBS_LIMIT = 32
+def _default_cargo_job_limit() -> int:
+    """
+    Compute a conservative default job limit based on CPU cores.
+
+    Uses approximately 70% of available cores, with a minimum of 1.
+    """
+    cores = os.cpu_count() or 1
+    # Use floor of 70% to avoid oversubscription; always at least 1.
+    jobs = int(cores * 0.7)
+    return max(1, jobs)
+
+
+CARGO_BUILD_JOBS_LIMIT = _default_cargo_job_limit()
 
 
 def _cargo_env_with_job_limit(max_jobs: int = CARGO_BUILD_JOBS_LIMIT) -> dict:

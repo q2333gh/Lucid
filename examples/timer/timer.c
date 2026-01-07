@@ -12,7 +12,7 @@ IC_CANDID_EXPORT_DID()
 #include "ic_simple.h"
 #include "idl/candid.h"
 // Counter for periodic timer
-static uint64_t periodic_count = 0;
+CANISTER_STATE(uint64_t, periodic_count) = 0;
 
 // One-time timer callback
 void one_time_callback(void *user_data) {

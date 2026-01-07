@@ -11,7 +11,9 @@ IC_API_QUERY(greet, "() -> (text)") {
     IC_API_REPLY_TEXT("Hello from minimal C canister!");
 }
 
-static unsigned int counter = 0;
+// Declare canister state: this variable persists across update calls
+// and can be modified by update methods
+CANISTER_STATE(unsigned int, counter) = 0;
 
 IC_API_UPDATE(increment, "() -> (text)") {
     counter++;

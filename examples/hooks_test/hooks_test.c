@@ -6,9 +6,9 @@ IC_CANDID_EXPORT_DID()
 #include "idl/candid.h"
 #include <tinyprintf.h>
 
-static uint64_t heartbeat_count = 0;
-static uint64_t inspect_count = 0;
-static uint64_t lowmem_count = 0;
+CANISTER_STATE(uint64_t, heartbeat_count) = 0;
+CANISTER_STATE(uint64_t, inspect_count) = 0;
+CANISTER_STATE(uint64_t, lowmem_count) = 0;
 
 // Minimal Hello World
 IC_API_QUERY(greet, "() -> (text)") {

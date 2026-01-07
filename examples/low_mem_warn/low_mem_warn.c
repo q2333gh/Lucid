@@ -32,9 +32,10 @@ IC_API_QUERY(greet, "() -> (text)") {
 #define MALLOC_TOTAL_LIMIT_MB 512
 
 // Hold pointers to each allocation so they aren't freed
-static void *ptr_list[(MALLOC_TOTAL_LIMIT_MB / MALLOC_CHUNK_MB) + 4] = {0};
+CANISTER_STATE(void *,
+               ptr_list[(MALLOC_TOTAL_LIMIT_MB / MALLOC_CHUNK_MB) + 4]) = {0};
 
-static size_t allocated = 0;
+CANISTER_STATE(size_t, allocated) = 0;
 
 // on fish shell: run update-funciton  for 20 times
 // dfx deploy && dfx canister update-settings low_mem_warn --wasm-memory-limit

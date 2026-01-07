@@ -25,7 +25,7 @@ IC_API_QUERY(greet, "() -> (text)") {
     // ic_stable_save(NULL, 0);
 }
 // Example: Simple counter state on RAM
-static uint64_t counter = 3;
+CANISTER_STATE(uint64_t, counter) = 3;
 
 IC_EXPORT_INIT(init) { ic_api_debug_print("canister_init function called"); }
 

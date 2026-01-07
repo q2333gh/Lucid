@@ -82,3 +82,9 @@
     __attribute__((export_name("canister_on_low_wasm_memory")))                \
     __attribute__((visibility("default"))) void                                \
     func(void)
+
+// Thin wrapper for special semantics: marks canister state for persistence
+// across updates
+// Usage: place at file scope, not inside functions.
+// https://docs.internetcomputer.org/building-apps/interact-with-canisters/update-calls
+#define CANISTER_STATE(type, name) static type name

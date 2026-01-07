@@ -94,3 +94,42 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  candid-extractor:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/tags/candid-extractor' || startsWith(github.ref, 'refs/tags/candid-extractor-')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install candid-extractor
+        run: cargo install candid-extractor
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p dist
+          test -f $HOME/.cargo/bin/candid-extractor
+          cp $HOME/.cargo/bin/candid-extractor dist/candid-extractor-linux-amd64
+          chmod +x dist/candid-extractor-linux-amd64
+          tar -C dist -czf dist/candid-extractor-linux-amd64.tar.gz candid-extractor-linux-amd64
+
+      - name: Extract tag name
+        id: tag
+        run: echo "name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: Release ${{ steps.tag.outputs.name }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            dist/candid-extractor-linux-amd64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

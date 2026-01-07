@@ -1,0 +1,57 @@
+FROM ubuntu:22.04
+
+# Avoid interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set Python version
+ENV PYTHON_VERSION=3.11
+ENV WASI_SDK_VERSION=25.0
+ENV WASI_SDK_ROOT=/opt/wasi-sdk/wasi-sdk-25.0-x86_64-linux
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y \
+        python3.11 \
+        python3.11-dev \
+        python3-pip \
+        cmake \
+        clang \
+        lld \
+        ninja-build \
+        binaryen \
+        libcriterion-dev \
+        curl \
+        git \
+        build-essential \
+        && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Rust toolchain (required for building polyfill and wasi2ic)
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    . $HOME/.cargo/env && \
+    rustup target add wasm32-wasip1
+
+# Set up Python
+RUN python3.11 -m pip install --upgrade pip
+
+# Download and install WASI SDK
+RUN mkdir -p /opt/wasi-sdk && \
+    curl -L "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-25/wasi-sdk-25.0-x86_64-linux.tar.gz" \
+        | tar -xz -C /opt/wasi-sdk
+
+# Set working directory
+WORKDIR /workspace
+
+# Copy requirements first for better caching
+COPY requirements.txt /workspace/
+RUN python3.11 -m pip install -r requirements.txt
+
+# Copy the entire project
+COPY . /workspace/
+
+# Set environment variables
+ENV PATH="/root/.cargo/bin:${PATH}"
+ENV WASI_SDK_ROOT=/opt/wasi-sdk/wasi-sdk-25.0-x86_64-linux
+
+# Default command
+CMD ["/bin/bash"]

@@ -2,7 +2,7 @@
   "canisters": {
     "hooks_test": {
       "candid": "hooks_test.did",
-      "wasm": "hooks_ic.wasm",
+      "wasm": "hooks_test_ic.wasm",
       "type": "custom",
       "metadata": [
         {

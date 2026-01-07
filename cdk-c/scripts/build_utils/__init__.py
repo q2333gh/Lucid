@@ -29,14 +29,8 @@ from .config import (
 
 from .utils import (
     run_command,
-    find_polyfill_library,
-    find_wasi2ic_tool,
-    ensure_polyfill_library,
-    ensure_wasi2ic_tool,
     check_source_files_exist,
     needs_rebuild,
-    find_wasm_opt,
-    optimize_wasm,
 )
 
 from .wasi_sdk import (
@@ -90,14 +84,8 @@ __all__ = [
     "WASI_SDK_VERSION",
     # utils
     "run_command",
-    "find_polyfill_library",
-    "find_wasi2ic_tool",
-    "ensure_polyfill_library",
-    "ensure_wasi2ic_tool",
     "check_source_files_exist",
     "needs_rebuild",
-    "find_wasm_opt",
-    "optimize_wasm",
     # wasi_sdk
     "find_wasi_sdk_root",
     "find_toolchain_file",

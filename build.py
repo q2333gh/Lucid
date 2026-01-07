@@ -80,7 +80,9 @@ def setup_wasi_sdk() -> tuple:
 
 # Default release tag for downloading pre-built artifacts
 _DEFAULT_RELEASE_TAG = "polyfill_and_wasi2ic"
-_DEFAULT_RELEASE_BASE_URL = f"https://github.com/q2333gh/Lucid/releases/download/{_DEFAULT_RELEASE_TAG}"
+_DEFAULT_RELEASE_BASE_URL = (
+    f"https://github.com/q2333gh/Lucid/releases/download/{_DEFAULT_RELEASE_TAG}"
+)
 
 
 def _download_release_artifact(url: str, output_path: Path) -> bool:
@@ -192,8 +194,15 @@ def setup_ic_tools(build_lib_dir: Path, use_release: bool = True) -> tuple:
     # Try downloading from release first (default behavior)
     if use_release:
         print(" Attempting to download pre-built artifacts from release...")
-        polyfill_lib, wasi2ic_tool = _try_download_ic_tools(build_lib_dir, use_release=True)
-        if polyfill_lib and polyfill_lib.exists() and wasi2ic_tool and wasi2ic_tool.exists():
+        polyfill_lib, wasi2ic_tool = _try_download_ic_tools(
+            build_lib_dir, use_release=True
+        )
+        if (
+            polyfill_lib
+            and polyfill_lib.exists()
+            and wasi2ic_tool
+            and wasi2ic_tool.exists()
+        ):
             print(f" Polyfill: {polyfill_lib.name} (from release)")
             print(f" wasi2ic: {wasi2ic_tool.name} (from release)")
             return polyfill_lib, wasi2ic_tool

@@ -74,10 +74,20 @@ jobs:
           tar -C dist -czf dist/wasi2ic-linux-amd64.tar.gz wasi2ic-linux-amd64
           tar -C dist -czf dist/libic_wasi_polyfill.a.tar.gz libic_wasi_polyfill.a
 
+      - name: Extract tag name
+        if: startsWith(github.ref, 'refs/tags/')
+        id: tag
+        run: echo "name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
       - name: Publish release assets
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: Release ${{ steps.tag.outputs.name }}
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(steps.tag.outputs.name, 'alpha') || contains(steps.tag.outputs.name, 'beta') || contains(steps.tag.outputs.name, 'rc') }}
           files: |
             dist/wasi2ic-linux-amd64.tar.gz
             dist/libic_wasi_polyfill.a.tar.gz

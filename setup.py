@@ -10,7 +10,7 @@ import shutil
 import urllib.request
 import tarfile
 from pathlib import Path
-
+import time
 SCRIPT_DIR = Path(__file__).parent.resolve()
 HOME = Path.home()
 BASHRC = HOME / ".bashrc"
@@ -164,13 +164,14 @@ def main():
     ensure_build_tools()
     wasi_sdk_root = ensure_wasi_sdk()
     persist_export("export WASI_SDK_ROOT=", f'export WASI_SDK_ROOT="{wasi_sdk_root}"')
+    ensure_candid_extractor()
     ensure_uv()
     ensure_venv()
     install_requirements()
-    ensure_candid_extractor()
+
+    time.sleep(10)
 
     test_build(wasi_sdk_root)
-
     print("✓ Setup complete!")
 
 

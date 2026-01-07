@@ -29,6 +29,22 @@ except ImportError:
     from .utils import run_quiet_cmd, command_exists, clone_repository_safe
 
 
+CARGO_BUILD_JOBS_LIMIT = 32
+
+
+def _cargo_env_with_job_limit(max_jobs: int = CARGO_BUILD_JOBS_LIMIT) -> dict:
+    """
+    Return environment dict for cargo commands with a jobs limit applied.
+
+    This keeps cargo compilations from consuming all CPU cores globally.
+    """
+    env = os.environ.copy()
+    # Respect explicit user override, otherwise enforce limit.
+    if "CARGO_BUILD_JOBS" not in env:
+        env["CARGO_BUILD_JOBS"] = str(max_jobs)
+    return env
+
+
 # =============================================================================
 # Toolchain Verification
 # =============================================================================
@@ -134,11 +150,12 @@ def build_polyfill_library(
         cargo_args.extend(["--features", features])
 
     try:
-        print("   Compiling libic_wasi_polyfill (quiet)...")
+        print(f"   Compiling libic_wasi_polyfill (quiet, jobs<={CARGO_BUILD_JOBS_LIMIT})...")
         run_quiet_cmd(
             "cargo",
             *cargo_args,
             cwd=repo_path,
+            env=_cargo_env_with_job_limit(),
             raise_on_error=True,
         )
     except Exception as e:
@@ -221,12 +238,13 @@ def build_wasi2ic_tool(
 
     # Build with cargo
     try:
-        print("   Compiling wasi2ic (quiet)...")
+        print(f"   Compiling wasi2ic (quiet, jobs<={CARGO_BUILD_JOBS_LIMIT})...")
         run_quiet_cmd(
             "cargo",
             "build",
             "--release",
             cwd=repo_path,
+            env=_cargo_env_with_job_limit(),
             raise_on_error=True,
         )
     except Exception as e:

@@ -21,6 +21,8 @@ import shutil
 import subprocess
 import sys
 import os
+import urllib.request
+import tarfile
 from pathlib import Path
 from typing import List, Optional
 
@@ -76,27 +78,135 @@ def setup_wasi_sdk() -> tuple:
 # Phase 2: IC Tools - Polyfill + wasi2ic
 # =============================================================================
 
+# Default release tag for downloading pre-built artifacts
+_DEFAULT_RELEASE_TAG = "polyfill_and_wasi2ic"
+_DEFAULT_RELEASE_BASE_URL = f"https://github.com/q2333gh/Lucid/releases/download/{_DEFAULT_RELEASE_TAG}"
 
-def setup_ic_tools(build_lib_dir: Path) -> tuple:
+
+def _download_release_artifact(url: str, output_path: Path) -> bool:
+    """
+    Download and extract a release artifact from GitHub.
+
+    Args:
+        url: URL to the tar.gz artifact
+        output_path: Directory to extract the artifact to
+
+    Returns:
+        True if download and extraction succeeded, False otherwise
+    """
+    temp_file = None
+    try:
+        print(f" Downloading {url}...")
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        # Download to temporary file
+        temp_file = output_path / ".tmp_download.tar.gz"
+        urllib.request.urlretrieve(url, temp_file)
+
+        # Extract tar.gz
+        with tarfile.open(temp_file, "r:gz") as tar:
+            tar.extractall(path=output_path)
+
+        # Clean up temp file
+        temp_file.unlink()
+
+        print(f" Successfully downloaded and extracted to {output_path}")
+        return True
+    except Exception as e:
+        print(f" Warning: Failed to download {url}: {e}")
+        if temp_file and temp_file.exists():
+            temp_file.unlink()
+        return False
+
+
+def _try_download_ic_tools(build_lib_dir: Path, use_release: bool = True) -> tuple:
+    """
+    Try to download IC tools from GitHub release.
+
+    Args:
+        build_lib_dir: Directory to place downloaded artifacts
+        use_release: If True, attempt to download from release (default: True)
+
+    Returns:
+        (polyfill_lib_path, wasi2ic_tool_path) or (None, None) if download failed
+    """
+    if not use_release:
+        return None, None
+
+    polyfill_url = f"{_DEFAULT_RELEASE_BASE_URL}/libic_wasi_polyfill.a.tar.gz"
+    wasi2ic_url = f"{_DEFAULT_RELEASE_BASE_URL}/wasi2ic-linux-amd64.tar.gz"
+
+    polyfill_lib = build_lib_dir / "libic_wasi_polyfill.a"
+    wasi2ic_tool = build_lib_dir / "wasi2ic"
+
+    # Check if already exists
+    if polyfill_lib.exists() and wasi2ic_tool.exists():
+        return polyfill_lib, wasi2ic_tool
+
+    # Try downloading polyfill
+    if not polyfill_lib.exists():
+        if not _download_release_artifact(polyfill_url, build_lib_dir):
+            return None, None
+        if not polyfill_lib.exists():
+            print(" Warning: libic_wasi_polyfill.a not found after download")
+            return None, None
+
+    # Try downloading wasi2ic
+    if not wasi2ic_tool.exists():
+        if not _download_release_artifact(wasi2ic_url, build_lib_dir):
+            return None, None
+        # Extract wasi2ic from the tar.gz (it might be named wasi2ic-linux-amd64)
+        extracted = build_lib_dir / "wasi2ic-linux-amd64"
+        if extracted.exists():
+            extracted.rename(wasi2ic_tool)
+        if not wasi2ic_tool.exists():
+            print(" Warning: wasi2ic not found after download")
+            return None, None
+
+    # Make wasi2ic executable
+    if wasi2ic_tool.exists() and os.name != "nt":
+        os.chmod(wasi2ic_tool, 0o755)
+
+    return polyfill_lib, wasi2ic_tool
+
+
+def setup_ic_tools(build_lib_dir: Path, use_release: bool = True) -> tuple:
     """
     Phase 2: Ensure IC-specific conversion tools are available.
 
+    By default, attempts to download pre-built artifacts from GitHub release.
+    Falls back to building from source if download fails or use_release=False.
+
     - libic_wasi_polyfill.a: WASI polyfill for IC environment
     - wasi2ic: WASI to IC WASM converter
+
+    Args:
+        build_lib_dir: Directory to place artifacts
+        use_release: If True (default), try downloading from release first
 
     Returns:
         (polyfill_lib_path, wasi2ic_tool_path)
     """
     print("\n[Phase 2] IC Tools: polyfill + wasi2ic")
 
-    # Polyfill library (required for linking)
+    # Try downloading from release first (default behavior)
+    if use_release:
+        print(" Attempting to download pre-built artifacts from release...")
+        polyfill_lib, wasi2ic_tool = _try_download_ic_tools(build_lib_dir, use_release=True)
+        if polyfill_lib and polyfill_lib.exists() and wasi2ic_tool and wasi2ic_tool.exists():
+            print(f" Polyfill: {polyfill_lib.name} (from release)")
+            print(f" wasi2ic: {wasi2ic_tool.name} (from release)")
+            return polyfill_lib, wasi2ic_tool
+        print(" Download failed, falling back to building from source...")
+
+    # Fallback to building from source
+    print(" Building from source...")
     polyfill_lib = ensure_polyfill_library(build_lib_dir)
     if not polyfill_lib or not polyfill_lib.exists():
         print(" Error: Failed to build polyfill library.")
         sys.exit(1)
     print(f" Polyfill: {polyfill_lib.name}")
 
-    # wasi2ic tool (required for post-processing)
     wasi2ic_tool = ensure_wasi2ic_tool(build_lib_dir)
     if not wasi2ic_tool or not wasi2ic_tool.exists():
         print(" Warning: wasi2ic not available, post-processing will be skipped.")
@@ -254,7 +364,9 @@ def build(wasi: bool = False, examples: Optional[List[str]] = None) -> None:
         )
 
         # Phase 2: IC Tools
-        polyfill_lib, wasi2ic_tool = setup_ic_tools(build_lib_dir)
+        # Default: try downloading from release, fallback to building
+        # Set use_release=False to force building from source
+        polyfill_lib, wasi2ic_tool = setup_ic_tools(build_lib_dir, use_release=True)
         cmake_extra_args.append(f"-DIC_WASI_POLYFILL_PATH={polyfill_lib}")
 
     else:

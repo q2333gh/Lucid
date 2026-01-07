@@ -43,13 +43,12 @@ def ensure_build_tools():
     """Ensure build tools are installed."""
     if shutil.which("cmake") and shutil.which("clang") and shutil.which("ninja"):
         return
-
     run_cmd(
         [
             "sudo",
             "sh",
             "-c",
-            "apt-get update && apt-get install -y --no-install-recommends cmake clang lld ninja-build binaryen build-essential && rm -rf /var/lib/apt/lists/*",
+            "apt-get update && apt-get install -y --no-install-recommends cmake clang lld ninja-build binaryen build-essential  ",
         ]
     )
 

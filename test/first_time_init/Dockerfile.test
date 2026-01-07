@@ -1,9 +1,0 @@
-FROM ubuntu:22.04-updated
-
-WORKDIR /tmp
-
-# Copy test workflow script into the image so it can be run directly
-COPY test_workflow_inside_container.sh /usr/local/bin/test_workflow_inside_container.sh
-RUN chmod +x /usr/local/bin/test_workflow_inside_container.sh
-
-CMD ["/bin/bash"]

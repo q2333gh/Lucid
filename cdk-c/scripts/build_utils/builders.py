@@ -162,7 +162,9 @@ def build_polyfill_library(
         cargo_args.extend(["--features", features])
 
     try:
-        print(f"   Compiling libic_wasi_polyfill (quiet, jobs<={CARGO_BUILD_JOBS_LIMIT})...")
+        print(
+            f"   Compiling libic_wasi_polyfill (quiet, jobs<={CARGO_BUILD_JOBS_LIMIT})..."
+        )
         run_quiet_cmd(
             "cargo",
             *cargo_args,

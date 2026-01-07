@@ -1,0 +1,1 @@
+code quality check : `~/.local/bin/radon cc -s -a cdk-c/scripts`

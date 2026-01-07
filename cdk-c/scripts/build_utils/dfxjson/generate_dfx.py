@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+from typing import Optional, List
 
 
 def generate_dfx_json(
@@ -8,15 +9,7 @@ def generate_dfx_json(
 ):
     """
     Generates a dfx.json file for a specific canister.
-
-    Args:
-        canister_name: The name of the canister (e.g., 'greet').
-        wasm_path: The path to the WASM file, relative to the dfx.json location.
-        did_path: The path to the Candid (.did) file, relative to the dfx.json location.
-        output_dir: The directory where dfx.json should be created.
     """
-
-    # Template structure based on the user provided example
     dfx_content = {
         "canisters": {
             canister_name: {
@@ -41,17 +34,77 @@ def generate_dfx_json(
         print(f"Error generating dfx.json: {e}")
 
 
+def auto_generate_dfx(
+    bin_dir: Path, examples_dir: Path, examples: Optional[List[str]] = None
+):
+    """
+    Simplified version:
+    1. Scan examples directory.
+    2. For each example, look for a local .wasm file.
+    3. If found, assume it's the target canister and generate dfx.json using local paths.
+
+    Args:
+        bin_dir: Directory containing built .wasm files (not used in current implementation)
+        examples_dir: Root examples directory
+        examples: Optional list of example names to process (None = all)
+    """
+    print(" Generating dfx.json configurations...")
+
+    for example_dir in examples_dir.iterdir():
+        if not example_dir.is_dir():
+            continue
+
+        # Filter by examples if specified
+        if examples is not None:
+            if example_dir.name not in examples:
+                continue
+
+        wasm_files = list(example_dir.glob("*.wasm"))
+        if not wasm_files:
+            continue
+
+        selected_wasm = None
+        for w in wasm_files:
+            if "_optimized.wasm" in w.name:
+                selected_wasm = w
+                break
+        if not selected_wasm:
+            selected_wasm = wasm_files[0]
+
+        canister_name = example_dir.name
+
+        did_file = None
+        did_candidates = [
+            example_dir / f"{canister_name}.did",
+            example_dir
+            / f"{selected_wasm.stem.replace('_optimized', '').replace('_ic', '')}.did",
+        ]
+
+        for cand in did_candidates:
+            if cand.exists():
+                did_file = cand
+                break
+
+        if did_file:
+            print(f" Generating dfx.json for {canister_name} in {example_dir.name}...")
+            generate_dfx_json(
+                canister_name=canister_name,
+                wasm_path=selected_wasm.name,
+                did_path=did_file.name,
+                output_dir=str(example_dir),
+            )
+
+
 if __name__ == "__main__":
-    # Example usage (for testing the script directly)
-    # You would typically call this function from your main build script
     import sys
 
     if len(sys.argv) >= 4:
-        name = sys.argv[1]
-        wasm = sys.argv[2]
-        did = sys.argv[3]
-        out = sys.argv[4] if len(sys.argv) > 4 else "."
-        generate_dfx_json(name, wasm, did, out)
+        generate_dfx_json(
+            sys.argv[1],
+            sys.argv[2],
+            sys.argv[3],
+            sys.argv[4] if len(sys.argv) > 4 else ".",
+        )
     else:
         print(
             "Usage: python generate_dfx.py <canister_name> <wasm_path> <did_path> [output_dir]"

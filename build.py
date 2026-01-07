@@ -35,10 +35,6 @@ _SCRIPTS_DIR = _ROOT_DIR / "cdk-c/scripts"
 if str(_BUILD_UTILS) not in sys.path:
     sys.path.insert(0, str(_BUILD_UTILS))
 
-# Ensure scripts directory is in path for generate_dfx
-if str(_SCRIPTS_DIR) not in sys.path:
-    sys.path.append(str(_SCRIPTS_DIR))
-
 from wasi_sdk import ensure_wasi_sdk
 from builders import ensure_polyfill_library, ensure_wasi2ic_tool
 from post_process import (
@@ -48,16 +44,7 @@ from post_process import (
     run_candid_extractor,
 )
 from project_manager import create_new_project
-
-# Try to import generate_dfx, but don't fail if it's not there yet
-try:
-    # This import relies on sys.path modification above.
-    # We add type: ignore to silence static analysis tools that don't see the path change.
-    import generate_dfx as generate_dfx_json_module  # type: ignore
-except ImportError:
-    # Fallback if script is missing or path issue
-    generate_dfx_json_module = None
-    print("Warning: generate_dfx module not found, skipping dfx.json generation.")
+from dfxjson import generate_dfx as generate_dfx_json_module
 
 
 # =============================================================================

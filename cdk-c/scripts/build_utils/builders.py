@@ -23,10 +23,10 @@ if str(_script_dir) not in sys.path:
 
 try:
     from config import IC_WASI_POLYFILL_COMMIT, WASI2IC_COMMIT
-    from utils import run_streaming_cmd, command_exists, clone_repository_safe
+    from utils import run_quiet_cmd, command_exists, clone_repository_safe
 except ImportError:
     from .config import IC_WASI_POLYFILL_COMMIT, WASI2IC_COMMIT
-    from .utils import run_streaming_cmd, command_exists, clone_repository_safe
+    from .utils import run_quiet_cmd, command_exists, clone_repository_safe
 
 
 # =============================================================================
@@ -61,12 +61,12 @@ def check_rust_toolchain(need_wasm_target: bool = False) -> bool:
             targets = sh.rustup("target", "list", "--installed").strip().split("\n")  # type: ignore
             if "wasm32-wasip1" not in targets:
                 print(" Installing wasm32-wasip1 target...")
-                run_streaming_cmd(
+                print("   Installing wasm32-wasip1 target...")
+                run_quiet_cmd(
                     "rustup",
                     "target",
                     "add",
                     "wasm32-wasip1",
-                    title="Installing wasm32-wasip1",
                     raise_on_error=True,
                 )
         except Exception as e:
@@ -134,11 +134,11 @@ def build_polyfill_library(
         cargo_args.extend(["--features", features])
 
     try:
-        run_streaming_cmd(
+        print("   Compiling libic_wasi_polyfill (quiet)...")
+        run_quiet_cmd(
             "cargo",
             *cargo_args,
             cwd=repo_path,
-            title="Compiling libic_wasi_polyfill",
             raise_on_error=True,
         )
     except Exception as e:
@@ -221,12 +221,12 @@ def build_wasi2ic_tool(
 
     # Build with cargo
     try:
-        run_streaming_cmd(
+        print("   Compiling wasi2ic (quiet)...")
+        run_quiet_cmd(
             "cargo",
             "build",
             "--release",
             cwd=repo_path,
-            title="Compiling wasi2ic",
             raise_on_error=True,
         )
     except Exception as e:

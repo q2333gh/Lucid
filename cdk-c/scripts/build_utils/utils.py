@@ -82,6 +82,53 @@ def run_command(cmd, description="", cwd=None, show_stderr=True):
         return False
 
 
+def run_quiet_cmd(
+    cmd_name: str,
+    *args,
+    cwd: Optional[Path] = None,
+    env: Optional[dict] = None,
+    raise_on_error: bool = True,
+) -> int:
+    """
+    Execute a command without live/streaming output.
+
+    Prints only a brief error summary on failure to keep logs quiet.
+    """
+    cmd = [cmd_name, *[str(a) for a in args]]
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=cwd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        console.print(f"[bold red]Command not found: {cmd_name}[/]")
+        if raise_on_error:
+            raise RuntimeError(f"Command not found: {cmd_name}")
+        return 127
+    except Exception as exc:
+        console.print(f"[bold red]Error executing command: {cmd_name}[/]")
+        console.print(f"[red]{exc}[/]")
+        if raise_on_error:
+            raise exc
+        return 1
+
+    if result.returncode != 0:
+        console.print(f"[bold red]Command failed with exit code {result.returncode}[/]")
+        if result.stdout:
+            console.print(result.stdout.strip())
+        if result.stderr:
+            console.print(result.stderr.strip())
+        if raise_on_error:
+            raise RuntimeError(f"Command failed: {cmd_name}")
+
+    return result.returncode
+
+
 def run_streaming_cmd(
     cmd_name: str,
     *args,
@@ -173,10 +220,10 @@ def clone_repository_safe(repo_url: str, clone_dir: Path, version: str, repo_nam
     if repo_path.exists():
         console.print(f"\n[bold cyan]Repository already exists at:[/] {repo_path}")
         console.print("   Updating to latest...")
-        run_streaming_cmd("git", "fetch", "origin", cwd=repo_path, title=f"Fetching updates for {name}")
+        run_quiet_cmd("git", "fetch", "origin", cwd=repo_path)
     else:
         console.print(f"\n[bold] Cloning repository...[/]")
-        run_streaming_cmd("git", "clone", repo_url, str(repo_path), cwd=clone_dir.parent, title=f"Cloning {name}")
+        run_quiet_cmd("git", "clone", repo_url, str(repo_path), cwd=clone_dir.parent)
 
     console.print(f"\n[bold] Switching to version: {version}[/]")
     try:
@@ -185,7 +232,7 @@ def clone_repository_safe(repo_url: str, clone_dir: Path, version: str, repo_nam
     except sh.ErrorReturnCode:
         # Fetch tags if needed
         console.print("   Tag not found locally, fetching tags...")
-        run_streaming_cmd("git", "fetch", "--tags", cwd=repo_path, title="Fetching tags")
+        run_quiet_cmd("git", "fetch", "--tags", cwd=repo_path)
         sh.git("checkout", version, _cwd=repo_path)
 
     # Verify version

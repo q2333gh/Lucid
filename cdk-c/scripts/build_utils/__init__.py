@@ -61,6 +61,11 @@ from .post_process import (
     post_process_wasm_files,
 )
 
+from .dfxjson.generate_dfx import (
+    generate_dfx_json,
+    auto_generate_dfx,
+)
+
 from .builders import (
     check_rust_toolchain,
     build_polyfill_library,
@@ -68,8 +73,6 @@ from .builders import (
     ensure_polyfill_library as ensure_polyfill,
     ensure_wasi2ic_tool as ensure_wasi2ic,
 )
-
-from .verification import verify_raw_init_import
 
 __all__ = [
     # config
@@ -109,12 +112,13 @@ __all__ = [
     # post_process
     "convert_wasi_to_ic",
     "post_process_wasm_files",
+    # dfxjson
+    "generate_dfx_json",
+    "auto_generate_dfx",
     # builders
     "check_rust_toolchain",
     "build_polyfill_library",
     "build_wasi2ic_tool",
     "ensure_polyfill",
     "ensure_wasi2ic",
-    # verification
-    "verify_raw_init_import",
 ]

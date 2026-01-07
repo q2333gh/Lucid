@@ -10,6 +10,9 @@ on:
     tags:
       - "*"  # run only when a tag is pushed
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -59,4 +62,25 @@ jobs:
 
       - name: WASI build
         run: python build.py --icwasm
+
+      - name: Prepare release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          mkdir -p dist
+          test -f build_lib/wasi2ic
+          test -f build_lib/libic_wasi_polyfill.a
+          cp build_lib/wasi2ic dist/wasi2ic-linux-amd64
+          cp build_lib/libic_wasi_polyfill.a dist/libic_wasi_polyfill.a
+          tar -C dist -czf dist/wasi2ic-linux-amd64.tar.gz wasi2ic-linux-amd64
+          tar -C dist -czf dist/libic_wasi_polyfill.a.tar.gz libic_wasi_polyfill.a
+
+      - name: Publish release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/wasi2ic-linux-amd64.tar.gz
+            dist/libic_wasi_polyfill.a.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

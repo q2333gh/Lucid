@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  cdk-c-build:
     runs-on: ubuntu-latest
 
     env:
@@ -94,7 +94,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  candid-extractor:
+  candid-extractor-build-release:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/tags/candid-extractor' || startsWith(github.ref, 'refs/tags/candid-extractor-')
 

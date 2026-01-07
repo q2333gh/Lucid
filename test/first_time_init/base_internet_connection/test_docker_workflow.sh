@@ -27,13 +27,26 @@ echo "=========================================="
 
 # Ensure we run docker build from this script's directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PARENT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$SCRIPT_DIR"
+
+# Build base image if not exists
+echo ""
+echo "Step 0: Ensuring base image exists..."
+if ! $DOCKER_CMD images -q ubuntu:22.04-updated >/dev/null 2>&1; then
+    echo "Building base image..."
+    cd "$PARENT_DIR"
+    $DOCKER_CMD build -f Dockerfile.base -t ubuntu:22.04-updated .
+    cd "$SCRIPT_DIR"
+else
+    echo "Base image already exists, skipping..."
+fi
 
 # Build Docker image
 echo ""
 echo "Step 1: Building Docker image..."
 echo "Using Docker command: ${DOCKER_CMD}"
-$DOCKER_CMD build -f Dockerfile.test -t lucid-test:latest .
+$DOCKER_CMD build -f Dockerfile.curl-test -t lucid-curl-test:latest .
 
 # Create a test script that will run inside the container
 # Use a user-writable temp directory

@@ -29,6 +29,16 @@ echo "=========================================="
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Build base image if not exists
+echo ""
+echo "Step 0: Ensuring base image exists..."
+if ! $DOCKER_CMD images -q ubuntu:22.04-updated >/dev/null 2>&1; then
+    echo "Building base image..."
+    $DOCKER_CMD build -f Dockerfile.base -t ubuntu:22.04-updated .
+else
+    echo "Base image already exists, skipping..."
+fi
+
 # Build Docker image
 echo ""
 echo "Step 1: Building Docker image..."

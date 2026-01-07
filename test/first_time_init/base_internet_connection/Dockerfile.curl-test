@@ -1,10 +1,7 @@
-FROM ubuntu:22.04
+FROM ubuntu:22.04-updated
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && \
-    apt-get install -y wget && \
-    rm -rf /var/lib/apt/lists/*
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+ && apt-get install -y --no-install-recommends wget \
+ && rm -rf /var/lib/apt/lists/*
 
 CMD ["wget", "-qO-", "https://www.google.com"]
-# wget www.google.com

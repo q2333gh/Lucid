@@ -1,7 +1,5 @@
-FROM ubuntu:22.04
+FROM ubuntu:22.04-updated
 
-# Minimal base image; all tools installed by test script
-ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /tmp
 
 # Copy test workflow script into the image so it can be run directly

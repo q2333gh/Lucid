@@ -1,0 +1,15 @@
+FROM ubuntu:22.04
+
+# Pre-update package lists and install Python for faster subsequent builds
+# Retry logic for network issues
+RUN DEBIAN_FRONTEND=noninteractive \
+    sh -c "apt-get update || apt-get update || apt-get update" \
+ && apt-get install -y --no-install-recommends --fix-missing python3 python3-pip git curl sudo \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tmp
+
+# Clone repository and test setup.py
+RUN git clone https://github.com/q2333gh/Lucid --depth=1 /tmp/Lucid && \
+    cd /tmp/Lucid && \
+    python3 setup.py

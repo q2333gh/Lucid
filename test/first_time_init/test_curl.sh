@@ -16,7 +16,13 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Build base image if not exists
+if ! $DOCKER_CMD images -q ubuntu:22.04-updated >/dev/null 2>&1; then
+    $DOCKER_CMD build -f Dockerfile.base -t ubuntu:22.04-updated . >/dev/null
+fi
+
 echo "Building minimal wget test image..."
+cd base_internet_connection
 $DOCKER_CMD build -f Dockerfile.curl-test -t wget-test:latest . >/dev/null
 
 echo "Running wget https://www.google.com ..."

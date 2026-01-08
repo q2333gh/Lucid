@@ -1,7 +1,6 @@
 name: Build
 
-# TODO github CI should cache: wasi2ic and polyfill library build artifacts.
-# TODO consider save cdk-c and c_candid .a lib as github release assets.
+# TODO make wasi2ic and polyfill library as a job to  build artifacts as github release assets.
 on:
   push:
   #   branches: ["main", "master"]

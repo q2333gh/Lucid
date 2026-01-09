@@ -1,4 +1,15 @@
-// HTTP Request Cost Calculation
+/*
+ * HTTP Request Cost Calculator
+ *
+ * Calculates the cycle cost for HTTP outcall requests using IC0's
+ * cost_http_request system call. Computes:
+ * - Request size: URL + headers + body + transform context
+ * - Maximum response size (defaults to 2MB if not specified)
+ * - 128-bit cycle cost returned as high/low 64-bit values
+ *
+ * Cycle costs must be paid upfront when making HTTP outcalls, and this
+ * function provides the exact cost calculation before the call is made.
+ */
 #include "ic0.h"
 #include "ic_http_request.h"
 #include <string.h>

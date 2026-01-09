@@ -12,6 +12,16 @@ static bool g_initialized = false;
 /// Does NOT emit hardware fence instructions.
 #define COMPILER_BARRIER() __asm__ __volatile__("" ::: "memory")
 
+/*
+ * WASI Polyfill Initialization
+ *
+ * Provides the initialization entry point for the WASI polyfill library.
+ * The "start" symbol is called by the WASM runtime during module load to
+ * initialize WASI system call polyfills for IC execution environment.
+ *
+ * This ensures compatibility between standard WASI programs and IC's
+ * execution model by translating WASI syscalls to IC-compatible operations.
+ */
 // WASI polyfill initialization entry point
 // Exported as "start" symbol, invoked by WASM runtime during module load
 // Prevent LTO from dropping it by marking it as used and externally visible

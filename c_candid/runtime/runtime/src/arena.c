@@ -1,3 +1,17 @@
+/*
+ * Memory Arena Allocator
+ *
+ * Implements a memory arena allocator for efficient allocation of short-lived
+ * objects. Features:
+ * - Block-based allocation with automatic growth
+ * - Pointer-aligned allocations for all platforms
+ * - Reset capability to reuse memory without deallocation
+ * - Single deallocation point (destroy) for all allocations
+ *
+ * Arenas are ideal for Candid serialization/deserialization where many small
+ * objects are allocated and freed together. All allocations are tied to the
+ * arena's lifetime, simplifying memory management.
+ */
 #include "idl/arena.h"
 #include "idl/cdk_alloc.h"
 

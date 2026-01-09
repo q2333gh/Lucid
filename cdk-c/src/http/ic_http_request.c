@@ -1,4 +1,18 @@
-// HTTP Request API Implementation
+/*
+ * HTTP Outcall API Implementation
+ *
+ * Implements IC's HTTP outcall feature for making HTTPS requests from
+ * canisters. Features:
+ * - Async HTTP request execution via management canister
+ * - Automatic cycle cost calculation and payment
+ * - Reply/reject callback handling for async responses
+ * - Candid serialization of request arguments
+ * - Response parsing and result extraction
+ *
+ * HTTP outcalls are the primary mechanism for canisters to interact with
+ * external web services, with automatic cycle management and callback-based
+ * async response handling.
+ */
 #include "ic_http_request.h"
 #include "ic_api.h"
 #include "ic_call.h"

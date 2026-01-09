@@ -1,3 +1,21 @@
+/*
+ * Candid Header Parser and Writer
+ *
+ * Implements parsing and serialization of Candid message headers, which
+ * contain:
+ * - Magic bytes ("DIDL") for format identification
+ * - Type table: Definitions of all composite types (records, variants, etc.)
+ * - Argument types: Types of function arguments
+ *
+ * The header precedes the actual value data in Candid wire format. This module
+ * handles the complex recursive parsing of type definitions including:
+ * - Primitive types (nat, int, text, etc.)
+ * - Composite types (opt, vec, record, variant, func, service)
+ * - Type table references and forward declarations
+ *
+ * Used by both serialization (building headers) and deserialization (parsing
+ * headers).
+ */
 #include "idl/header.h"
 
 #include "idl/leb128.h"

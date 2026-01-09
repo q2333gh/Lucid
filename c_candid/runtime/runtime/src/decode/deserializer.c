@@ -1,3 +1,18 @@
+/*
+ * Candid Deserializer Implementation
+ *
+ * Implements low-level deserialization of Candid wire format into idl_value
+ * objects. Provides:
+ * - Primitive type readers (bool, integers, floats, text, blob, principal)
+ * - Composite type readers (opt, vec, record, variant)
+ * - LEB128 decoding for variable-length integers and lengths
+ * - Byte-level input stream management with position tracking
+ * - Type-driven deserialization using type definitions
+ *
+ * The deserializer reads from a byte buffer sequentially, parsing values
+ * according to their types. Used by higher-level APIs to convert Candid
+ * wire format into in-memory value representations.
+ */
 #include "idl/deserializer.h"
 
 #include <string.h>

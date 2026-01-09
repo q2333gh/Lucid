@@ -1,6 +1,18 @@
-/**
- * Manual type construction for http_request_args
- * This avoids the limitations of idl_type_from_value with variants
+/*
+ * HTTP Request Type Builder
+ *
+ * Manually constructs the Candid type definition for http_request_args,
+ * which is a complex nested structure including:
+ * - Method variant (get/head/post)
+ * - URL text
+ * - Headers array (records with name/value)
+ * - Body blob (optional)
+ * - Transform function information
+ * - Max response bytes
+ *
+ * This manual construction is necessary because automatic type inference
+ * from values has limitations with variant types. Used during HTTP request
+ * serialization to ensure correct Candid encoding.
  */
 #include "ic_api.h"
 #include "ic_candid_builder.h"

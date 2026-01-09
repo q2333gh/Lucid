@@ -1,3 +1,17 @@
+/*
+ * Candid Value Construction
+ *
+ * Provides factory functions for creating idl_value objects representing
+ * Candid values. Supports all Candid types:
+ * - Primitives: null, bool, integers (nat/int 8/16/32/64), floats, text
+ * - Blobs: Byte arrays (vec nat8)
+ * - Principals: IC principal identities
+ * - Composites: opt, vec, record, variant
+ * - Big integers: nat/int with LEB128 encoding
+ *
+ * All values are allocated from an arena and contain type information
+ * along with the actual data. Used for building values before serialization.
+ */
 #include "idl/value.h"
 
 #include <string.h>

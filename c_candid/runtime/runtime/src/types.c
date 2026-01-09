@@ -1,3 +1,17 @@
+/*
+ * Candid Type System
+ *
+ * Implements the Candid type system with factory functions for creating
+ * type objects. Provides:
+ * - Primitive type creation (null, bool, nat, int, text, principal, etc.)
+ * - Composite type construction (opt, vec, record, variant, func, service)
+ * - Type opcode mapping for wire format encoding
+ * - Primitive type detection
+ *
+ * Types are immutable objects allocated from arenas, representing the
+ * structure of Candid values. Used throughout serialization and deserialization
+ * to understand data layout.
+ */
 #include "idl/types.h"
 
 #include <string.h>

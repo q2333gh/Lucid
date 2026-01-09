@@ -1,3 +1,16 @@
+/*
+ * Candid Type Table Builder
+ *
+ * Builds and serializes the type table portion of Candid headers. Features:
+ * - Type deduplication: Reuses type table entries for identical types
+ * - Recursive type registration: Handles nested composite types
+ * - Type table serialization: Converts type table to wire format
+ * - Type environment integration: Tracks type definitions and references
+ *
+ * The type table allows Candid to efficiently represent complex types by
+ * defining them once and referencing them by index, reducing message size
+ * for repeated or nested types.
+ */
 #include "idl/type_table.h"
 
 #include <string.h>

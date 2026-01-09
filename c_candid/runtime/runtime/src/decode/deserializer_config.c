@@ -1,4 +1,15 @@
-// Deserializer Configuration and Initialization
+/*
+ * Deserializer Configuration
+ *
+ * Provides configuration options for Candid deserialization:
+ * - Decoding quota: Limits total bytes decoded (DoS protection)
+ * - Skipping quota: Limits bytes skipped during partial deserialization
+ * - Error message verbosity: Full vs. concise error messages
+ *
+ * Configuration allows fine-tuning deserialization behavior for security
+ * and performance. Quotas help prevent resource exhaustion attacks from
+ * malicious or malformed Candid messages.
+ */
 #include "idl/deserializer.h"
 #include "idl/header.h"
 

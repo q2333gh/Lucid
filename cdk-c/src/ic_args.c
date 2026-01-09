@@ -1,5 +1,19 @@
-// Simplified argument parsing implementation
-
+/*
+ * Simplified Argument Parser
+ *
+ * Provides a simplified API for parsing Candid arguments from incoming
+ * messages. Features:
+ * - Single initialization with automatic deserializer setup
+ * - Type-safe parsing functions for common types (text, nat, int, bool, blob,
+ * principal)
+ * - Automatic memory allocation for parsed values (managed by ic_api memory
+ * pool)
+ * - Reuses deserializer from ic_api context for efficiency
+ * - Prevents double-parsing with initialization guards
+ *
+ * This is a convenience layer over the lower-level ic_api_from_wire functions,
+ * providing a more ergonomic interface for argument extraction.
+ */
 #include "ic_args.h"
 
 #include <stdlib.h>

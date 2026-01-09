@@ -1,4 +1,18 @@
-// IC API implementation
+/*
+ * IC API Core Implementation
+ *
+ * This file implements the main IC API context (ic_api_t) that manages the
+ * lifecycle of canister function calls. It provides:
+ * - API initialization and cleanup with automatic memory management
+ * - Input/output buffer management for Candid serialization
+ * - Principal identity handling (caller, canister self)
+ * - Candid wire format conversion (from_wire/to_wire) for common types
+ * - Memory pool tracking for automatic cleanup
+ * - Entry point type management (query, update, callbacks)
+ *
+ * The API context is the central coordination point for all IC operations,
+ * managing deserialization, reply construction, and resource cleanup.
+ */
 #include "ic_api.h"
 
 #include <limits.h>

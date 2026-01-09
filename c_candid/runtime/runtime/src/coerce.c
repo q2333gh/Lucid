@@ -1,3 +1,16 @@
+/*
+ * Candid Value Coercion
+ *
+ * Implements type coercion for Candid values, converting values from one
+ * type to a compatible type. Handles:
+ * - Numeric coercions (nat to int, smaller to larger integers)
+ * - Optional type coercions (null to opt, opt T1 to opt T2)
+ * - Vector coercions (vec T1 to vec T2 when T1 <: T2)
+ * - Record/variant field coercions
+ *
+ * Coercion enables flexible deserialization where wire types may differ
+ * slightly from expected types, following Candid's subtype rules.
+ */
 #include "idl/coerce.h"
 
 #include <string.h>

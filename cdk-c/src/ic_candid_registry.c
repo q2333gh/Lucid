@@ -1,6 +1,17 @@
-// Candid Interface Registry Implementation
-// Generates .did service interface from registered methods
-
+/*
+ * Candid Interface Registry
+ *
+ * Maintains a registry of canister methods and generates Candid service
+ * interface definitions (.did files) from registered methods. Features:
+ * - Method registration via constructor attributes
+ * - Automatic DID string generation from registered methods
+ * - Query/update method type tracking
+ * - Method signature storage and retrieval
+ *
+ * Methods are registered at compile time using IC_CANDID_EXPORT macros,
+ * and the registry generates the service interface for dfx.json and
+ * client code generation.
+ */
 #include "ic_candid_registry.h"
 
 // =============================================================================

@@ -1,3 +1,17 @@
+/*
+ * Candid Builder API
+ *
+ * High-level API for building Candid-encoded messages. Provides:
+ * - Type-safe argument addition for all primitive types
+ * - Automatic type table construction
+ * - Value serialization coordination
+ * - Complete message serialization (header + values)
+ * - Hex string output for debugging
+ *
+ * The builder pattern allows incremental construction of Candid messages
+ * by adding arguments one at a time, with automatic handling of type table
+ * management and serialization ordering.
+ */
 #include "idl/builder.h"
 
 #include <string.h>

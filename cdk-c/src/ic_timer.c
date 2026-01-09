@@ -1,6 +1,18 @@
-// Timer implementation for IC canisters
-// Implements timer scheduling and execution using IC global timer API
-
+/*
+ * Timer Scheduling Implementation
+ *
+ * Implements timer scheduling and execution for IC canisters using the
+ * global timer API. Features:
+ * - One-time timers: Execute callback after delay
+ * - Interval timers: Periodic execution with configurable interval
+ * - Min-heap data structure for efficient earliest-timer-first scheduling
+ * - Deterministic ordering using insertion counters
+ * - Automatic IC0 global timer updates
+ * - Expired timer processing with rescheduling for intervals
+ *
+ * Timers are processed via ic_timer_process_expired() which should be
+ * called from timer callbacks or heartbeat functions.
+ */
 #include "ic_timer.h"
 
 #include <stdint.h>

@@ -1,3 +1,17 @@
+/*
+ * LEB128 Encoding/Decoding
+ *
+ * Implements Little Endian Base 128 (LEB128) variable-length integer encoding
+ * used extensively in Candid wire format. Provides:
+ * - Unsigned LEB128 (ULEB128): For natural numbers and lengths
+ * - Signed LEB128 (SLEB128): For signed integers
+ * - Overflow detection and bounds checking
+ * - Efficient encoding/decoding with continuation bit handling
+ *
+ * LEB128 allows compact representation of integers, using 7 bits per byte
+ * with the 8th bit as a continuation flag. Essential for Candid's
+ * space-efficient wire format.
+ */
 #include "idl/leb128.h"
 
 #include <limits.h>

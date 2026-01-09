@@ -1,7 +1,14 @@
-// IC0 API stub implementation for native builds
-// This provides empty implementations of IC0 functions for size analysis
-// without requiring actual IC runtime
-
+/*
+ * IC0 API Stub Implementation
+ *
+ * Provides stub implementations of all IC0 system API functions for native
+ * (non-WASM) builds. These functions return safe defaults or no-ops,
+ * allowing the SDK to be compiled and tested in native environments
+ * without requiring an actual IC runtime.
+ *
+ * Used for unit testing, static analysis, and development workflows where
+ * full IC execution is not needed.
+ */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>

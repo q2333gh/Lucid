@@ -1,4 +1,17 @@
-// HTTP Request Response Parsing
+/*
+ * HTTP Response Parser
+ *
+ * Parses HTTP outcall responses from Candid format into structured C types.
+ * Handles:
+ * - HTTP response structure parsing (status, headers, body)
+ * - Header extraction and string conversion
+ * - Status code and body parsing
+ * - Reject information extraction
+ * - Memory allocation for parsed strings
+ *
+ * Converts the Candid-encoded response from the management canister's
+ * http_request call into usable C structures for application code.
+ */
 #include "ic0.h"
 #include "ic_http_request.h"
 #include "idl/candid.h"

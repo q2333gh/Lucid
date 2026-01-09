@@ -1,3 +1,15 @@
+/*
+ * Type Environment (Symbol Table)
+ *
+ * Implements a hash table for mapping type names to type definitions.
+ * Used for:
+ * - Type variable resolution (VAR types reference named types)
+ * - Type table lookup during deserialization
+ * - Type environment management in builders and deserializers
+ *
+ * The type environment allows Candid to support named types and type
+ * references, enabling recursive types and type reuse in complex schemas.
+ */
 #include "idl/type_env.h"
 
 #include <string.h>

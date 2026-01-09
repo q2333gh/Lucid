@@ -1,4 +1,17 @@
-// HTTP Request Candid Building Helpers
+/*
+ * HTTP Request Candid Builder
+ *
+ * Constructs Candid values representing HTTP request arguments for the
+ * management canister's http_request method. Converts:
+ * - HTTP method enum to Candid variant
+ * - Header arrays to Candid records
+ * - Request body to Candid blob
+ * - Transform function information to Candid records
+ *
+ * These helper functions build the complex nested Candid structures required
+ * for HTTP outcall requests, handling the mapping between C types and Candid
+ * wire format.
+ */
 #include "ic_candid_builder.h"
 #include "ic_http_request.h"
 #include "idl/candid.h"

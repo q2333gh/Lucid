@@ -1,3 +1,17 @@
+/*
+ * Candid Serialization/Deserialization Wrapper
+ *
+ * This file provides high-level Candid serialization and deserialization
+ * functions that wrap the underlying c_candid library. It implements:
+ * - Serialization: Convert C types (text, nat, int, blob, principal) to Candid
+ * - Deserialization: Parse Candid wire format back to C types
+ * - LEB128 encoding/decoding utilities for variable-length integers
+ * - Magic byte validation for Candid messages ("DIDL")
+ *
+ * Each function creates its own temporary arena for memory management,
+ * making these functions safe for standalone use but less efficient for
+ * repeated operations (use ic_api_from_wire/to_wire for better performance).
+ */
 #include "ic_candid.h"
 // Force undefine macros from ic_candid.h before including c_candid headers
 // to avoid redefinition warnings/errors

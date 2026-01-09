@@ -1,3 +1,16 @@
+/*
+ * Candid Value Serializer
+ *
+ * Serializes idl_value objects to Candid wire format bytes. Handles:
+ * - Primitive value encoding (integers, floats, text, blobs, principals)
+ * - Composite value encoding (opt, vec, record, variant)
+ * - LEB128 encoding for lengths and variable-width integers
+ * - Dynamic buffer growth for variable-length data
+ *
+ * Works in conjunction with the type table builder to produce complete
+ * Candid messages. The serializer maintains its own buffer and appends
+ * encoded values sequentially.
+ */
 #include "idl/value_serializer.h"
 
 #include <string.h>

@@ -1,3 +1,13 @@
+/*
+ * Base Utilities
+ *
+ * Provides basic utility functions for the Candid runtime:
+ * - Status code to string conversion for error messages
+ * - Common error handling utilities
+ *
+ * This module contains foundational utilities used throughout the Candid
+ * implementation for consistent error reporting and status handling.
+ */
 #include "idl/base.h"
 
 #include <stddef.h>

@@ -1,6 +1,17 @@
-// Stable storage implementation for IC canisters
-// Implements stable memory management and high-level save/restore APIs
-
+/*
+ * Stable Storage Implementation
+ *
+ * Provides persistent storage APIs for IC canisters using stable memory.
+ * Implements:
+ * - Low-level stable memory operations (read, write, grow, size)
+ * - Stable writer: Sequential write interface with automatic growth
+ * - Stable reader: Sequential read interface with bounds checking
+ * - High-level save/restore: Save entire byte arrays to stable memory
+ *
+ * Stable memory persists across canister upgrades, making it essential for
+ * state preservation. This module provides both low-level control and
+ * convenient high-level APIs for common use cases.
+ */
 #include "ic_storage.h"
 
 #include <stdint.h>

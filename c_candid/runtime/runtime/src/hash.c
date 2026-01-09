@@ -1,3 +1,15 @@
+/*
+ * String Hashing and Field ID Utilities
+ *
+ * Provides utilities for Candid field identification:
+ * - String hashing: Converts field names to 32-bit hash IDs
+ * - Field ID sorting: Sorts field IDs for canonical record representation
+ * - Uniqueness verification: Ensures no duplicate field IDs in records
+ *
+ * Candid uses hash-based field identification for efficient record/variant
+ * encoding, allowing fields to be identified by hash rather than name in
+ * the wire format.
+ */
 #include "idl/hash.h"
 
 #include <stddef.h>

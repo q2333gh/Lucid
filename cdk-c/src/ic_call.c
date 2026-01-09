@@ -1,3 +1,17 @@
+/*
+ * Inter-Canister Call Implementation
+ *
+ * Implements asynchronous inter-canister calls with callback support.
+ * Features:
+ * - Call construction with callee principal and method name
+ * - Candid argument serialization and attachment
+ * - Cycles transfer (64-bit and 128-bit support)
+ * - Reply and reject callback registration
+ * - Call execution via IC0 system API
+ *
+ * This provides a high-level interface for making calls to other canisters,
+ * handling the complexity of IC0 call API and callback management.
+ */
 #include "ic_call.h"
 #include "ic0.h"
 #include <stdlib.h>

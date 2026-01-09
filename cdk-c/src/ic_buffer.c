@@ -1,4 +1,16 @@
-// Byte buffer management implementation, like Rust: Vec<u8>
+/*
+ * Dynamic Byte Buffer Implementation
+ *
+ * Implements a growable byte buffer similar to Rust's Vec<u8>.
+ * Features:
+ * - Automatic capacity management with exponential growth
+ * - Append operations for building buffers incrementally
+ * - Memory-efficient with power-of-2 capacity rounding
+ * - Overflow protection and bounds checking
+ *
+ * Used throughout the SDK for managing Candid serialization buffers,
+ * HTTP request/response data, and other variable-length byte sequences.
+ */
 #include "ic_buffer.h"
 
 #include "idl/cdk_alloc.h"

@@ -1,3 +1,16 @@
+/*
+ * Candid Subtype Checking
+ *
+ * Implements subtype relationship checking between Candid types using
+ * a memoization table (gamma) to avoid infinite recursion. Determines:
+ * - Whether one type is a subtype of another (e.g., nat8 <: nat)
+ * - Type compatibility for deserialization and coercion
+ * - Recursive type handling with cycle detection
+ *
+ * Subtype checking is essential for Candid's flexible type system, allowing
+ * values of more specific types to be used where more general types are
+ * expected.
+ */
 #include "idl/subtype.h"
 /* #include <stdio.h> */
 #include <string.h>

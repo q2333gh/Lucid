@@ -1,4 +1,19 @@
-// Principal type implementation
+/*
+ * IC Principal Implementation
+ *
+ * Implements IC principal identity type with encoding/decoding between
+ * binary and text formats. Provides:
+ * - Binary representation: Raw bytes (up to 29 bytes)
+ * - Text representation: Base32-encoded with CRC32 checksum and dashes
+ *   (e.g., "uxrrr-q7777-77774-qaaaq-cai")
+ * - Base32 encoding/decoding (RFC 4648)
+ * - CRC32 checksum validation (ISO 3309)
+ * - Management canister special case (empty principal)
+ * - Principal equality comparison
+ *
+ * Principals are the fundamental identity type in IC, representing canisters,
+ * users, and the management canister.
+ */
 #include "ic_principal.h"
 
 #include <ctype.h>

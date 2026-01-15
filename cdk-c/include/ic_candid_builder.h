@@ -344,7 +344,7 @@ static inline idl_record_builder *idl_record_builder_nat32(
 
     size_t i = rb->count;
     rb->type_fields[i].label = idl_label_name(name);
-    rb->type_fields[i].type = idl_type_nat(rb->arena);
+    rb->type_fields[i].type = idl_type_nat32(rb->arena);
 
     rb->value_fields[i].label = idl_label_name(name);
     rb->value_fields[i].value = idl_value_nat32(rb->arena, value);
@@ -363,7 +363,7 @@ static inline idl_record_builder *idl_record_builder_nat64(
 
     size_t i = rb->count;
     rb->type_fields[i].label = idl_label_name(name);
-    rb->type_fields[i].type = idl_type_nat(rb->arena);
+    rb->type_fields[i].type = idl_type_nat64(rb->arena);
 
     rb->value_fields[i].label = idl_label_name(name);
     rb->value_fields[i].value = idl_value_nat64(rb->arena, value);
@@ -401,7 +401,7 @@ static inline idl_record_builder *idl_record_builder_int32(
 
     size_t i = rb->count;
     rb->type_fields[i].label = idl_label_name(name);
-    rb->type_fields[i].type = idl_type_int(rb->arena);
+    rb->type_fields[i].type = idl_type_int32(rb->arena);
 
     rb->value_fields[i].label = idl_label_name(name);
     rb->value_fields[i].value = idl_value_int32(rb->arena, value);
@@ -420,7 +420,7 @@ static inline idl_record_builder *idl_record_builder_int64(
 
     size_t i = rb->count;
     rb->type_fields[i].label = idl_label_name(name);
-    rb->type_fields[i].type = idl_type_int(rb->arena);
+    rb->type_fields[i].type = idl_type_int64(rb->arena);
 
     rb->value_fields[i].label = idl_label_name(name);
     rb->value_fields[i].value = idl_value_int64(rb->arena, value);
@@ -716,10 +716,17 @@ static inline idl_type *idl_type_from_value(idl_arena       *arena,
         // Note: This is simplified - full type would need all variants
         idl_value_field *active_field =
             &value->data.record.fields[value->data.record.variant_index];
-        idl_field variant_field = {
-            .label = active_field->label,
-            .type = idl_type_from_value(arena, active_field->value)};
-        return idl_type_variant(arena, &variant_field, 1);
+        idl_field *variant_fields = idl_arena_alloc(arena, sizeof(idl_field));
+        if (!variant_fields) {
+            return NULL;
+        }
+        variant_fields[0].label = active_field->label;
+        variant_fields[0].type =
+            idl_type_from_value(arena, active_field->value);
+        if (!variant_fields[0].type) {
+            return NULL;
+        }
+        return idl_type_variant(arena, variant_fields, 1);
     }
     case IDL_VALUE_OPT: {
         if (value->data.opt) {

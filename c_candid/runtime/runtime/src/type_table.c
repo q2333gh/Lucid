@@ -51,11 +51,153 @@ idl_status idl_type_table_builder_init(idl_type_table_builder *builder,
 }
 
 /* Find type in the type map */
+static int labels_equal(const idl_label *a, const idl_label *b) {
+    if (!a || !b) {
+        return 0;
+    }
+    if (a->kind != b->kind || a->id != b->id) {
+        return 0;
+    }
+    if (a->kind == IDL_LABEL_NAME && a->name && b->name) {
+        return strcmp(a->name, b->name) == 0;
+    }
+    return 1;
+}
+
+static int
+type_equal_internal(const idl_type *a, const idl_type *b, size_t depth) {
+    if (a == b) {
+        return 1;
+    }
+    if (!a || !b) {
+        return 0;
+    }
+    if (depth > 64) {
+        return 0;
+    }
+    if (a->kind != b->kind) {
+        return 0;
+    }
+
+    switch (a->kind) {
+    case IDL_KIND_NULL:
+    case IDL_KIND_BOOL:
+    case IDL_KIND_NAT:
+    case IDL_KIND_INT:
+    case IDL_KIND_NAT8:
+    case IDL_KIND_NAT16:
+    case IDL_KIND_NAT32:
+    case IDL_KIND_NAT64:
+    case IDL_KIND_INT8:
+    case IDL_KIND_INT16:
+    case IDL_KIND_INT32:
+    case IDL_KIND_INT64:
+    case IDL_KIND_FLOAT32:
+    case IDL_KIND_FLOAT64:
+    case IDL_KIND_TEXT:
+    case IDL_KIND_RESERVED:
+    case IDL_KIND_EMPTY:
+    case IDL_KIND_PRINCIPAL:
+        return 1;
+    case IDL_KIND_OPT:
+    case IDL_KIND_VEC:
+        return type_equal_internal(a->data.inner, b->data.inner, depth + 1);
+    case IDL_KIND_RECORD:
+    case IDL_KIND_VARIANT: {
+        if (a->data.record.fields_len != b->data.record.fields_len) {
+            return 0;
+        }
+        for (size_t i = 0; i < a->data.record.fields_len; i++) {
+            const idl_field *af = &a->data.record.fields[i];
+            const idl_field *bf = &b->data.record.fields[i];
+            if (!labels_equal(&af->label, &bf->label)) {
+                return 0;
+            }
+            if (!type_equal_internal(af->type, bf->type, depth + 1)) {
+                return 0;
+            }
+        }
+        return 1;
+    }
+    case IDL_KIND_FUNC: {
+        if (a->data.func.args_len != b->data.func.args_len ||
+            a->data.func.rets_len != b->data.func.rets_len ||
+            a->data.func.modes_len != b->data.func.modes_len) {
+            return 0;
+        }
+        for (size_t i = 0; i < a->data.func.args_len; i++) {
+            if (!type_equal_internal(a->data.func.args[i], b->data.func.args[i],
+                                     depth + 1)) {
+                return 0;
+            }
+        }
+        for (size_t i = 0; i < a->data.func.rets_len; i++) {
+            if (!type_equal_internal(a->data.func.rets[i], b->data.func.rets[i],
+                                     depth + 1)) {
+                return 0;
+            }
+        }
+        for (size_t i = 0; i < a->data.func.modes_len; i++) {
+            if (a->data.func.modes[i] != b->data.func.modes[i]) {
+                return 0;
+            }
+        }
+        return 1;
+    }
+    case IDL_KIND_SERVICE: {
+        if (a->data.service.methods_len != b->data.service.methods_len) {
+            return 0;
+        }
+        for (size_t i = 0; i < a->data.service.methods_len; i++) {
+            const idl_method *am = &a->data.service.methods[i];
+            const idl_method *bm = &b->data.service.methods[i];
+            if (!am->name || !bm->name || strcmp(am->name, bm->name) != 0) {
+                return 0;
+            }
+            if (!type_equal_internal(am->type, bm->type, depth + 1)) {
+                return 0;
+            }
+        }
+        return 1;
+    }
+    case IDL_KIND_VAR:
+        if (!a->data.var_name || !b->data.var_name) {
+            return 0;
+        }
+        return strcmp(a->data.var_name, b->data.var_name) == 0;
+    default:
+        return 0;
+    }
+}
+
+static int type_equal(const idl_type *a, const idl_type *b) {
+    return type_equal_internal(a, b, 0);
+}
+
+static int opt_vec_primitive_equal(const idl_type *a, const idl_type *b) {
+    if (!a || !b || a->kind != b->kind) {
+        return 0;
+    }
+    if (a->kind != IDL_KIND_OPT && a->kind != IDL_KIND_VEC) {
+        return 0;
+    }
+    if (!a->data.inner || !b->data.inner) {
+        return 0;
+    }
+    if (!idl_type_is_primitive(a->data.inner) ||
+        !idl_type_is_primitive(b->data.inner)) {
+        return 0;
+    }
+    return a->data.inner->kind == b->data.inner->kind;
+}
+
 static int find_type_index(const idl_type_table_builder *builder,
                            const idl_type               *type,
                            int32_t                      *out) {
     for (size_t i = 0; i < builder->type_map_count; i++) {
-        if (builder->type_keys[i] == type) {
+        if (builder->type_keys[i] == type ||
+            opt_vec_primitive_equal(builder->type_keys[i], type) ||
+            type_equal(builder->type_keys[i], type)) {
             *out = builder->type_indices[i];
             return 1;
         }
@@ -430,6 +572,34 @@ idl_status idl_type_table_builder_build_type(idl_type_table_builder *builder,
         actual_type = idl_type_env_rec_find(builder->env, type->data.var_name);
         if (!actual_type) {
             return IDL_STATUS_ERR_INVALID_ARG;
+        }
+    }
+
+    /* Deduplicate opt/vec of primitive inner types using resolved type. */
+    if ((actual_type->kind == IDL_KIND_OPT ||
+         actual_type->kind == IDL_KIND_VEC) &&
+        actual_type->data.inner &&
+        idl_type_is_primitive(actual_type->data.inner)) {
+        for (size_t i = 0; i < builder->type_map_count; i++) {
+            idl_type *candidate = builder->type_keys[i];
+            if (!candidate) {
+                continue;
+            }
+            if (candidate->kind == IDL_KIND_VAR && builder->env) {
+                candidate = idl_type_env_rec_find(builder->env,
+                                                  candidate->data.var_name);
+                if (!candidate) {
+                    continue;
+                }
+            }
+            if (candidate->kind == actual_type->kind && candidate->data.inner &&
+                idl_type_is_primitive(candidate->data.inner) &&
+                candidate->data.inner->kind == actual_type->data.inner->kind) {
+                if (out_index) {
+                    *out_index = builder->type_indices[i];
+                }
+                return IDL_STATUS_OK;
+            }
         }
     }
 

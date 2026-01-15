@@ -34,7 +34,7 @@ int main(void) {
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("max_response_bytes"),
                   .name = "max_response_bytes"},
-        .value = idl_value_opt_none(&arena)
+        .value = idl_value_null(&arena)
     };
 
     idl_value_field method_field = {
@@ -77,21 +77,21 @@ int main(void) {
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("body"),
                   .name = "body"},
-        .value = idl_value_opt_none(&arena)
+        .value = idl_value_null(&arena)
     };
 
     fields[field_idx++] = (idl_value_field){
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("transform"),
                   .name = "transform"},
-        .value = idl_value_opt_none(&arena)
+        .value = idl_value_null(&arena)
     };
 
     fields[field_idx++] = (idl_value_field){
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("is_replicated"),
                   .name = "is_replicated"},
-        .value = idl_value_opt_none(&arena)
+        .value = idl_value_null(&arena)
     };
 
     idl_value_fields_sort_inplace(fields, field_idx);
@@ -145,7 +145,8 @@ int main(void) {
            "47fc6a4a198060290f8f6fc097f6b019681ba027f6d036c02f1fee18d0371cbe4fd"
            "c7047101002c68747470733a2f2f6a736f6e706c616365686f6c6465722e7479706"
            "9636f64652e636f6d2f746f646f732f3100010e69632d687474702d632d64656d6f"
-           "0a557365722d4167656e74\n");
+           "0a557365722d4167656e74");
+    printf("\n");
 
     idl_arena_destroy(&arena);
     return 0;

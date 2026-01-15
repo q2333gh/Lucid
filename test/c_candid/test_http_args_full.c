@@ -45,14 +45,14 @@ static idl_value *build_http_request_args(idl_arena *arena) {
     };
     IDL_DEBUG_PRINT("  + url: %s", url);
 
-    // 2. max_response_bytes: opt nat64 = None
+    // 2. max_response_bytes: null (subtype of opt nat64)
     fields[field_idx++] = (idl_value_field){
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("max_response_bytes"),
                   .name = "max_response_bytes"},
-        .value = idl_value_opt_none(arena)
+        .value = idl_value_null(arena)
     };
-    IDL_DEBUG_PRINT("  + max_response_bytes: None");
+    IDL_DEBUG_PRINT("  + max_response_bytes: null");
 
     // 3. method: variant { get; head; post } = get
     // CRITICAL: Must be in alphabetical order: get=0, head=1, post=2
@@ -98,32 +98,32 @@ static idl_value *build_http_request_args(idl_arena *arena) {
     };
     IDL_DEBUG_PRINT("  + headers: 1 header (User-Agent)");
 
-    // 5. body: opt blob = None
+    // 5. body: null (subtype of opt blob)
     fields[field_idx++] = (idl_value_field){
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("body"),
                   .name = "body"},
-        .value = idl_value_opt_none(arena)
+        .value = idl_value_null(arena)
     };
-    IDL_DEBUG_PRINT("  + body: None");
+    IDL_DEBUG_PRINT("  + body: null");
 
-    // 6. transform: opt record { function, context } = None
+    // 6. transform: null (subtype of opt record { function, context })
     fields[field_idx++] = (idl_value_field){
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("transform"),
                   .name = "transform"},
-        .value = idl_value_opt_none(arena)
+        .value = idl_value_null(arena)
     };
-    IDL_DEBUG_PRINT("  + transform: None");
+    IDL_DEBUG_PRINT("  + transform: null");
 
-    // 7. is_replicated: opt bool = None
+    // 7. is_replicated: null (subtype of opt bool)
     fields[field_idx++] = (idl_value_field){
         .label = {.kind = IDL_LABEL_NAME,
                   .id = idl_hash("is_replicated"),
                   .name = "is_replicated"},
-        .value = idl_value_opt_none(arena)
+        .value = idl_value_null(arena)
     };
-    IDL_DEBUG_PRINT("  + is_replicated: None");
+    IDL_DEBUG_PRINT("  + is_replicated: null");
 
     // Sort all fields by label id (CRITICAL for Candid)
     IDL_DEBUG_PRINT("Sorting fields by label hash...");
@@ -233,26 +233,24 @@ int main(void) {
     const char *expected_hex =
         "4449444c046c07efd6e40271e1edeb4a01e8d6d893017fa2f5ed88047f"
         "ecdaccac047fc6a4a198060290f8f6fc097f6b019681ba027f6d036c02"
-        "f1fee18d0371cbe4fdc7047101002c687474707300000000000000003a2f2f6a736f"
-        "6e706c616365686f6c6465722e74797069636f64652e636f6d2f746f"
+        "f1fee18d0371cbe4fdc7047101002c68747470733a2f2f6a736f6e70"
+        "6c616365686f6c6465722e74797069636f64652e636f6d2f746f"
         "646f732f3100010e69632d687474702d632d64656d6f0a55736572"
         "2d4167656e74";
 
-    printf("Expected from didc (reference, 155 bytes):\n");
+    printf("Expected reference (145 bytes):\n");
     printf("%s\n\n", expected_hex);
 
     // Compare
     printf("Step 6: Analysis\n");
     printf("Our encoding: %zu bytes\n", candid_len);
-    printf("didc reference: 155 bytes\n");
+    printf("reference: 145 bytes\n");
 
-    if (candid_len == 155) {
+    if (candid_len == 145) {
         printf("✓ Length matches!\n");
     } else {
         printf("⚠ Length differs (expected due to type inference)\n");
-        printf(
-            "  Reason: Our type inference creates more type table entries\n");
-        printf("  This is still valid Candid, just not optimally compact\n");
+        printf("  Reason: Type inference chose different field types\n");
     }
 
     printf("\nStep 7: Verification Commands\n");

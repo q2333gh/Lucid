@@ -69,6 +69,18 @@ def ensure_principal(canister_id) -> Principal:
     return Principal.from_str(str(canister_id))
 
 
+def decode_single(response_bytes: bytes, ret_type) -> dict:
+    """Decode a single-value response with an expected type."""
+    result = decode(response_bytes, ret_type)
+    assert len(result) == 1, "Expected one return value"
+    return result[0]["value"]
+
+
+def opt_to_value(opt_value):
+    """Convert candid opt list representation to a Python optional."""
+    return opt_value[0] if opt_value else None
+
+
 @pytest.fixture(scope="module")
 def pic_and_canister():
     """Pytest fixture: Build and install canister once for all tests in this module."""
@@ -190,11 +202,12 @@ def test_get_profile(pic, canister_id) -> None:
     params = [{"type": Types.Text, "value": "Bob"}]
     payload = encode(params)
     response_bytes = pic.query_call(principal_id, "get_profile", payload)
-    result = decode(response_bytes)
-    print(f"get_profile('Bob') -> {result}")
+    profile_type = Types.Record(
+        {"name": Types.Text, "age": Types.Nat32, "active": Types.Bool}
+    )
+    profile = decode_single(response_bytes, profile_type)
+    print(f"get_profile('Bob') -> {profile}")
 
-    assert len(result) == 1, "Expected one return value"
-    profile = result[0]
     assert profile["name"] == "Bob", f"Expected name='Bob', got {profile['name']}"
     assert profile["age"] == 25, f"Expected age=25, got {profile['age']}"
     assert profile["active"] is True, f"Expected active=True, got {profile['active']}"
@@ -211,11 +224,16 @@ def test_get_user_info(pic, canister_id) -> None:
     params = [{"type": Types.Text, "value": "Charlie"}]
     payload = encode(params)
     response_bytes = pic.query_call(principal_id, "get_user_info", payload)
-    result = decode(response_bytes)
-    print(f"get_user_info('Charlie') -> {result}")
+    info_type = Types.Record(
+        {
+            "id": Types.Nat32,
+            "emails": Types.Vec(Types.Text),
+            "tags": Types.Vec(Types.Text),
+        }
+    )
+    info = decode_single(response_bytes, info_type)
+    print(f"get_user_info('Charlie') -> {info}")
 
-    assert len(result) == 1, "Expected one return value"
-    info = result[0]
     assert info["id"] == 42, f"Expected id=42, got {info['id']}"
     assert len(info["emails"]) == 2, f"Expected 2 emails, got {len(info['emails'])}"
     assert len(info["tags"]) == 2, f"Expected 2 tags, got {len(info['tags'])}"
@@ -232,11 +250,11 @@ def test_get_nested_data(pic, canister_id) -> None:
     params = [{"type": Types.Text, "value": "Dave"}]
     payload = encode(params)
     response_bytes = pic.query_call(principal_id, "get_nested_data", payload)
-    result = decode(response_bytes)
-    print(f"get_nested_data('Dave') -> {result}")
+    user_type = Types.Record({"name": Types.Text, "age": Types.Nat32})
+    data_type = Types.Record({"user": user_type, "timestamp": Types.Nat64})
+    data = decode_single(response_bytes, data_type)
+    print(f"get_nested_data('Dave') -> {data}")
 
-    assert len(result) == 1, "Expected one return value"
-    data = result[0]
     assert "user" in data, "Missing 'user' field"
     assert "timestamp" in data, "Missing 'timestamp' field"
     assert (
@@ -257,16 +275,18 @@ def test_get_optional_data_with_age(pic, canister_id) -> None:
     ]
     payload = encode(params)
     response_bytes = pic.query_call(principal_id, "get_optional_data", payload)
-    result = decode(response_bytes)
-    print(f"get_optional_data('Eve', True) -> {result}")
+    data_type = Types.Record(
+        {"name": Types.Text, "age": Types.Opt(Types.Nat32)}
+    )
+    data = decode_single(response_bytes, data_type)
+    print(f"get_optional_data('Eve', True) -> {data}")
 
-    assert len(result) == 1, "Expected one return value"
-    data = result[0]
     # Fields sorted by hash: age < name
     assert data["name"] == "Eve", f"Expected name='Eve', got {data['name']}"
-    assert data["age"] is not None, "Expected Some(age), got None"
-    assert data["age"] == 25, f"Expected age=25, got {data['age']}"
-    print(f"  ✓ Optional data (with age): age={data['age']}, name={data['name']}")
+    age = opt_to_value(data["age"])
+    assert age is not None, "Expected Some(age), got None"
+    assert age == 25, f"Expected age=25, got {age}"
+    print(f"  ✓ Optional data (with age): age={age}, name={data['name']}")
 
 
 def test_get_optional_data_without_age(pic, canister_id) -> None:
@@ -280,14 +300,16 @@ def test_get_optional_data_without_age(pic, canister_id) -> None:
     ]
     payload = encode(params)
     response_bytes = pic.query_call(principal_id, "get_optional_data", payload)
-    result = decode(response_bytes)
-    print(f"get_optional_data('Frank', False) -> {result}")
+    data_type = Types.Record(
+        {"name": Types.Text, "age": Types.Opt(Types.Nat32)}
+    )
+    data = decode_single(response_bytes, data_type)
+    print(f"get_optional_data('Frank', False) -> {data}")
 
-    assert len(result) == 1, "Expected one return value"
-    data = result[0]
     # Fields sorted by hash: age < name
     assert data["name"] == "Frank", f"Expected name='Frank', got {data['name']}"
-    assert data["age"] is None, f"Expected None, got {data['age']}"
+    age = opt_to_value(data["age"])
+    assert age is None, f"Expected None, got {age}"
     print(f"  ✓ Optional data (without age): age=None, name={data['name']}")
 
 
@@ -299,11 +321,21 @@ def test_get_complex_record(pic, canister_id) -> None:
     params = [{"type": Types.Text, "value": "Grace"}]
     payload = encode(params)
     response_bytes = pic.query_call(principal_id, "get_complex_record", payload)
-    result = decode(response_bytes)
-    print(f"get_complex_record('Grace') -> {result}")
+    record_type = Types.Record(
+        {
+            "name": Types.Text,
+            "active": Types.Bool,
+            "score": Types.Nat32,
+            "balance": Types.Nat64,
+            "temp": Types.Int32,
+            "offset": Types.Int64,
+            "ratio": Types.Float32,
+            "pi": Types.Float64,
+        }
+    )
+    record = decode_single(response_bytes, record_type)
+    print(f"get_complex_record('Grace') -> {record}")
 
-    assert len(result) == 1, "Expected one return value"
-    record = result[0]
     assert record["name"] == "Grace", f"Expected name='Grace', got {record['name']}"
     assert record["active"] is True, f"Expected active=True, got {record['active']}"
     assert record["score"] == 100, f"Expected score=100, got {record['score']}"

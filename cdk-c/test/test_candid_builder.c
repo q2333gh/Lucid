@@ -44,6 +44,21 @@ static int tests_failed = 0;
 
 #define ASSERT_EQ(a, b) ASSERT((a) == (b) && "Expected values to be equal")
 
+static idl_type *find_record_field_type(const idl_type *record,
+                                        const char     *name) {
+    if (!record || record->kind != IDL_KIND_RECORD || !name) {
+        return NULL;
+    }
+    uint32_t target = idl_hash(name);
+    for (size_t i = 0; i < record->data.record.fields_len; ++i) {
+        const idl_field *field = &record->data.record.fields[i];
+        if (field->label.id == target) {
+            return field->type;
+        }
+    }
+    return NULL;
+}
+
 /* ============================================================
  * Test: Macro API - Simple Record
  * ============================================================ */
@@ -220,6 +235,18 @@ TEST(builder_all_types) {
     ASSERT_NOT_NULL(val);
     ASSERT_EQ(type->data.record.fields_len, 8);
     ASSERT_EQ(val->data.record.len, 8);
+    idl_type *nat32_type = find_record_field_type(type, "nat32_field");
+    idl_type *nat64_type = find_record_field_type(type, "nat64_field");
+    idl_type *int32_type = find_record_field_type(type, "int32_field");
+    idl_type *int64_type = find_record_field_type(type, "int64_field");
+    ASSERT_NOT_NULL(nat32_type);
+    ASSERT_NOT_NULL(nat64_type);
+    ASSERT_NOT_NULL(int32_type);
+    ASSERT_NOT_NULL(int64_type);
+    ASSERT_EQ(nat32_type->kind, IDL_KIND_NAT32);
+    ASSERT_EQ(nat64_type->kind, IDL_KIND_NAT64);
+    ASSERT_EQ(int32_type->kind, IDL_KIND_INT32);
+    ASSERT_EQ(int64_type->kind, IDL_KIND_INT64);
 
     idl_arena_destroy(&arena);
 }

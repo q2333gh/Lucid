@@ -52,7 +52,7 @@ IC_API_UPDATE(add_user, "(text, nat, bool) -> (text)") {
 // -----------------------------------------------------------------------------
 IC_API_QUERY(
     get_address,
-    "(text) -> (opt record { street : text; city : text; zip : nat })") {
+    "(text) -> (opt record { street : text; city : text; zip : nat32 })") {
     char *name = NULL;
     IC_API_PARSE_SIMPLE(api, text, name);
 
@@ -61,7 +61,7 @@ IC_API_QUERY(
         idl_type *address_type =
             IDL_RECORD(arena, IDL_FIELD("street", idl_type_text(arena)),
                        IDL_FIELD("city", idl_type_text(arena)),
-                       IDL_FIELD("zip", idl_type_nat(arena)));
+                       IDL_FIELD("zip", idl_type_nat32(arena)));
         idl_type *opt_addr = idl_type_opt(arena, address_type);
 
         // Build value using simplified macro API (fields auto-sorted)
@@ -120,7 +120,7 @@ IC_API_QUERY(
 // }) Demonstrates Solution 2: Builder API with type-safe helpers
 // -----------------------------------------------------------------------------
 IC_API_QUERY(get_profile,
-             "(text) -> (record { name : text; age : nat; active : bool })") {
+             "(text) -> (record { name : text; age : nat32; active : bool })") {
     char *username = NULL;
     IC_API_PARSE_SIMPLE(api, text, username);
 
@@ -145,7 +145,7 @@ IC_API_QUERY(get_profile,
 // -----------------------------------------------------------------------------
 IC_API_QUERY(
     get_user_info,
-    "(text) -> (record { id : nat; emails : vec text; tags : vec text })") {
+    "(text) -> (record { id : nat32; emails : vec text; tags : vec text })") {
     char *username = NULL;
     IC_API_PARSE_SIMPLE(api, text, username);
 
@@ -157,7 +157,7 @@ IC_API_QUERY(
         idl_value *tags = IDL_VEC(arena, V_TEXT("developer"), V_TEXT("admin"));
 
         // Build record with vectors (auto-sorted)
-        idl_type *info_type = IDL_RECORD(arena, IDL_FIELD("id", T_NAT),
+        idl_type *info_type = IDL_RECORD(arena, IDL_FIELD("id", T_NAT32),
                                          IDL_FIELD("emails", T_VEC(T_TEXT)),
                                          IDL_FIELD("tags", T_VEC(T_TEXT)));
 
@@ -175,15 +175,15 @@ IC_API_QUERY(
 // nat }; timestamp : nat }) Demonstrates nested record construction
 // -----------------------------------------------------------------------------
 IC_API_QUERY(get_nested_data,
-             "(text) -> (record { user : record { name : text; age : nat }; "
-             "timestamp : nat })") {
+             "(text) -> (record { user : record { name : text; age : nat32 }; "
+             "timestamp : nat64 })") {
     char *username = NULL;
     IC_API_PARSE_SIMPLE(api, text, username);
 
     IC_API_BUILDER_BEGIN(api) {
         // Build nested user record (auto-sorted)
         idl_type *user_type = IDL_RECORD(arena, IDL_FIELD("name", T_TEXT),
-                                         IDL_FIELD("age", T_NAT));
+                                         IDL_FIELD("age", T_NAT32));
 
         idl_value *user_val =
             IDL_RECORD_VALUE(arena, IDL_VALUE_FIELD("name", V_TEXT(username)),
@@ -191,7 +191,7 @@ IC_API_QUERY(get_nested_data,
 
         // Build outer record with nested record (auto-sorted)
         idl_type *data_type = IDL_RECORD(arena, IDL_FIELD("user", user_type),
-                                         IDL_FIELD("timestamp", T_NAT));
+                                         IDL_FIELD("timestamp", T_NAT64));
 
         idl_value *data_val =
             IDL_RECORD_VALUE(arena, IDL_VALUE_FIELD("user", user_val),
@@ -207,7 +207,7 @@ IC_API_QUERY(get_nested_data,
 // }) Demonstrates optional field handling
 // -----------------------------------------------------------------------------
 IC_API_QUERY(get_optional_data,
-             "(text, bool) -> (record { name : text; age : opt nat })") {
+             "(text, bool) -> (record { name : text; age : opt nat32 })") {
     char *username = NULL;
     bool  include_age = false;
 
@@ -219,7 +219,7 @@ IC_API_QUERY(get_optional_data,
     IC_API_BUILDER_BEGIN(api) {
         // Build record with optional field (auto-sorted)
         idl_type *data_type = IDL_RECORD(arena, IDL_FIELD("name", T_TEXT),
-                                         IDL_FIELD("age", T_OPT(T_NAT)));
+                                         IDL_FIELD("age", T_OPT(T_NAT32)));
 
         idl_value *age_val = include_age ? V_SOME(V_NAT32(25)) : V_NONE;
 

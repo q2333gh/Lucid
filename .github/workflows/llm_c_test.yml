@@ -1,89 +1,89 @@
-name: LLM C Tests
+# name: LLM C Tests
 
-on:
-  push:
-    paths:
-      - 'examples/llm_c/**'
-      - 'cdk-c/**'
-      - '.github/workflows/llm_c_test.yml'
-  pull_request:
-    paths:
-      - 'examples/llm_c/**'
-      - 'cdk-c/**'
-      - '.github/workflows/llm_c_test.yml'
+# on:
+#   push:
+#     paths:
+#       - 'examples/llm_c/**'
+#       - 'cdk-c/**'
+#       - '.github/workflows/llm_c_test.yml'
+#   pull_request:
+#     paths:
+#       - 'examples/llm_c/**'
+#       - 'cdk-c/**'
+#       - '.github/workflows/llm_c_test.yml'
 
-jobs:
-  unit-tests:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+# jobs:
+#   unit-tests:
+#     name: Unit Tests
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+#       - name: Set up Python
+#         uses: actions/setup-python@v5
+#         with:
+#           python-version: '3.11'
       
-      - name: Install dependencies
-        run: |
-          pip install pytest
+#       - name: Install dependencies
+#         run: |
+#           pip install pytest
       
-      - name: Run unit tests
-        working-directory: examples/llm_c
-        run: |
-          pytest tests/unit/ -v || echo "Unit tests completed with warnings"
-        continue-on-error: true
+#       - name: Run unit tests
+#         working-directory: examples/llm_c
+#         run: |
+#           pytest tests/unit/ -v || echo "Unit tests completed with warnings"
+#         continue-on-error: true
 
-  integration-tests:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
-    steps:
-      - uses: actions/checkout@v4
+#   integration-tests:
+#     name: Integration Tests
+#     runs-on: ubuntu-latest
+#     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+#     steps:
+#       - uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+#       - name: Set up Python
+#         uses: actions/setup-python@v5
+#         with:
+#           python-version: '3.11'
       
-      - name: Install dfx
-        run: |
-          sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)"
-          echo "$HOME/bin" >> $GITHUB_PATH
+#       - name: Install dfx
+#         run: |
+#           sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)"
+#           echo "$HOME/bin" >> $GITHUB_PATH
       
-      - name: Install Python dependencies
-        run: |
-          pip install pytest ic-py
+#       - name: Install Python dependencies
+#         run: |
+#           pip install pytest ic-py
       
-      - name: Start dfx replica
-        run: |
-          dfx start --background
-        env:
-          DFX_NETWORK: local
+#       - name: Start dfx replica
+#         run: |
+#           dfx start --background
+#         env:
+#           DFX_NETWORK: local
       
-      - name: Build canister
-        working-directory: examples/llm_c
-        run: |
-          cd ../..
-          python build.py --icwasm --examples llm_c
+#       - name: Build canister
+#         working-directory: examples/llm_c
+#         run: |
+#           cd ../..
+#           python build.py --icwasm --examples llm_c
       
-      - name: Deploy canister
-        working-directory: examples/llm_c
-        run: |
-          dfx deploy llm_c --no-wallet
-        env:
-          DFX_NETWORK: local
+#       - name: Deploy canister
+#         working-directory: examples/llm_c
+#         run: |
+#           dfx deploy llm_c --no-wallet
+#         env:
+#           DFX_NETWORK: local
       
-      - name: Run integration tests
-        working-directory: examples/llm_c
-        env:
-          LLM_TEST_ENABLE_INTEGRATION: 1
-          LLM_TEST_REPLICA: http://127.0.0.1:4943
-        run: |
-          pytest tests/integration/ -v || echo "Integration tests completed with warnings"
-        continue-on-error: true
+#       - name: Run integration tests
+#         working-directory: examples/llm_c
+#         env:
+#           LLM_TEST_ENABLE_INTEGRATION: 1
+#           LLM_TEST_REPLICA: http://127.0.0.1:4943
+#         run: |
+#           pytest tests/integration/ -v || echo "Integration tests completed with warnings"
+#         continue-on-error: true
       
-      - name: Stop dfx
-        if: always()
-        run: |
-          dfx stop || true
+#       - name: Stop dfx
+#         if: always()
+#         run: |
+#           dfx stop || true

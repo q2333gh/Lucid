@@ -24,6 +24,85 @@
 #include <string.h>
 #include <tinyprintf.h>
 
+static int idl_utf8_validate(const uint8_t *bytes, size_t len) {
+    size_t i = 0;
+    while (i < len) {
+        uint8_t c = bytes[i];
+        if (c <= 0x7f) {
+            i++;
+            continue;
+        }
+        if (c >= 0xc2 && c <= 0xdf) {
+            if (i + 1 >= len || (bytes[i + 1] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 2;
+            continue;
+        }
+        if (c == 0xe0) {
+            if (i + 2 >= len || bytes[i + 1] < 0xa0 || bytes[i + 1] > 0xbf ||
+                (bytes[i + 2] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 3;
+            continue;
+        }
+        if (c >= 0xe1 && c <= 0xec) {
+            if (i + 2 >= len || (bytes[i + 1] & 0xc0) != 0x80 ||
+                (bytes[i + 2] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 3;
+            continue;
+        }
+        if (c == 0xed) {
+            if (i + 2 >= len || bytes[i + 1] < 0x80 || bytes[i + 1] > 0x9f ||
+                (bytes[i + 2] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 3;
+            continue;
+        }
+        if (c >= 0xee && c <= 0xef) {
+            if (i + 2 >= len || (bytes[i + 1] & 0xc0) != 0x80 ||
+                (bytes[i + 2] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 3;
+            continue;
+        }
+        if (c == 0xf0) {
+            if (i + 3 >= len || bytes[i + 1] < 0x90 || bytes[i + 1] > 0xbf ||
+                (bytes[i + 2] & 0xc0) != 0x80 ||
+                (bytes[i + 3] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 4;
+            continue;
+        }
+        if (c >= 0xf1 && c <= 0xf3) {
+            if (i + 3 >= len || (bytes[i + 1] & 0xc0) != 0x80 ||
+                (bytes[i + 2] & 0xc0) != 0x80 ||
+                (bytes[i + 3] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 4;
+            continue;
+        }
+        if (c == 0xf4) {
+            if (i + 3 >= len || bytes[i + 1] < 0x80 || bytes[i + 1] > 0x8f ||
+                (bytes[i + 2] & 0xc0) != 0x80 ||
+                (bytes[i + 3] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 4;
+            continue;
+        }
+        return 0;
+    }
+    return 1;
+}
+
 /* Helper to read ULEB128 from buffer */
 static idl_status read_uleb128(const uint8_t *data,
                                size_t         data_len,
@@ -444,6 +523,10 @@ static idl_status parse_service_method(const uint8_t *data,
 
     if (*pos + name_len > data_len) {
         return IDL_STATUS_ERR_TRUNCATED;
+    }
+
+    if (!idl_utf8_validate(data + *pos, (size_t)name_len)) {
+        return IDL_STATUS_ERR_INVALID_ARG;
     }
 
     char *name = idl_arena_alloc(arena, name_len + 1);

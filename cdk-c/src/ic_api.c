@@ -16,15 +16,22 @@
 #include "ic_api.h"
 
 #include <limits.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
+#define TINYPRINTF_OVERRIDE_LIBC 0
+#include <tinyprintf.h>
+#undef TINYPRINTF_OVERRIDE_LIBC
+
 #include "ic_entry_points.h"
 #include "idl/candid.h"
 #include "idl/cdk_alloc.h"
 #include "idl/leb128.h"
+
+#define IC_API_DEBUG_PRINT_BUFFER_SIZE 256
 
 // Memory pool node for tracking allocated memory
 typedef struct ic_mem_node {
@@ -245,6 +252,20 @@ void ic_api_debug_print(const char *msg) {
         len = UINT32_MAX;
     }
     ic0_debug_print((uintptr_t)msg, (uint32_t)len);
+}
+
+void ic_api_debug_printf(const char *fmt, ...) {
+    if (fmt == NULL) {
+        return;
+    }
+
+    char    buf[IC_API_DEBUG_PRINT_BUFFER_SIZE];
+    va_list args;
+    va_start(args, fmt);
+    tfp_vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+
+    ic_api_debug_print(buf);
 }
 
 void ic_api_trap(const char *msg) {

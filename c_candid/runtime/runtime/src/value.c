@@ -175,6 +175,55 @@ idl_value_principal(idl_arena *arena, const uint8_t *data, size_t len) {
     return val;
 }
 
+idl_value *
+idl_value_service(idl_arena *arena, const uint8_t *data, size_t len) {
+    idl_value *val = alloc_value(arena, IDL_VALUE_SERVICE);
+    if (val) {
+        uint8_t *copy = idl_arena_alloc(arena, len);
+        if (!copy && len > 0) {
+            return NULL;
+        }
+        if (len > 0) {
+            memcpy(copy, data, len);
+        }
+        val->data.service.data = copy;
+        val->data.service.len = len;
+    }
+    return val;
+}
+
+idl_value *idl_value_func(idl_arena     *arena,
+                          const uint8_t *principal,
+                          size_t         principal_len,
+                          const char    *method,
+                          size_t         method_len) {
+    idl_value *val = alloc_value(arena, IDL_VALUE_FUNC);
+    if (val) {
+        uint8_t *principal_copy = idl_arena_alloc(arena, principal_len);
+        if (!principal_copy && principal_len > 0) {
+            return NULL;
+        }
+        if (principal_len > 0) {
+            memcpy(principal_copy, principal, principal_len);
+        }
+
+        char *method_copy = idl_arena_alloc(arena, method_len + 1);
+        if (!method_copy) {
+            return NULL;
+        }
+        if (method_len > 0) {
+            memcpy(method_copy, method, method_len);
+        }
+        method_copy[method_len] = '\0';
+
+        val->data.func.principal = principal_copy;
+        val->data.func.principal_len = principal_len;
+        val->data.func.method = method_copy;
+        val->data.func.method_len = method_len;
+    }
+    return val;
+}
+
 idl_value *idl_value_opt_none(idl_arena *arena) {
     idl_value *val = alloc_value(arena, IDL_VALUE_OPT);
     if (val) {

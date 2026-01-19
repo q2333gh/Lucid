@@ -30,6 +30,8 @@ typedef enum idl_value_kind {
     IDL_VALUE_TEXT,
     IDL_VALUE_RESERVED,
     IDL_VALUE_PRINCIPAL,
+    IDL_VALUE_SERVICE,
+    IDL_VALUE_FUNC,
     IDL_VALUE_OPT,     /* optional value */
     IDL_VALUE_VEC,     /* vector of values */
     IDL_VALUE_RECORD,  /* record with named/indexed fields */
@@ -94,6 +96,20 @@ typedef struct idl_value {
             size_t         len;
         } principal;
 
+        /* Service (principal) */
+        struct {
+            const uint8_t *data;
+            size_t         len;
+        } service;
+
+        /* Func (principal + method name) */
+        struct {
+            const uint8_t *principal;
+            size_t         principal_len;
+            const char    *method;
+            size_t         method_len;
+        } func;
+
         /* Opt */
         struct idl_value *opt; /* NULL for None, non-NULL for Some */
 
@@ -134,6 +150,12 @@ idl_value *idl_value_blob(idl_arena *arena, const uint8_t *data, size_t len);
 idl_value *idl_value_reserved(idl_arena *arena);
 idl_value *
 idl_value_principal(idl_arena *arena, const uint8_t *data, size_t len);
+idl_value *idl_value_service(idl_arena *arena, const uint8_t *data, size_t len);
+idl_value *idl_value_func(idl_arena     *arena,
+                          const uint8_t *principal,
+                          size_t         principal_len,
+                          const char    *method,
+                          size_t         method_len);
 idl_value *idl_value_opt_none(idl_arena *arena);
 idl_value *idl_value_opt_some(idl_arena *arena, idl_value *inner);
 idl_value *idl_value_vec(idl_arena *arena, idl_value **items, size_t len);

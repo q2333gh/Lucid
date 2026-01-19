@@ -17,6 +17,85 @@
 
 #include "idl/leb128.h"
 
+static int idl_utf8_validate(const uint8_t *bytes, size_t len) {
+    size_t i = 0;
+    while (i < len) {
+        uint8_t c = bytes[i];
+        if (c <= 0x7f) {
+            i++;
+            continue;
+        }
+        if (c >= 0xc2 && c <= 0xdf) {
+            if (i + 1 >= len || (bytes[i + 1] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 2;
+            continue;
+        }
+        if (c == 0xe0) {
+            if (i + 2 >= len || bytes[i + 1] < 0xa0 || bytes[i + 1] > 0xbf ||
+                (bytes[i + 2] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 3;
+            continue;
+        }
+        if (c >= 0xe1 && c <= 0xec) {
+            if (i + 2 >= len || (bytes[i + 1] & 0xc0) != 0x80 ||
+                (bytes[i + 2] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 3;
+            continue;
+        }
+        if (c == 0xed) {
+            if (i + 2 >= len || bytes[i + 1] < 0x80 || bytes[i + 1] > 0x9f ||
+                (bytes[i + 2] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 3;
+            continue;
+        }
+        if (c >= 0xee && c <= 0xef) {
+            if (i + 2 >= len || (bytes[i + 1] & 0xc0) != 0x80 ||
+                (bytes[i + 2] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 3;
+            continue;
+        }
+        if (c == 0xf0) {
+            if (i + 3 >= len || bytes[i + 1] < 0x90 || bytes[i + 1] > 0xbf ||
+                (bytes[i + 2] & 0xc0) != 0x80 ||
+                (bytes[i + 3] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 4;
+            continue;
+        }
+        if (c >= 0xf1 && c <= 0xf3) {
+            if (i + 3 >= len || (bytes[i + 1] & 0xc0) != 0x80 ||
+                (bytes[i + 2] & 0xc0) != 0x80 ||
+                (bytes[i + 3] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 4;
+            continue;
+        }
+        if (c == 0xf4) {
+            if (i + 3 >= len || bytes[i + 1] < 0x80 || bytes[i + 1] > 0x8f ||
+                (bytes[i + 2] & 0xc0) != 0x80 ||
+                (bytes[i + 3] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 4;
+            continue;
+        }
+        return 0;
+    }
+    return 1;
+}
+
 /* Forward declaration */
 static idl_status coerce_impl(idl_arena          *arena,
                               const idl_type_env *env,
@@ -370,6 +449,26 @@ static idl_status coerce_impl(idl_arena          *arena,
         return coerce_variant_to_variant(arena, env, wt, et, value, out);
     }
 
+    if (wt->kind == IDL_KIND_TEXT && et->kind == IDL_KIND_TEXT) {
+        if (!value->data.text.data ||
+            !idl_utf8_validate((const uint8_t *)value->data.text.data,
+                               value->data.text.len)) {
+            return IDL_STATUS_ERR_INVALID_ARG;
+        }
+        *out = (idl_value *)value;
+        return IDL_STATUS_OK;
+    }
+
+    if ((wt->kind == IDL_KIND_FUNC && et->kind == IDL_KIND_FUNC) ||
+        (wt->kind == IDL_KIND_SERVICE && et->kind == IDL_KIND_SERVICE)) {
+        idl_subtype_result res = idl_subtype(env, wt, et, arena);
+        if (res != IDL_SUBTYPE_OK) {
+            return IDL_STATUS_ERR_INVALID_ARG;
+        }
+        *out = (idl_value *)value;
+        return IDL_STATUS_OK;
+    }
+
     if (wt->kind == et->kind) {
         *out = (idl_value *)value;
         return IDL_STATUS_OK;
@@ -623,8 +722,20 @@ idl_status idl_skip_value(const uint8_t      *data,
         break;
 
     case IDL_KIND_FUNC:
+        st = skip_fixed_size(data, data_len, pos, 1);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+        st = skip_length_prefixed(data, data_len, pos, 1);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+        st = skip_length_prefixed(data, data_len, pos, 0);
+        break;
+
     case IDL_KIND_SERVICE:
-        return IDL_STATUS_ERR_UNSUPPORTED;
+        st = skip_length_prefixed(data, data_len, pos, 1);
+        break;
 
     default:
         return IDL_STATUS_ERR_UNSUPPORTED;

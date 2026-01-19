@@ -1,0 +1,19 @@
+service : {
+    "load_asset": (text, blob) -> ();
+    "infer_hello": () -> (text) query;
+    "infer_hello_update": () -> (text);
+    "infer_hello_update_limited": (nat32) -> (text);
+    "infer_stories_update": () -> (text);
+    "infer_stories_update_limited": (nat32, nat32, nat32) -> (text);
+    "infer_stories_step_init": (nat32, nat32, nat32) -> (text);
+    "infer_stories_step": (nat32) -> (text);
+    "infer_stories_step_get": () -> (text) query;
+    "reset_assets": () -> ();
+    "hello": () -> (text) query;
+    "assets_loaded": () -> (text) query;
+    "checkpoint_valid": () -> (nat) query;
+    "checkpoint_complete": () -> (nat) query;
+    "asset_exists": (text) -> (nat) query;
+    "compute_asset_hash": (text) -> (nat) query;
+    "get_asset_sample": (text, nat32, nat32) -> (blob) query;
+}

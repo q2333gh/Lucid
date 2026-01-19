@@ -3,6 +3,9 @@
 attempts/
 t_doc
 
+#llm.c
+vocab/
+
 ##libs
 attempts/hello_c_wasm/clang/lib/wasi-sdk-*/
 attempts/hello_c_wasm/emcc/emsdk/
@@ -29,6 +32,16 @@ pocket-ic
 # IDEs
 .cursorignore
 .cursorrules
+AGENTS.md
+Claude.md
+.cursor/
+.claude/
+
+#### project specific files
+*.gguf
+*.bpe
+examples/llm_c/assets
+
 ####
 ## Other common ignores
 .env

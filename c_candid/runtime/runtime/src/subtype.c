@@ -309,11 +309,11 @@ static idl_subtype_result check_func_subtype(idl_opt_report      report,
     idl_func *f1 = &((idl_type *)rt1)->data.func;
     idl_func *f2 = &((idl_type *)rt2)->data.func;
 
-    if (f1->args_len != f2->args_len) {
+    if (f1->args_len > f2->args_len) {
         return IDL_SUBTYPE_FAIL;
     }
 
-    if (f1->rets_len != f2->rets_len) {
+    if (f1->rets_len < f2->rets_len) {
         return IDL_SUBTYPE_FAIL;
     }
 
@@ -325,7 +325,13 @@ static idl_subtype_result check_func_subtype(idl_opt_report      report,
         }
     }
 
-    for (size_t i = 0; i < f1->rets_len; i++) {
+    for (size_t i = f1->args_len; i < f2->args_len; i++) {
+        if (!idl_type_is_optional_like(env, f2->args[i])) {
+            return IDL_SUBTYPE_FAIL;
+        }
+    }
+
+    for (size_t i = 0; i < f2->rets_len; i++) {
         idl_subtype_result res =
             subtype_check_impl(report, gamma, env, f1->rets[i], f2->rets[i]);
         if (res == IDL_SUBTYPE_FAIL) {

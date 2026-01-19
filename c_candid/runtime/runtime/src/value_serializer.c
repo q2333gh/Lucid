@@ -400,6 +400,24 @@ idl_status idl_value_serializer_write_value(idl_value_serializer *ser,
         return idl_value_serializer_write_principal(
             ser, value->data.principal.data, value->data.principal.len);
 
+    case IDL_VALUE_SERVICE:
+        return idl_value_serializer_write_principal(
+            ser, value->data.service.data, value->data.service.len);
+
+    case IDL_VALUE_FUNC: {
+        idl_status st = idl_value_serializer_write_byte(ser, 1);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+        st = idl_value_serializer_write_principal(
+            ser, value->data.func.principal, value->data.func.principal_len);
+        if (st != IDL_STATUS_OK) {
+            return st;
+        }
+        return idl_value_serializer_write_text(ser, value->data.func.method,
+                                               value->data.func.method_len);
+    }
+
     case IDL_VALUE_NAT:
         return idl_value_serializer_write_nat(ser, value->data.bignum.data,
                                               value->data.bignum.len);

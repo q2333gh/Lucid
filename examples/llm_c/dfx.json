@@ -1,0 +1,22 @@
+{
+  "canisters": {
+    "llm_c": {
+      "candid": "llm_c.did",
+      "wasm": "llm_c_ic.wasm",
+      "type": "custom",
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

@@ -47,6 +47,18 @@ int64_t ic_api_time(void);
 // Emit diagnostic message to console
 void ic_api_debug_print(const char *msg);
 
+// Attribute helper for printf-style formatting checks
+#if defined(__GNUC__) || defined(__clang__)
+#define IC_API_PRINTF_ATTR(fmt_idx, arg_idx)                                   \
+    __attribute__((format(printf, fmt_idx, arg_idx)))
+#else
+#define IC_API_PRINTF_ATTR(fmt_idx, arg_idx)
+#endif
+
+// Emit formatted diagnostic message to console
+void ic_api_debug_printf(const char *fmt, ...) IC_API_PRINTF_ATTR(1, 2);
+#undef IC_API_PRINTF_ATTR
+
 // Abort execution with error message
 _Noreturn void ic_api_trap(const char *msg);
 

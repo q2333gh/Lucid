@@ -19,6 +19,85 @@
 
 #include "idl/leb128.h"
 
+static int idl_utf8_validate(const uint8_t *bytes, size_t len) {
+    size_t i = 0;
+    while (i < len) {
+        uint8_t c = bytes[i];
+        if (c <= 0x7f) {
+            i++;
+            continue;
+        }
+        if (c >= 0xc2 && c <= 0xdf) {
+            if (i + 1 >= len || (bytes[i + 1] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 2;
+            continue;
+        }
+        if (c == 0xe0) {
+            if (i + 2 >= len || bytes[i + 1] < 0xa0 || bytes[i + 1] > 0xbf ||
+                (bytes[i + 2] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 3;
+            continue;
+        }
+        if (c >= 0xe1 && c <= 0xec) {
+            if (i + 2 >= len || (bytes[i + 1] & 0xc0) != 0x80 ||
+                (bytes[i + 2] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 3;
+            continue;
+        }
+        if (c == 0xed) {
+            if (i + 2 >= len || bytes[i + 1] < 0x80 || bytes[i + 1] > 0x9f ||
+                (bytes[i + 2] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 3;
+            continue;
+        }
+        if (c >= 0xee && c <= 0xef) {
+            if (i + 2 >= len || (bytes[i + 1] & 0xc0) != 0x80 ||
+                (bytes[i + 2] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 3;
+            continue;
+        }
+        if (c == 0xf0) {
+            if (i + 3 >= len || bytes[i + 1] < 0x90 || bytes[i + 1] > 0xbf ||
+                (bytes[i + 2] & 0xc0) != 0x80 ||
+                (bytes[i + 3] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 4;
+            continue;
+        }
+        if (c >= 0xf1 && c <= 0xf3) {
+            if (i + 3 >= len || (bytes[i + 1] & 0xc0) != 0x80 ||
+                (bytes[i + 2] & 0xc0) != 0x80 ||
+                (bytes[i + 3] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 4;
+            continue;
+        }
+        if (c == 0xf4) {
+            if (i + 3 >= len || bytes[i + 1] < 0x80 || bytes[i + 1] > 0x8f ||
+                (bytes[i + 2] & 0xc0) != 0x80 ||
+                (bytes[i + 3] & 0xc0) != 0x80) {
+                return 0;
+            }
+            i += 4;
+            continue;
+        }
+        return 0;
+    }
+    return 1;
+}
+
 /* Low-level read functions */
 
 idl_status idl_deserializer_read_bytes(idl_deserializer *de,
@@ -203,6 +282,10 @@ idl_status idl_deserializer_read_text(idl_deserializer *de,
     st = idl_deserializer_read_bytes(de, (size_t)len, &bytes);
     if (st != IDL_STATUS_OK)
         return st;
+
+    if (!idl_utf8_validate(bytes, (size_t)len)) {
+        return IDL_STATUS_ERR_INVALID_ARG;
+    }
 
     /* Copy to arena with null terminator */
     char *text = idl_arena_alloc(de->arena, (size_t)len + 1);
@@ -417,6 +500,9 @@ static idl_status idl_deserializer_read_value_text(idl_deserializer *de,
     if (st != IDL_STATUS_OK) {
         return st;
     }
+    if (!idl_utf8_validate((const uint8_t *)text, len)) {
+        return IDL_STATUS_ERR_INVALID_ARG;
+    }
     *out = idl_value_text(de->arena, text, len);
     return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
 }
@@ -436,6 +522,48 @@ static idl_status idl_deserializer_read_value_principal(idl_deserializer *de,
         return st;
     }
     *out = idl_value_principal(de->arena, data, len);
+    return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
+}
+
+static idl_status idl_deserializer_read_value_service(idl_deserializer *de,
+                                                      idl_value       **out) {
+    const uint8_t *data;
+    size_t         len;
+    idl_status     st = idl_deserializer_read_principal(de, &data, &len);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+    *out = idl_value_service(de->arena, data, len);
+    return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
+}
+
+static idl_status idl_deserializer_read_value_func(idl_deserializer *de,
+                                                   idl_value       **out) {
+    uint8_t    tag;
+    idl_status st = idl_deserializer_read_byte(de, &tag);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+    if (tag != 1) {
+        return IDL_STATUS_ERR_INVALID_ARG;
+    }
+
+    const uint8_t *principal;
+    size_t         principal_len;
+    st = idl_deserializer_read_principal(de, &principal, &principal_len);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    const char *method;
+    size_t      method_len;
+    st = idl_deserializer_read_text(de, &method, &method_len);
+    if (st != IDL_STATUS_OK) {
+        return st;
+    }
+
+    *out =
+        idl_value_func(de->arena, principal, principal_len, method, method_len);
     return *out ? IDL_STATUS_OK : IDL_STATUS_ERR_ALLOC;
 }
 
@@ -653,6 +781,12 @@ idl_status idl_deserializer_read_value_by_type(idl_deserializer *de,
     case IDL_KIND_PRINCIPAL:
         return idl_deserializer_read_value_principal(de, out);
 
+    case IDL_KIND_SERVICE:
+        return idl_deserializer_read_value_service(de, out);
+
+    case IDL_KIND_FUNC:
+        return idl_deserializer_read_value_func(de, out);
+
     case IDL_KIND_NAT:
         return idl_deserializer_read_value_nat(de, out);
 
@@ -670,11 +804,6 @@ idl_status idl_deserializer_read_value_by_type(idl_deserializer *de,
 
     case IDL_KIND_VARIANT:
         return idl_deserializer_read_value_variant(de, actual_type, out);
-
-    case IDL_KIND_FUNC:
-    case IDL_KIND_SERVICE:
-        /* TODO: implement func/service decoding */
-        return IDL_STATUS_ERR_UNSUPPORTED;
 
     case IDL_KIND_VAR:
         /* Should have been resolved above */

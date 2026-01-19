@@ -89,6 +89,12 @@ typedef idl_status       CandidStatus;
 #ifndef CANDID_TYPE_PRINCIPAL
 #define CANDID_TYPE_PRINCIPAL IDL_KIND_PRINCIPAL
 #endif
+#ifndef CANDID_TYPE_FUNC
+#define CANDID_TYPE_FUNC IDL_KIND_FUNC
+#endif
+#ifndef CANDID_TYPE_SERVICE
+#define CANDID_TYPE_SERVICE IDL_KIND_SERVICE
+#endif
 #ifndef CANDID_TYPE_OPT
 #define CANDID_TYPE_OPT IDL_KIND_OPT
 #endif
@@ -120,6 +126,8 @@ typedef idl_status       CandidStatus;
 #define CANDID_VALUE_TEXT IDL_VALUE_TEXT
 #define CANDID_VALUE_RESERVED IDL_VALUE_RESERVED
 #define CANDID_VALUE_PRINCIPAL IDL_VALUE_PRINCIPAL
+#define CANDID_VALUE_SERVICE IDL_VALUE_SERVICE
+#define CANDID_VALUE_FUNC IDL_VALUE_FUNC
 #define CANDID_VALUE_OPT IDL_VALUE_OPT
 #define CANDID_VALUE_VEC IDL_VALUE_VEC
 #define CANDID_VALUE_RECORD IDL_VALUE_RECORD
@@ -157,6 +165,8 @@ typedef idl_status       CandidStatus;
 #define CandidTypeReserved(arena) idl_type_reserved(arena)
 #define CandidTypeEmpty(arena) idl_type_empty(arena)
 #define CandidTypePrincipal(arena) idl_type_principal(arena)
+#define CandidTypeFunc(arena, func) idl_type_func(arena, func)
+#define CandidTypeService(arena, service) idl_type_service(arena, service)
 
 /* Composites */
 #define CandidTypeOpt(arena, inner) idl_type_opt(arena, inner)
@@ -185,6 +195,8 @@ typedef idl_status       CandidStatus;
 #define CandidValueTextCStr(arena, s) idl_value_text_cstr(arena, s)
 #define CandidValueBlob(arena, data, len) idl_value_blob(arena, data, len)
 #define CandidValuePrincipal(arena, d, l) idl_value_principal(arena, d, l)
+#define CandidValueService(arena, d, l) idl_value_service(arena, d, l)
+#define CandidValueFunc(arena, p, pl, m, ml) idl_value_func(arena, p, pl, m, ml)
 #define CandidValueOptNone(arena) idl_value_opt_none(arena)
 #define CandidValueOptSome(arena, inner) idl_value_opt_some(arena, inner)
 #define CandidValueVec(arena, items, len) idl_value_vec(arena, items, len)

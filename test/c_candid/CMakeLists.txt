@@ -75,6 +75,24 @@ target_compile_definitions(test_simple_record.out PRIVATE CANDID_DEBUG_PRINT_ENA
 add_executable(test_complex_roundtrip.out test_complex_roundtrip.c)
 target_link_libraries(test_complex_roundtrip.out ${CANDID_TEST_LIBS})
 
+# Test 9: Prim subset decode tests (from t_doc/candid/test/prim.test.did)
+add_executable(test_prim_subset.out test_prim_subset.c)
+target_link_libraries(test_prim_subset.out ${CANDID_TEST_LIBS})
+
+# Test 10: Reference subset decode tests (from t_doc/candid/test/reference.test.did)
+add_executable(test_reference_subset.out test_reference_subset.c)
+target_link_libraries(test_reference_subset.out ${CANDID_TEST_LIBS})
+
+# Test 11: Reference service/func subset decode tests
+add_executable(test_reference_service_func_subset.out
+    test_reference_service_func_subset.c)
+target_link_libraries(test_reference_service_func_subset.out
+    ${CANDID_TEST_LIBS})
+
+# Test 12: Record subset decode tests
+add_executable(test_record_subset.out test_record_subset.c)
+target_link_libraries(test_record_subset.out ${CANDID_TEST_LIBS})
+
 # Custom target to run all tests
 add_custom_target(run_tests
     COMMAND echo "=== Running test_simple.out ==="
@@ -88,8 +106,23 @@ add_custom_target(run_tests
     COMMAND echo ""
     COMMAND echo "=== Running test_complex_roundtrip.out ==="
     COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_complex_roundtrip.out
+    COMMAND echo ""
+    COMMAND echo "=== Running test_prim_subset.out ==="
+    COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_prim_subset.out
+    COMMAND echo ""
+    COMMAND echo "=== Running test_reference_subset.out ==="
+    COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_reference_subset.out
+    COMMAND echo ""
+    COMMAND echo "=== Running test_reference_service_func_subset.out ==="
+    COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_reference_service_func_subset.out
+    COMMAND echo ""
+    COMMAND echo "=== Running test_record_subset.out ==="
+    COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_record_subset.out
     DEPENDS test_simple.out test_type_inference.out test_debug_print.out
-            test_complex_roundtrip.out
+            test_complex_roundtrip.out test_prim_subset.out
+            test_reference_subset.out
+            test_reference_service_func_subset.out
+            test_record_subset.out
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMENT "Running all c_candid tests"
 )

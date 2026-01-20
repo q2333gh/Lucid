@@ -11,7 +11,8 @@ Build pipeline for IC (Internet Computer) C SDK projects.
       4. Post-process - wasi2ic -> wasm-opt -> candid-extractor -> dfx.json
 
     Usage:
-    python build.py            # Native build (with tests)
+    python build.py            # Show help
+    python build.py --test     # Native build with tests
     python build.py --icwasm   # IC WASM canister build (with post-processing)
 """
 
@@ -338,7 +339,7 @@ def run_post_processing(
 # =============================================================================
 
 
-def build(wasi: bool = False, examples: Optional[List[str]] = None) -> None:
+def build(wasi: bool = False, examples: Optional[List[str]] = None, run_tests: bool = False) -> None:
     """
     Main build orchestrator.
 
@@ -349,7 +350,8 @@ def build(wasi: bool = False, examples: Optional[List[str]] = None) -> None:
       4. Post-process - wasi2ic -> wasm-opt -> candid -> dfx.json
 
     Native build phases:
-      3. Build        - CMake + compile + tests
+      3. Build        - CMake + compile
+      (Optional) Tests - Run ctest if --test specified
     """
     # Directory setup
     build_dir = _ROOT_DIR / ("build-wasi" if wasi else "build")
@@ -395,8 +397,8 @@ def build(wasi: bool = False, examples: Optional[List[str]] = None) -> None:
     # Phase 3: Build
     run_cmake_build(build_dir, wasi, cmake_extra_args)
 
-    # Native: run tests
-    if not wasi:
+    # Native: run tests only if requested
+    if not wasi and run_tests:
         print("\n[Running Tests]")
         subprocess.run(
             ["ctest", "--output-on-failure"],
@@ -434,7 +436,9 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python build.py            Native build (with tests)
+  python build.py --help     Show this help message
+  python build.py            Native build (without tests)
+  python build.py --test     Native build and run tests
   python build.py --icwasm   IC WASM canister build (with post-processing)
   python build.py --icwasm --examples hello_lucid inter-canister-call
   python build.py --new my_canister  Create a new minimal project
@@ -461,14 +465,26 @@ Examples:
         default=None,
     )
 
+    parser.add_argument(
+        "-t", "--test",
+        action="store_true",
+        dest="run_tests",
+        help="Run tests after native build (ignored for WASM builds)",
+    )
+
     args = parser.parse_args()
+
+    # If no arguments provided, print help and exit
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
 
     if args.new:
         create_new_project(args.new, _ROOT_DIR)
         sys.exit(0)
 
     try:
-        build(wasi=args.icwasm, examples=args.examples)
+        build(wasi=args.icwasm, examples=args.examples, run_tests=args.run_tests)
     except subprocess.CalledProcessError as e:
         print(f"\n✗ Build failed: {e}")
         sys.exit(1)

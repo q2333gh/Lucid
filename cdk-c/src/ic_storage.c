@@ -14,6 +14,7 @@
  */
 #include "ic_storage.h"
 
+#include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -236,6 +237,161 @@ int64_t ic_stable_reader_offset(const ic_stable_reader_t *reader) {
 void ic_stable_reader_free(ic_stable_reader_t *reader) {
     if (reader != NULL) {
         cdk_free(reader);
+    }
+}
+
+// =============================================================================
+// Stable IO Implementation
+// =============================================================================
+
+struct ic_stable_io {
+    int64_t offset;   // Current offset in bytes
+    int64_t capacity; // Capacity in pages (cached at creation time)
+};
+
+static ic_storage_result_t stable_io_grow(ic_stable_io_t *io,
+                                          int64_t         new_pages) {
+    if (new_pages <= 0) {
+        return IC_STORAGE_OK;
+    }
+    int64_t old_pages = ic_stable_grow(new_pages);
+    if (old_pages < 0) {
+        return IC_STORAGE_ERR_OUT_OF_MEMORY;
+    }
+    io->capacity = old_pages + new_pages;
+    return IC_STORAGE_OK;
+}
+
+ic_stable_io_t *ic_stable_io_create(void) { return ic_stable_io_create_at(0); }
+
+ic_stable_io_t *ic_stable_io_create_at(int64_t offset) {
+    if (offset < 0) {
+        return NULL;
+    }
+
+    ic_stable_io_t *io = (ic_stable_io_t *)cdk_malloc(sizeof(ic_stable_io_t));
+    if (io == NULL) {
+        return NULL;
+    }
+
+    io->offset = offset;
+    io->capacity = ic_stable_size();
+    if (io->capacity < 0) {
+        cdk_free(io);
+        return NULL;
+    }
+
+    return io;
+}
+
+ic_storage_result_t
+ic_stable_io_write(ic_stable_io_t *io, const uint8_t *data, size_t len) {
+    if (io == NULL || (data == NULL && len > 0)) {
+        return IC_STORAGE_ERR_INVALID_ARG;
+    }
+    if (len == 0) {
+        return IC_STORAGE_OK;
+    }
+    if (io->offset < 0 || len > (size_t)INT64_MAX) {
+        return IC_STORAGE_ERR_INVALID_ARG;
+    }
+    if (io->offset > INT64_MAX - (int64_t)len) {
+        return IC_STORAGE_ERR_OUT_OF_BOUNDS;
+    }
+
+    int64_t required_bytes = io->offset + (int64_t)len;
+    int64_t required_pages = calculate_required_pages(required_bytes);
+
+    if (required_pages > io->capacity) {
+        int64_t             additional_pages = required_pages - io->capacity;
+        ic_storage_result_t result = stable_io_grow(io, additional_pages);
+        if (result != IC_STORAGE_OK) {
+            return result;
+        }
+    }
+
+    ic_stable_write(io->offset, data, (int64_t)len);
+    io->offset += (int64_t)len;
+    return IC_STORAGE_OK;
+}
+
+int64_t ic_stable_io_read(ic_stable_io_t *io, uint8_t *data, size_t len) {
+    if (io == NULL || data == NULL) {
+        return -1;
+    }
+    if (len == 0) {
+        return 0;
+    }
+    if (io->offset < 0 || len > (size_t)INT64_MAX) {
+        return -1;
+    }
+    if (io->capacity < 0 ||
+        io->capacity > INT64_MAX / IC_STABLE_PAGE_SIZE_BYTES) {
+        return -1;
+    }
+
+    int64_t capacity_bytes = io->capacity * IC_STABLE_PAGE_SIZE_BYTES;
+    int64_t available_bytes = capacity_bytes - io->offset;
+    if (available_bytes <= 0) {
+        return 0;
+    }
+
+    int64_t read_len = (int64_t)len;
+    if (read_len > available_bytes) {
+        read_len = available_bytes;
+    }
+
+    ic_stable_read(data, io->offset, read_len);
+    io->offset += read_len;
+    return read_len;
+}
+
+ic_storage_result_t ic_stable_io_seek(ic_stable_io_t         *io,
+                                      int64_t                 offset,
+                                      ic_stable_seek_whence_t whence) {
+    if (io == NULL) {
+        return IC_STORAGE_ERR_INVALID_ARG;
+    }
+
+    int64_t base = 0;
+    if (whence == IC_STABLE_SEEK_SET) {
+        base = 0;
+    } else if (whence == IC_STABLE_SEEK_CUR) {
+        base = io->offset;
+    } else if (whence == IC_STABLE_SEEK_END) {
+        if (io->capacity < 0 ||
+            io->capacity > INT64_MAX / IC_STABLE_PAGE_SIZE_BYTES) {
+            return IC_STORAGE_ERR_OUT_OF_BOUNDS;
+        }
+        base = io->capacity * IC_STABLE_PAGE_SIZE_BYTES;
+    } else {
+        return IC_STORAGE_ERR_INVALID_ARG;
+    }
+
+    if (offset >= 0) {
+        if (base > INT64_MAX - offset) {
+            return IC_STORAGE_ERR_OUT_OF_BOUNDS;
+        }
+    } else {
+        if (base < -offset) {
+            return IC_STORAGE_ERR_OUT_OF_BOUNDS;
+        }
+    }
+
+    io->offset = base + offset;
+    return IC_STORAGE_OK;
+}
+
+int64_t ic_stable_io_offset(const ic_stable_io_t *io) {
+    if (io == NULL) {
+        return 0;
+    }
+    return io->offset;
+}
+
+void ic_stable_io_free(ic_stable_io_t *io) {
+    if (io != NULL) {
+        cdk_free(io);
     }
 }
 

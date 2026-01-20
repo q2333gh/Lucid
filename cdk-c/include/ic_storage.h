@@ -27,6 +27,10 @@ typedef struct ic_stable_writer ic_stable_writer_t;
 struct ic_stable_reader;
 typedef struct ic_stable_reader ic_stable_reader_t;
 
+// Opaque structure for stable IO (read/write/seek)
+struct ic_stable_io;
+typedef struct ic_stable_io ic_stable_io_t;
+
 // =============================================================================
 // Stable Memory Management (Low-level)
 // =============================================================================
@@ -106,6 +110,44 @@ int64_t ic_stable_reader_offset(const ic_stable_reader_t *reader);
 
 // Free the stable reader (does not affect stable memory)
 void ic_stable_reader_free(ic_stable_reader_t *reader);
+
+// =============================================================================
+// Stable IO
+// =============================================================================
+
+// Seek modes for stable IO
+typedef enum {
+    IC_STABLE_SEEK_SET = 0, // absolute offset
+    IC_STABLE_SEEK_CUR = 1, // relative to current offset
+    IC_STABLE_SEEK_END = 2, // relative to current stable size
+} ic_stable_seek_whence_t;
+
+// Create a new stable IO stream starting at offset 0
+ic_stable_io_t *ic_stable_io_create(void);
+
+// Create a new stable IO stream starting at specified offset
+ic_stable_io_t *ic_stable_io_create_at(int64_t offset);
+
+// Write data through the stream (auto-grows stable memory as needed)
+// Returns: IC_STORAGE_OK on success, error code on failure
+ic_storage_result_t
+ic_stable_io_write(ic_stable_io_t *io, const uint8_t *data, size_t len);
+
+// Read data through the stream
+// Returns: number of bytes read, or -1 on error
+int64_t ic_stable_io_read(ic_stable_io_t *io, uint8_t *data, size_t len);
+
+// Seek to a new offset
+// Returns: IC_STORAGE_OK on success, error code on failure
+ic_storage_result_t ic_stable_io_seek(ic_stable_io_t         *io,
+                                      int64_t                 offset,
+                                      ic_stable_seek_whence_t whence);
+
+// Get current offset
+int64_t ic_stable_io_offset(const ic_stable_io_t *io);
+
+// Free the stable IO stream
+void ic_stable_io_free(ic_stable_io_t *io);
 
 // =============================================================================
 // High-level Storage API (similar to stable_save/stable_restore in cdk-rs)

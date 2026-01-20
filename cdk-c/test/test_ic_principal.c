@@ -20,18 +20,25 @@ Test(ic_principal, from_bytes_and_equality) {
     cr_expect_not(ic_principal_equal(&left, &right));
 }
 
-// Constructors must reject null pointers, zero-length data, and oversized
-// blobs.
+// Constructors must reject null pointers (when len > 0) and oversized blobs.
+// Note: len == 0 is valid (management canister has empty principal)
 Test(ic_principal, from_bytes_validates_input) {
     ic_principal_t principal = {0};
     uint8_t        oversized[IC_PRINCIPAL_MAX_LEN + 1] = {0};
 
+    // NULL bytes pointer with non-zero length should fail
     cr_expect_eq(ic_principal_from_bytes(&principal, NULL, 1),
                  IC_ERR_INVALID_ARG);
+
+    // NULL principal pointer should fail
     cr_expect_eq(ic_principal_from_bytes(NULL, oversized, 1),
                  IC_ERR_INVALID_ARG);
-    cr_expect_eq(ic_principal_from_bytes(&principal, oversized, 0),
-                 IC_ERR_INVALID_ARG);
+
+    // Zero length is valid (management canister), so this should succeed
+    cr_expect_eq(ic_principal_from_bytes(&principal, NULL, 0), IC_OK);
+    cr_expect_eq(principal.len, 0);
+
+    // Oversized blob should fail
     cr_expect_eq(
         ic_principal_from_bytes(&principal, oversized, sizeof(oversized)),
         IC_ERR_INVALID_ARG);

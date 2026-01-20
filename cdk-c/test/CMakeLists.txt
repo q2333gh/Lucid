@@ -57,3 +57,27 @@ endif()
 target_compile_options(ic_cdk_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 add_test(NAME ic_cdk_tests COMMAND ic_cdk_tests)
+
+add_executable(ic_cdk_storage_tests
+    test_ic_storage.c
+    test_ic_storage_stub.c
+    "${CDKC_ROOT}/src/ic_storage.c"
+)
+
+target_include_directories(ic_cdk_storage_tests PRIVATE "${CDKC_ROOT}/include")
+target_compile_features(ic_cdk_storage_tests PRIVATE c_std_11)
+target_compile_options(ic_cdk_storage_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+target_link_libraries(ic_cdk_storage_tests PRIVATE PkgConfig::CRITERION)
+
+if(TARGET cdk_alloc)
+    target_link_libraries(ic_cdk_storage_tests PRIVATE cdk_alloc)
+else()
+    target_sources(ic_cdk_storage_tests PRIVATE
+        "${CDKC_ROOT}/../cdk_alloc/src/cdk_alloc.c"
+    )
+    target_include_directories(ic_cdk_storage_tests PRIVATE
+        "${CDKC_ROOT}/../cdk_alloc/include"
+    )
+endif()
+
+add_test(NAME ic_cdk_storage_tests COMMAND ic_cdk_storage_tests)

@@ -15,10 +15,12 @@ set(CDKC_ROOT "${CMAKE_CURRENT_LIST_DIR}/..")
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CRITERION REQUIRED IMPORTED_TARGET criterion)
 
+# tests
 add_executable(ic_cdk_tests
     test_ic_buffer.c
     test_ic_principal.c
     test_ic_candid.c
+    test_shim.c
 )
 
 # Link against the main cdk_c library if available, otherwise build locally
@@ -81,3 +83,28 @@ else()
 endif()
 
 add_test(NAME ic_cdk_storage_tests COMMAND ic_cdk_storage_tests)
+
+add_executable(ic_cdk_shim_libc_tests
+    test_shim_libc.c
+    "${CDKC_ROOT}/src/shim_common.c"
+    "${CDKC_ROOT}/src/shim_libc.c"
+)
+
+target_include_directories(ic_cdk_shim_libc_tests PRIVATE "${CDKC_ROOT}/include")
+target_compile_features(ic_cdk_shim_libc_tests PRIVATE c_std_11)
+target_compile_options(ic_cdk_shim_libc_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+target_compile_definitions(ic_cdk_shim_libc_tests PRIVATE SHIM_LIBC_ENABLE)
+target_link_libraries(ic_cdk_shim_libc_tests PRIVATE PkgConfig::CRITERION)
+
+if(TARGET cdk_alloc)
+    target_link_libraries(ic_cdk_shim_libc_tests PRIVATE cdk_alloc)
+else()
+    target_sources(ic_cdk_shim_libc_tests PRIVATE
+        "${CDKC_ROOT}/../cdk_alloc/src/cdk_alloc.c"
+    )
+    target_include_directories(ic_cdk_shim_libc_tests PRIVATE
+        "${CDKC_ROOT}/../cdk_alloc/include"
+    )
+endif()
+
+add_test(NAME ic_cdk_shim_libc_tests COMMAND ic_cdk_shim_libc_tests)

@@ -1,4 +1,7 @@
 if(BUILD_TARGET_WASI)
     add_executable(canister_lifecycle canister_lifecycle.c)
     setup_ic_canister_target(canister_lifecycle)
+else()
+    add_executable(canister_lifecycle canister_lifecycle.c main_native.c)
+    target_link_libraries(canister_lifecycle PRIVATE cdk_c)
 endif()

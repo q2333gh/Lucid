@@ -10,6 +10,8 @@ set(CDK_C_SOURCES
     src/ic_call.c
     src/ic_storage.c
     src/ic_timer.c
+    src/shim_common.c
+    src/shim_libc.c
     src/http/ic_http_request.c
     src/http/ic_http_request_cost.c
     src/http/ic_http_request_build.c
@@ -20,6 +22,13 @@ set(CDK_C_SOURCES
 # Add IC0 stub for native builds (not WASI)
 if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "wasm32" AND NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
     list(APPEND CDK_C_SOURCES src/ic0_stub.c)
+    list(APPEND CDK_C_SOURCES src/platform/native/shim_native.c)
+else()
+    list(APPEND CDK_C_SOURCES src/platform/ic/shim_ic.c)
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "WASI")
+    target_compile_definitions(cdk_c PUBLIC SHIM_LIBC_ENABLE)
 endif()
 
 add_library(cdk_c STATIC ${CDK_C_SOURCES})

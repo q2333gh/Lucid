@@ -8,33 +8,35 @@
 #include "asset_manager.h"
 #include "ic_c_sdk.h"
 #include "ic_storage.h"
+#include "shim/shim.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
 static int
 ic_read_checkpoint(void *ctx, const char *name, uint8_t **data, size_t *len) {
-    ic_storage_ctx_t *ictx = (ic_storage_ctx_t *)ctx;
-    if (!ictx || !name) {
+    (void)ctx;
+    if (!name || !data || !len) {
         return -1;
     }
 
-    asset_entry_t *entry = ic_asset_lookup(ictx, name);
-    if (!entry || entry->length <= 0) {
+    size_t size = 0;
+    if (shim_blob_size(name, &size) != SHIM_OK) {
         return -1;
     }
-
-    if ((uint64_t)entry->length > SIZE_MAX) {
+    if (size > SIZE_MAX) {
         return -1;
     }
-
-    *len = (size_t)entry->length;
-    *data = (uint8_t *)malloc(*len);
-    if (!*data) {
+    *data = (uint8_t *)malloc(size);
+    if (*data == NULL) {
         return -1;
     }
-
-    ic_stable_read(*data, entry->offset, entry->length);
+    if (shim_blob_read(name, 0, *data, size) != SHIM_OK) {
+        free(*data);
+        *data = NULL;
+        return -1;
+    }
+    *len = size;
     return 0;
 }
 
@@ -50,21 +52,20 @@ ic_read_gguf(void *ctx, const char *name, uint8_t **data, size_t *len) {
 
 static int ic_read_tokens(
     void *ctx, const char *name, int offset, int count, int **tokens) {
-    ic_storage_ctx_t *ictx = (ic_storage_ctx_t *)ctx;
-    if (!ictx || !name || !tokens || count <= 0 || offset < 0) {
+    (void)ctx;
+    if (!name || !tokens || count <= 0 || offset < 0) {
         return -1;
     }
 
-    asset_entry_t *entry = ic_asset_lookup(ictx, name);
-    if (!entry || entry->length <= 0) {
+    size_t blob_len = 0;
+    if (shim_blob_size(name, &blob_len) != SHIM_OK) {
         return -1;
     }
 
-    int64_t byte_offset = entry->offset + (int64_t)offset * sizeof(uint16_t);
-    int64_t byte_len = (int64_t)count * sizeof(uint16_t);
-
-    if (byte_offset < entry->offset ||
-        byte_offset + byte_len > entry->offset + entry->length) {
+    int64_t byte_offset = (int64_t)offset * (int64_t)sizeof(uint16_t);
+    int64_t byte_len = (int64_t)count * (int64_t)sizeof(uint16_t);
+    if (byte_offset < 0 ||
+        (uint64_t)byte_offset + (uint64_t)byte_len > blob_len) {
         return -1;
     }
 
@@ -73,7 +74,11 @@ static int ic_read_tokens(
         return -1;
     }
 
-    ic_stable_read((uint8_t *)buffer, byte_offset, byte_len);
+    if (shim_blob_read(name, (size_t)byte_offset, (uint8_t *)buffer,
+                       (size_t)byte_len) != SHIM_OK) {
+        free(buffer);
+        return -1;
+    }
 
     *tokens = (int *)malloc((size_t)count * sizeof(int));
     if (!*tokens) {

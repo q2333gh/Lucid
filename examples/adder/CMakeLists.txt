@@ -4,4 +4,7 @@ if(BUILD_TARGET_WASI)
     target_include_directories(
         adder PRIVATE "${CMAKE_SOURCE_DIR}/third_party/tinyprintf")
     target_link_libraries(adder PRIVATE tinyprintf)
+else()
+    add_executable(adder adder.c main_native.c)
+    target_link_libraries(adder PRIVATE cdk_c)
 endif()

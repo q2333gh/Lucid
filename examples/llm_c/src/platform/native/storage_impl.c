@@ -5,6 +5,7 @@
  */
 
 #include "../../interface/storage.h"
+#include "shim/shim.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,32 +22,24 @@ static int native_read_checkpoint(void       *ctx,
                                   uint8_t   **data,
                                   size_t     *len) {
     native_storage_ctx_t *nctx = (native_storage_ctx_t *)ctx;
-    if (!nctx || !nctx->checkpoint_path) {
+    if (!nctx || !nctx->checkpoint_path || !data || !len) {
         return -1;
     }
 
-    FILE *fp = fopen(nctx->checkpoint_path, "rb");
-    if (!fp) {
+    size_t size = 0;
+    if (shim_blob_size(nctx->checkpoint_path, &size) != SHIM_OK) {
         return -1;
     }
-
-    fseek(fp, 0, SEEK_END);
-    *len = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-
-    *data = (uint8_t *)malloc(*len);
-    if (!*data) {
-        fclose(fp);
+    *data = (uint8_t *)malloc(size);
+    if (*data == NULL) {
         return -1;
     }
-
-    size_t read = fread(*data, 1, *len, fp);
-    fclose(fp);
-
-    if (read != *len) {
+    if (shim_blob_read(nctx->checkpoint_path, 0, *data, size) != SHIM_OK) {
         free(*data);
+        *data = NULL;
         return -1;
     }
+    *len = size;
 
     return 0;
 }
@@ -54,7 +47,7 @@ static int native_read_checkpoint(void       *ctx,
 static int
 native_read_asset(void *ctx, const char *name, uint8_t **data, size_t *len) {
     native_storage_ctx_t *nctx = (native_storage_ctx_t *)ctx;
-    if (!nctx) {
+    if (!nctx || !data || !len) {
         return -1;
     }
 
@@ -71,28 +64,20 @@ native_read_asset(void *ctx, const char *name, uint8_t **data, size_t *len) {
         return -1;
     }
 
-    FILE *fp = fopen(path, "rb");
-    if (!fp) {
+    size_t size = 0;
+    if (shim_blob_size(path, &size) != SHIM_OK) {
         return -1;
     }
-
-    fseek(fp, 0, SEEK_END);
-    *len = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-
-    *data = (uint8_t *)malloc(*len);
-    if (!*data) {
-        fclose(fp);
+    *data = (uint8_t *)malloc(size);
+    if (*data == NULL) {
         return -1;
     }
-
-    size_t read = fread(*data, 1, *len, fp);
-    fclose(fp);
-
-    if (read != *len) {
+    if (shim_blob_read(path, 0, *data, size) != SHIM_OK) {
         free(*data);
+        *data = NULL;
         return -1;
     }
+    *len = size;
 
     return 0;
 }
@@ -111,27 +96,30 @@ static int native_read_tokens(
 static int
 native_read_gguf(void *ctx, const char *name, uint8_t **data, size_t *len) {
     native_storage_ctx_t *nctx = (native_storage_ctx_t *)ctx;
-    if (!nctx) {
+    if (!nctx || !data || !len) {
         return -1;
     }
 
-    // For native platform, return file path as string
-    // The GGUF loader will use this path directly with gguf_open()
     const char *path = nctx->gguf_path ? nctx->gguf_path : name;
 
     if (!path) {
         return -1;
     }
 
-    // Return path as data (GGUF loader expects filename)
-    size_t path_len = strlen(path) + 1;
-    *data = (uint8_t *)malloc(path_len);
-    if (!*data) {
+    size_t size = 0;
+    if (shim_blob_size(path, &size) != SHIM_OK) {
         return -1;
     }
-
-    memcpy(*data, path, path_len);
-    *len = path_len;
+    *data = (uint8_t *)malloc(size);
+    if (*data == NULL) {
+        return -1;
+    }
+    if (shim_blob_read(path, 0, *data, size) != SHIM_OK) {
+        free(*data);
+        *data = NULL;
+        return -1;
+    }
+    *len = size;
 
     return 0;
 }

@@ -4,5 +4,7 @@ if(BUILD_TARGET_WASI)
     target_include_directories(
         inter-canister-call PRIVATE "${CMAKE_SOURCE_DIR}/third_party/tinyprintf")
     target_link_libraries(inter-canister-call PRIVATE tinyprintf)
+else()
+    add_executable(inter-canister-call inter-canister-call.c main_native.c)
+    target_link_libraries(inter-canister-call PRIVATE cdk_c)
 endif()
-

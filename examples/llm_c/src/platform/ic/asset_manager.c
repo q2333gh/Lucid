@@ -7,6 +7,7 @@
 #include "asset_manager.h"
 #include "ic_c_sdk.h"
 #include "ic_storage.h"
+#include "shim/shim.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,6 +26,7 @@ ic_storage_ctx_t *ic_asset_manager_create(void) {
         return NULL;
     }
 
+    shim_clear_blobs();
     return ctx;
 }
 
@@ -32,6 +34,9 @@ void ic_asset_manager_free(ic_storage_ctx_t *ctx) {
     if (ctx) {
         // Note: ic_stable_writer doesn't need explicit cleanup
         // The writer is automatically managed by the IC runtime
+        for (size_t i = 0; i < ctx->asset_count; i++) {
+            shim_unregister_blob(ctx->assets[i].name);
+        }
         free(ctx);
     }
 }
@@ -90,4 +95,5 @@ void ic_asset_write(ic_storage_ctx_t *ctx,
     }
 
     entry->length += (int64_t)len;
+    shim_register_blob(entry->name, entry->offset, (size_t)entry->length);
 }

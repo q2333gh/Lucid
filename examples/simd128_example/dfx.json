@@ -1,0 +1,22 @@
+{
+  "canisters": {
+    "simd128_example": {
+      "candid": "simd128_example.did",
+      "wasm": "simd128_example_ic.wasm",
+      "type": "custom",
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

@@ -1,0 +1,4 @@
+service : {
+    "add_vectors": () -> (vec int32) query;
+    "greet": () -> (text) query;
+}

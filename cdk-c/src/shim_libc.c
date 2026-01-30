@@ -16,6 +16,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#ifdef lseek
+#undef lseek
+#endif
 
 #ifndef MAP_FAILED
 #define MAP_FAILED ((void *)-1)
@@ -82,7 +85,7 @@ static int shim_fd_alloc(const char *path, size_t size) {
     return -1;
 }
 
-int open(const char *path, int flags, ...) {
+__attribute__((weak)) int open(const char *path, int flags, ...) {
     (void)flags;
     size_t size = 0;
     if (shim_blob_size(path, &size) != SHIM_OK) {
@@ -98,7 +101,7 @@ int open(const char *path, int flags, ...) {
     return fd;
 }
 
-int close(int fd) {
+__attribute__((weak)) int close(int fd) {
     shim_fd_entry_t *entry = shim_fd_get(fd);
     if (entry == NULL) {
         errno = EBADF;
@@ -112,7 +115,7 @@ int close(int fd) {
     return 0;
 }
 
-ssize_t read(int fd, void *buf, size_t count) {
+__attribute__((weak)) ssize_t read(int fd, void *buf, size_t count) {
     shim_fd_entry_t *entry = shim_fd_get(fd);
     if (entry == NULL || buf == NULL) {
         errno = EBADF;
@@ -134,7 +137,7 @@ ssize_t read(int fd, void *buf, size_t count) {
     return (ssize_t)to_read;
 }
 
-off_t lseek(int fd, off_t offset, int whence) {
+__attribute__((weak)) off_t lseek(int fd, off_t offset, int whence) {
     shim_fd_entry_t *entry = shim_fd_get(fd);
     if (entry == NULL) {
         errno = EBADF;
@@ -167,7 +170,7 @@ off_t lseek(int fd, off_t offset, int whence) {
     return (off_t)entry->offset;
 }
 
-int fstat(int fd, struct stat *st) {
+__attribute__((weak)) int fstat(int fd, struct stat *st) {
     shim_fd_entry_t *entry = shim_fd_get(fd);
     if (entry == NULL) {
         errno = EBADF;
@@ -178,7 +181,8 @@ int fstat(int fd, struct stat *st) {
     return 0;
 }
 
-void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t off) {
+__attribute__((weak)) void *
+mmap(void *addr, size_t length, int prot, int flags, int fd, off_t off) {
     (void)addr;
     (void)prot;
     (void)flags;
@@ -227,7 +231,7 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t off) {
     return MAP_FAILED;
 }
 
-int munmap(void *addr, size_t length) {
+__attribute__((weak)) int munmap(void *addr, size_t length) {
     (void)length;
     if (addr == NULL || addr == MAP_FAILED) {
         errno = EINVAL;
@@ -270,7 +274,7 @@ static shim_file_t *shim_file_open(const char *path) {
     return file;
 }
 
-FILE *fopen(const char *path, const char *mode) {
+__attribute__((weak)) FILE *fopen(const char *path, const char *mode) {
     if (path == NULL || mode == NULL) {
         errno = EINVAL;
         return NULL;
@@ -288,7 +292,7 @@ FILE *fopen(const char *path, const char *mode) {
     return (FILE *)file;
 }
 
-int fclose(FILE *stream) {
+__attribute__((weak)) int fclose(FILE *stream) {
     if (stream == NULL) {
         errno = EINVAL;
         return -1;
@@ -327,7 +331,7 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
     return to_read / size;
 }
 
-int fseek(FILE *stream, long offset, int whence) {
+__attribute__((weak)) int fseek(FILE *stream, long offset, int whence) {
     if (stream == NULL) {
         errno = EINVAL;
         return -1;
@@ -368,7 +372,7 @@ long ftell(FILE *stream) {
     return (long)file->offset;
 }
 
-int fileno(FILE *stream) {
+__attribute__((weak)) int fileno(FILE *stream) {
     (void)stream;
     errno = ENOTSUP;
     return -1;

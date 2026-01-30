@@ -27,11 +27,11 @@ else()
     list(APPEND CDK_C_SOURCES src/platform/ic/shim_ic.c)
 endif()
 
+add_library(cdk_c STATIC ${CDK_C_SOURCES})
+
 if(CMAKE_SYSTEM_NAME STREQUAL "WASI")
     target_compile_definitions(cdk_c PUBLIC SHIM_LIBC_ENABLE)
 endif()
-
-add_library(cdk_c STATIC ${CDK_C_SOURCES})
 
 # Add c_candid dependency
 if(NOT TARGET candid_runtime)

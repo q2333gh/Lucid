@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+from dfxjson.generate_dfx import generate_dfx_json
+
 
 def create_new_project(project_name: str, root_dir: Path) -> None:
     """
@@ -51,7 +53,15 @@ endif()
 """
     (project_dir / f"{project_name}.did").write_text(did_content)
 
+    # 4. dfx.json (reuse generate_dfx_json; wasm will be {project_name}_ic.wasm after build)
+    generate_dfx_json(
+        canister_name=project_name,
+        wasm_path=f"{project_name}_ic.wasm",
+        did_path=f"{project_name}.did",
+        output_dir=str(project_dir),
+    )
+
     print(f"✓ Project created at: {project_dir}")
-    print(f"  Files: {c_file_name}, CMakeLists.txt, {project_name}.did")
+    print(f"  Files: {c_file_name}, CMakeLists.txt, {project_name}.did, dfx.json")
     print("\nTo build:")
     print(f"  python build.py --icwasm --examples {project_name}")

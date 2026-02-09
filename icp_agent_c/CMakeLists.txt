@@ -8,6 +8,7 @@ add_library(icp_agent_c STATIC
     src/identity_anonymous.c
     src/identity_ed25519_openssl.c
     src/envelope_cbor.c
+    src/transport_curl.c
 )
 target_include_directories(icp_agent_c PUBLIC include)
 target_compile_features(icp_agent_c PUBLIC c_std_11)
@@ -40,3 +41,10 @@ add_executable(icp_agent_c_envelope
 target_link_libraries(icp_agent_c_envelope PRIVATE icp_agent_c)
 
 add_test(NAME icp_agent_c_envelope COMMAND icp_agent_c_envelope)
+
+add_executable(icp_agent_c_query
+    tests/test_query_mock_http.c
+)
+target_link_libraries(icp_agent_c_query PRIVATE icp_agent_c pthread)
+
+add_test(NAME icp_agent_c_query COMMAND icp_agent_c_query)

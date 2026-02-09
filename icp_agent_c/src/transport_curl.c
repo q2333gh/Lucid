@@ -195,8 +195,12 @@ ic_agent_error_code_t ic_http_post_binary(const char         *url,
         n = recv(fd, tmp, sizeof(tmp), 0);
         if (n == 0)
             break;
-        if (n < 0)
+        if (n < 0) {
+            if (errno == ECONNRESET && raw.len > 0) {
+                break;
+            }
             goto fail;
+        }
         if (!dynbuf_append(&raw, tmp, (size_t)n))
             goto fail;
     }

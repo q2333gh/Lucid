@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "icp_agent/envelope.h"
+#include "icp_agent/request_id.h"
 #include "icp_agent/transport.h"
 #include "icp_agent/types.h"
 
@@ -195,6 +196,39 @@ void ic_agent_destroy(ic_agent_t *agent) {
     agent->replica_url = NULL;
 }
 
+static ic_agent_error_code_t post_envelope(ic_agent_t                  *agent,
+                                           const ic_envelope_content_t *content,
+                                           const char         *path_suffix,
+                                           ic_http_response_t *out_response) {
+    uint8_t              *envelope = NULL;
+    size_t                envelope_len = 0;
+    char                 *url = NULL;
+    size_t                url_len = 0;
+    ic_agent_error_code_t rc = IC_AGENT_ERR;
+
+    if (agent == NULL || agent->replica_url == NULL || content == NULL ||
+        path_suffix == NULL || out_response == NULL) {
+        return IC_AGENT_ERR;
+    }
+    if (ic_encode_envelope_cbor(content, NULL, 0, NULL, 0, &envelope,
+                                &envelope_len) != IC_AGENT_OK) {
+        return IC_AGENT_ERR;
+    }
+
+    url_len = strlen(agent->replica_url) + strlen(path_suffix);
+    url = (char *)malloc(url_len + 1);
+    if (url == NULL) {
+        ic_envelope_cbor_free(envelope);
+        return IC_AGENT_ERR;
+    }
+    strcpy(url, agent->replica_url);
+    strcat(url, path_suffix);
+    rc = ic_http_post_binary(url, envelope, envelope_len, out_response);
+    free(url);
+    ic_envelope_cbor_free(envelope);
+    return rc;
+}
+
 ic_agent_error_code_t ic_agent_query(ic_agent_t    *agent,
                                      const uint8_t *canister_id,
                                      size_t         canister_id_len,
@@ -204,11 +238,7 @@ ic_agent_error_code_t ic_agent_query(ic_agent_t    *agent,
                                      uint8_t      **out_reply,
                                      size_t        *out_reply_len) {
     ic_envelope_content_t content;
-    uint8_t              *envelope = NULL;
-    size_t                envelope_len = 0;
     ic_http_response_t    response = {0};
-    char                 *url = NULL;
-    size_t                url_len = 0;
     ic_agent_error_code_t rc = IC_AGENT_ERR;
 
     if (agent == NULL || agent->replica_url == NULL || canister_id == NULL ||
@@ -231,24 +261,8 @@ ic_agent_error_code_t ic_agent_query(ic_agent_t    *agent,
     content.ingress_expiry = 0;
     content.has_ingress_expiry = false;
 
-    if (ic_encode_envelope_cbor(&content, NULL, 0, NULL, 0, &envelope,
-                                &envelope_len) != IC_AGENT_OK) {
-        return IC_AGENT_ERR;
-    }
-
-    url_len =
-        strlen(agent->replica_url) + strlen("/api/v3/canister/aaaaa-aa/query");
-    url = (char *)malloc(url_len + 1);
-    if (url == NULL) {
-        ic_envelope_cbor_free(envelope);
-        return IC_AGENT_ERR;
-    }
-    strcpy(url, agent->replica_url);
-    strcat(url, "/api/v3/canister/aaaaa-aa/query");
-
-    rc = ic_http_post_binary(url, envelope, envelope_len, &response);
-    free(url);
-    ic_envelope_cbor_free(envelope);
+    rc = post_envelope(agent, &content, "/api/v3/canister/aaaaa-aa/query",
+                       &response);
     if (rc != IC_AGENT_OK)
         return IC_AGENT_ERR;
     if (response.status_code < 200 || response.status_code >= 300) {
@@ -262,6 +276,87 @@ ic_agent_error_code_t ic_agent_query(ic_agent_t    *agent,
              : IC_AGENT_ERR;
     ic_http_response_free(&response);
     return rc;
+}
+
+ic_agent_error_code_t ic_agent_update(ic_agent_t      *agent,
+                                      const uint8_t   *canister_id,
+                                      size_t           canister_id_len,
+                                      const char      *method_name,
+                                      const uint8_t   *arg,
+                                      size_t           arg_len,
+                                      ic_request_id_t *out_request_id) {
+    ic_envelope_content_t content;
+    ic_http_response_t    response = {0};
+    const uint8_t        *status_ptr = NULL;
+    size_t                status_len = 0;
+    bool                  status_ok = false;
+    cbor_reader_t         r;
+    uint8_t               major = 0;
+    uint64_t              pairs = 0;
+
+    if (agent == NULL || out_request_id == NULL || canister_id == NULL ||
+        canister_id_len == 0 || method_name == NULL || arg == NULL) {
+        return IC_AGENT_ERR;
+    }
+
+    content.type = IC_ENVELOPE_CALL;
+    content.canister_id = canister_id;
+    content.canister_id_len = canister_id_len;
+    content.method_name = method_name;
+    content.arg = arg;
+    content.arg_len = arg_len;
+    content.sender = NULL;
+    content.sender_len = 0;
+    content.has_sender = false;
+    content.ingress_expiry = 0;
+    content.has_ingress_expiry = false;
+
+    if (ic_compute_request_id(&content, out_request_id) != IC_AGENT_OK) {
+        return IC_AGENT_ERR;
+    }
+    if (post_envelope(agent, &content, "/api/v3/canister/aaaaa-aa/call",
+                      &response) != IC_AGENT_OK) {
+        return IC_AGENT_ERR;
+    }
+    if (response.status_code < 200 || response.status_code >= 300) {
+        ic_http_response_free(&response);
+        return IC_AGENT_ERR;
+    }
+
+    r.buf = response.body;
+    r.len = response.body_len;
+    r.off = 0;
+    if (!cbor_read_header(&r, &major, &pairs) || major != 5) {
+        ic_http_response_free(&response);
+        return IC_AGENT_ERR;
+    }
+    for (size_t i = 0; i < (size_t)pairs; i++) {
+        const uint8_t *k = NULL;
+        size_t         klen = 0;
+        if (!cbor_read_text(&r, &k, &klen)) {
+            ic_http_response_free(&response);
+            return IC_AGENT_ERR;
+        }
+        if (key_equals(k, klen, "status")) {
+            if (!cbor_read_text(&r, &status_ptr, &status_len)) {
+                ic_http_response_free(&response);
+                return IC_AGENT_ERR;
+            }
+        } else if (!cbor_skip_value(&r)) {
+            ic_http_response_free(&response);
+            return IC_AGENT_ERR;
+        }
+    }
+    if (status_ptr != NULL &&
+        ((status_len == 8 && memcmp(status_ptr, "accepted", 8) == 0) ||
+         (status_len == 7 && memcmp(status_ptr, "replied", 7) == 0))) {
+        status_ok = true;
+    }
+    ic_http_response_free(&response);
+    if (!status_ok) {
+        return IC_AGENT_ERR;
+    }
+    return IC_AGENT_OK;
 }
 
 void ic_agent_bytes_free(uint8_t *bytes) { free(bytes); }

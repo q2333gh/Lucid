@@ -4,6 +4,7 @@ find_package(OpenSSL REQUIRED)
 
 add_library(icp_agent_c STATIC
     src/agent.c
+    src/agent_wait.c
     src/request_id.c
     src/identity_anonymous.c
     src/identity_ed25519_openssl.c
@@ -48,3 +49,10 @@ add_executable(icp_agent_c_query
 target_link_libraries(icp_agent_c_query PRIVATE icp_agent_c pthread)
 
 add_test(NAME icp_agent_c_query COMMAND icp_agent_c_query)
+
+add_executable(icp_agent_c_update_wait
+    tests/test_update_wait_mock_http.c
+)
+target_link_libraries(icp_agent_c_update_wait PRIVATE icp_agent_c pthread)
+
+add_test(NAME icp_agent_c_update_wait COMMAND icp_agent_c_update_wait)

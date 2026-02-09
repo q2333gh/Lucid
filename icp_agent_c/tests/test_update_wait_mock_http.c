@@ -146,10 +146,10 @@ int main(void) {
                                 sizeof(canister_text)) > 0);
     assert(
         snprintf(server.expected_call_path, sizeof(server.expected_call_path),
-                 "POST /api/v3/canister/%s/call HTTP/1.1", canister_text) > 0);
+                 "POST /api/v2/canister/%s/call HTTP/1.1", canister_text) > 0);
     assert(snprintf(server.expected_read_state_path,
                     sizeof(server.expected_read_state_path),
-                    "POST /api/v3/canister/%s/read_state HTTP/1.1",
+                    "POST /api/v2/canister/%s/read_state HTTP/1.1",
                     canister_text) > 0);
 
     listener = socket(AF_INET, SOCK_STREAM, 0);

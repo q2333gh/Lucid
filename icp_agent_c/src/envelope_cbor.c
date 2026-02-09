@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <idl/leb128.h>
-
 typedef struct {
     uint8_t *data;
     size_t   len;
@@ -103,6 +101,10 @@ static int cbor_write_null(cbor_buf_t *buf) {
     return cbor_push_byte(buf, 0xF6);
 }
 
+static int cbor_write_array_len(cbor_buf_t *buf, size_t len) {
+    return cbor_write_major(buf, 4, (uint64_t)len);
+}
+
 static const char *request_type_to_text(ic_envelope_type_t type) {
     switch (type) {
     case IC_ENVELOPE_CALL:
@@ -119,18 +121,15 @@ static const char *request_type_to_text(ic_envelope_type_t type) {
 static int cbor_write_content(cbor_buf_t                  *buf,
                               const ic_envelope_content_t *content) {
     const char *request_type = request_type_to_text(content->type);
-    uint8_t     expiry_leb128[16];
-    size_t      expiry_len = 0;
-    size_t      map_len = 4;
+    size_t      map_len = 0;
 
     if (request_type == NULL) {
         return 0;
     }
-    if (content->has_sender) {
-        map_len += 1;
-    }
-    if (content->has_ingress_expiry) {
-        map_len += 1;
+    if (content->type == IC_ENVELOPE_READ_STATE) {
+        map_len = 4;
+    } else {
+        map_len = 6;
     }
 
     if (!cbor_write_major(buf, 5, (uint64_t)map_len)) {
@@ -140,35 +139,33 @@ static int cbor_write_content(cbor_buf_t                  *buf,
         !cbor_write_text(buf, request_type)) {
         return 0;
     }
-    if (!cbor_write_text(buf, "canister_id") ||
-        !cbor_write_bytes(buf, content->canister_id,
-                          content->canister_id_len)) {
+    if (!content->has_sender || content->sender == NULL ||
+        content->sender_len == 0 || !content->has_ingress_expiry) {
         return 0;
     }
-    if (!cbor_write_text(buf, "method_name") ||
-        !cbor_write_text(buf, content->method_name)) {
-        return 0;
-    }
-    if (!cbor_write_text(buf, "arg") ||
-        !cbor_write_bytes(buf, content->arg, content->arg_len)) {
-        return 0;
-    }
-
-    if (content->has_sender) {
+    if (content->type == IC_ENVELOPE_READ_STATE) {
         if (!cbor_write_text(buf, "sender") ||
-            !cbor_write_bytes(buf, content->sender, content->sender_len)) {
+            !cbor_write_bytes(buf, content->sender, content->sender_len) ||
+            !cbor_write_text(buf, "ingress_expiry") ||
+            !cbor_write_major(buf, 0, content->ingress_expiry) ||
+            !cbor_write_text(buf, "paths") || !cbor_write_array_len(buf, 1) ||
+            !cbor_write_array_len(buf, 2) ||
+            !cbor_write_text(buf, "request_status") ||
+            !cbor_write_bytes(buf, content->arg, content->arg_len)) {
             return 0;
         }
-    }
-
-    if (content->has_ingress_expiry) {
-        if (idl_uleb128_encode(content->ingress_expiry, expiry_leb128,
-                               sizeof(expiry_leb128),
-                               &expiry_len) != IDL_STATUS_OK) {
-            return 0;
-        }
-        if (!cbor_write_text(buf, "ingress_expiry") ||
-            !cbor_write_bytes(buf, expiry_leb128, expiry_len)) {
+    } else {
+        if (!cbor_write_text(buf, "canister_id") ||
+            !cbor_write_bytes(buf, content->canister_id,
+                              content->canister_id_len) ||
+            !cbor_write_text(buf, "method_name") ||
+            !cbor_write_text(buf, content->method_name) ||
+            !cbor_write_text(buf, "arg") ||
+            !cbor_write_bytes(buf, content->arg, content->arg_len) ||
+            !cbor_write_text(buf, "sender") ||
+            !cbor_write_bytes(buf, content->sender, content->sender_len) ||
+            !cbor_write_text(buf, "ingress_expiry") ||
+            !cbor_write_major(buf, 0, content->ingress_expiry)) {
             return 0;
         }
     }
@@ -186,8 +183,11 @@ ic_encode_envelope_cbor(const ic_envelope_content_t *content,
     cbor_buf_t buf = {0};
 
     if (content == NULL || out_cbor == NULL || out_cbor_len == NULL ||
-        content->canister_id == NULL || content->method_name == NULL ||
         content->arg == NULL) {
+        return IC_AGENT_ERR;
+    }
+    if (content->type != IC_ENVELOPE_READ_STATE &&
+        (content->canister_id == NULL || content->method_name == NULL)) {
         return IC_AGENT_ERR;
     }
     if (content->has_sender &&

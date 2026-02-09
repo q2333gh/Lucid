@@ -113,7 +113,7 @@ int main(void) {
     assert(ic_principal_to_text(&canister_principal, canister_text,
                                 sizeof(canister_text)) > 0);
     assert(snprintf(server.expected_path, sizeof(server.expected_path),
-                    "POST /api/v3/canister/%s/query HTTP/1.1",
+                    "POST /api/v2/canister/%s/query HTTP/1.1",
                     canister_text) > 0);
 
     listener = socket(AF_INET, SOCK_STREAM, 0);

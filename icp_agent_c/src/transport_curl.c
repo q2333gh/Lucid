@@ -50,6 +50,101 @@ static const uint8_t *find_header_separator(const uint8_t *buf, size_t len) {
     return NULL;
 }
 
+static int ascii_tolower_int(int c) {
+    if (c >= 'A' && c <= 'Z')
+        return c + ('a' - 'A');
+    return c;
+}
+
+static int header_has_token(const uint8_t *head,
+                            size_t         head_len,
+                            const char    *name,
+                            const char    *value) {
+    size_t name_len = strlen(name);
+    size_t value_len = strlen(value);
+    for (size_t i = 0; i + name_len + 1 < head_len; i++) {
+        size_t j = 0;
+        size_t k = 0;
+        for (j = 0; j < name_len; j++) {
+            if (ascii_tolower_int(head[i + j]) != ascii_tolower_int(name[j])) {
+                break;
+            }
+        }
+        if (j != name_len || head[i + name_len] != ':')
+            continue;
+        i += name_len + 1;
+        while (i < head_len && (head[i] == ' ' || head[i] == '\t'))
+            i++;
+        for (k = 0; k < value_len && i + k < head_len; k++) {
+            if (ascii_tolower_int(head[i + k]) != ascii_tolower_int(value[k])) {
+                break;
+            }
+        }
+        if (k == value_len)
+            return 1;
+    }
+    return 0;
+}
+
+static int hex_value(int c) {
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return 10 + (c - 'a');
+    if (c >= 'A' && c <= 'F')
+        return 10 + (c - 'A');
+    return -1;
+}
+
+static int decode_chunked_body(const uint8_t *in,
+                               size_t         in_len,
+                               uint8_t      **out,
+                               size_t        *out_len) {
+    size_t   off = 0;
+    dynbuf_t decoded = {0};
+    while (off < in_len) {
+        size_t chunk_size = 0;
+        size_t line_end = off;
+        while (line_end + 1 < in_len &&
+               !(in[line_end] == '\r' && in[line_end + 1] == '\n')) {
+            if (in[line_end] == ';') {
+                while (line_end + 1 < in_len &&
+                       !(in[line_end] == '\r' && in[line_end + 1] == '\n')) {
+                    line_end++;
+                }
+                break;
+            }
+            int hv = hex_value(in[line_end]);
+            if (hv < 0)
+                return 0;
+            chunk_size = (chunk_size << 4) | (size_t)hv;
+            line_end++;
+        }
+        if (line_end + 1 >= in_len)
+            return 0;
+        off = line_end + 2;
+        if (chunk_size == 0) {
+            *out = decoded.data;
+            *out_len = decoded.len;
+            return 1;
+        }
+        if (off + chunk_size + 2 > in_len)
+            return 0;
+        if (!dynbuf_append(&decoded, in + off, chunk_size)) {
+            free(decoded.data);
+            return 0;
+        }
+        off += chunk_size;
+        if (in[off] != '\r' || in[off + 1] != '\n') {
+            free(decoded.data);
+            return 0;
+        }
+        off += 2;
+    }
+    free(decoded.data);
+    return 0;
+}
+
 static int
 parse_status_code(const uint8_t *head, size_t head_len, long *status) {
     size_t i = 0;
@@ -160,6 +255,10 @@ ic_agent_error_code_t ic_http_post_binary(const char         *url,
     ssize_t        n = 0;
     const uint8_t *sep = NULL;
     size_t         head_len = 0;
+    const uint8_t *body_ptr = NULL;
+    size_t         response_body_len = 0;
+    uint8_t       *decoded_body = NULL;
+    size_t         decoded_body_len = 0;
     long           status = 0;
 
     if (url == NULL || body == NULL || out_response == NULL)
@@ -212,12 +311,26 @@ ic_agent_error_code_t ic_http_post_binary(const char         *url,
     if (!parse_status_code(raw.data, head_len, &status))
         goto fail;
 
+    body_ptr = sep + 4;
+    response_body_len = raw.len - (head_len + 4);
     out_response->status_code = status;
-    out_response->body_len = raw.len - (head_len + 4);
-    out_response->body = (uint8_t *)malloc(out_response->body_len);
+
+    if (header_has_token(raw.data, head_len, "Transfer-Encoding", "chunked")) {
+        if (!decode_chunked_body(body_ptr, response_body_len, &decoded_body,
+                                 &decoded_body_len)) {
+            goto fail;
+        }
+        out_response->body = decoded_body;
+        out_response->body_len = decoded_body_len;
+    } else {
+        out_response->body = (uint8_t *)malloc(response_body_len);
+        out_response->body_len = response_body_len;
+        if (out_response->body == NULL)
+            goto fail;
+        memcpy(out_response->body, body_ptr, out_response->body_len);
+    }
     if (out_response->body == NULL)
         goto fail;
-    memcpy(out_response->body, sep + 4, out_response->body_len);
 
     close(fd);
     free(host);

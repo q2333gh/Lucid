@@ -64,3 +64,10 @@ add_executable(icp_agent_c_certificate
 target_link_libraries(icp_agent_c_certificate PRIVATE icp_agent_c)
 
 add_test(NAME icp_agent_c_certificate COMMAND icp_agent_c_certificate)
+
+add_executable(icp_agent_c_e2e_local
+    tests/test_e2e_local_replica.c
+)
+target_link_libraries(icp_agent_c_e2e_local PRIVATE icp_agent_c)
+
+add_test(NAME icp_agent_c_e2e_local COMMAND icp_agent_c_e2e_local)

@@ -11,6 +11,7 @@ typedef struct {
 typedef enum {
     IC_ENVELOPE_CALL = 0,
     IC_ENVELOPE_QUERY = 1,
+    IC_ENVELOPE_READ_STATE = 2,
 } ic_envelope_type_t;
 
 typedef struct {

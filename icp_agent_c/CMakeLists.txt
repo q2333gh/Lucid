@@ -7,6 +7,7 @@ add_library(icp_agent_c STATIC
     src/request_id.c
     src/identity_anonymous.c
     src/identity_ed25519_openssl.c
+    src/envelope_cbor.c
 )
 target_include_directories(icp_agent_c PUBLIC include)
 target_compile_features(icp_agent_c PUBLIC c_std_11)
@@ -32,3 +33,10 @@ add_executable(icp_agent_c_identity
 target_link_libraries(icp_agent_c_identity PRIVATE icp_agent_c OpenSSL::Crypto)
 
 add_test(NAME icp_agent_c_identity COMMAND icp_agent_c_identity)
+
+add_executable(icp_agent_c_envelope
+    tests/test_envelope_cbor.c
+)
+target_link_libraries(icp_agent_c_envelope PRIVATE icp_agent_c)
+
+add_test(NAME icp_agent_c_envelope COMMAND icp_agent_c_envelope)

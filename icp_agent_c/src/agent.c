@@ -1,9 +1,11 @@
 #include "icp_agent/agent.h"
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ic_principal.h"
 #include "icp_agent/envelope.h"
 #include "icp_agent/request_id.h"
 #include "icp_agent/transport.h"
@@ -115,6 +117,34 @@ static int cbor_skip_value(cbor_reader_t *r) {
 static int key_equals(const uint8_t *k, size_t klen, const char *lit) {
     size_t n = strlen(lit);
     return klen == n && memcmp(k, lit, n) == 0;
+}
+
+static int build_canister_api_path(const uint8_t *canister_id,
+                                   size_t         canister_id_len,
+                                   const char    *suffix,
+                                   char          *out,
+                                   size_t         out_len) {
+    ic_principal_t principal;
+    char           principal_text[IC_PRINCIPAL_MAX_LEN * 2 + 1];
+    int            text_len = 0;
+    int            n = 0;
+
+    if (canister_id == NULL || canister_id_len == 0 || suffix == NULL ||
+        out == NULL || out_len == 0) {
+        return 0;
+    }
+    if (ic_principal_from_bytes(&principal, canister_id, canister_id_len) !=
+        IC_OK) {
+        return 0;
+    }
+    text_len = ic_principal_to_text(&principal, principal_text,
+                                    sizeof(principal_text));
+    if (text_len <= 0)
+        return 0;
+
+    n = snprintf(out, out_len, "/api/v3/canister/%s/%s", principal_text,
+                 suffix);
+    return n > 0 && (size_t)n < out_len;
 }
 
 static int parse_query_replied_arg(const uint8_t *buf,
@@ -240,6 +270,7 @@ ic_agent_error_code_t ic_agent_query(ic_agent_t    *agent,
     ic_envelope_content_t content;
     ic_http_response_t    response = {0};
     ic_agent_error_code_t rc = IC_AGENT_ERR;
+    char                  path[128];
 
     if (agent == NULL || agent->replica_url == NULL || canister_id == NULL ||
         canister_id_len == 0 || method_name == NULL || arg == NULL ||
@@ -261,8 +292,11 @@ ic_agent_error_code_t ic_agent_query(ic_agent_t    *agent,
     content.ingress_expiry = 0;
     content.has_ingress_expiry = false;
 
-    rc = post_envelope(agent, &content, "/api/v3/canister/aaaaa-aa/query",
-                       &response);
+    if (!build_canister_api_path(canister_id, canister_id_len, "query", path,
+                                 sizeof(path))) {
+        return IC_AGENT_ERR;
+    }
+    rc = post_envelope(agent, &content, path, &response);
     if (rc != IC_AGENT_OK)
         return IC_AGENT_ERR;
     if (response.status_code < 200 || response.status_code >= 300) {
@@ -293,6 +327,7 @@ ic_agent_error_code_t ic_agent_update(ic_agent_t      *agent,
     cbor_reader_t         r;
     uint8_t               major = 0;
     uint64_t              pairs = 0;
+    char                  path[128];
 
     if (agent == NULL || out_request_id == NULL || canister_id == NULL ||
         canister_id_len == 0 || method_name == NULL || arg == NULL) {
@@ -314,8 +349,11 @@ ic_agent_error_code_t ic_agent_update(ic_agent_t      *agent,
     if (ic_compute_request_id(&content, out_request_id) != IC_AGENT_OK) {
         return IC_AGENT_ERR;
     }
-    if (post_envelope(agent, &content, "/api/v3/canister/aaaaa-aa/call",
-                      &response) != IC_AGENT_OK) {
+    if (!build_canister_api_path(canister_id, canister_id_len, "call", path,
+                                 sizeof(path))) {
+        return IC_AGENT_ERR;
+    }
+    if (post_envelope(agent, &content, path, &response) != IC_AGENT_OK) {
         return IC_AGENT_ERR;
     }
     if (response.status_code < 200 || response.status_code >= 300) {
@@ -326,6 +364,10 @@ ic_agent_error_code_t ic_agent_update(ic_agent_t      *agent,
     r.buf = response.body;
     r.len = response.body_len;
     r.off = 0;
+    if (r.len >= 3 && r.buf[0] == 0xD9 && r.buf[1] == 0xD9 &&
+        r.buf[2] == 0xF7) {
+        r.off = 3;
+    }
     if (!cbor_read_header(&r, &major, &pairs) || major != 5) {
         ic_http_response_free(&response);
         return IC_AGENT_ERR;

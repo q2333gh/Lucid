@@ -10,6 +10,7 @@ add_library(icp_agent_c STATIC
     src/identity_ed25519_openssl.c
     src/envelope_cbor.c
     src/transport_curl.c
+    src/certificate_verify_blst.c
 )
 target_include_directories(icp_agent_c PUBLIC include)
 target_compile_features(icp_agent_c PUBLIC c_std_11)
@@ -56,3 +57,10 @@ add_executable(icp_agent_c_update_wait
 target_link_libraries(icp_agent_c_update_wait PRIVATE icp_agent_c pthread)
 
 add_test(NAME icp_agent_c_update_wait COMMAND icp_agent_c_update_wait)
+
+add_executable(icp_agent_c_certificate
+    tests/test_certificate_verify_vectors.c
+)
+target_link_libraries(icp_agent_c_certificate PRIVATE icp_agent_c)
+
+add_test(NAME icp_agent_c_certificate COMMAND icp_agent_c_certificate)

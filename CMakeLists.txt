@@ -33,6 +33,7 @@ add_subdirectory(third_party/tinyprintf)  # Lightweight string tool
 add_subdirectory(cdk_alloc)    # CDK allocator adapter
 add_subdirectory(c_candid)     # C candid serde lib 
 add_subdirectory(cdk-c)        # CDK main lib 
+add_subdirectory(icp_agent_c)  # ICP agent C library
 add_subdirectory(examples)     # User code examples 
 
 # Global Optimization Flags for WASM/WASI ; STREQUAL->string equal 

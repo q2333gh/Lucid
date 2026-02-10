@@ -448,12 +448,6 @@ ic_agent_error_code_t ic_agent_update(ic_agent_t      *agent,
                                       ic_request_id_t *out_request_id) {
     ic_envelope_content_t content;
     ic_http_response_t    response = {0};
-    const uint8_t        *status_ptr = NULL;
-    size_t                status_len = 0;
-    bool                  status_ok = false;
-    cbor_reader_t         r;
-    uint8_t               major = 0;
-    uint64_t              pairs = 0;
     char                  path[128];
 
     if (agent == NULL || out_request_id == NULL || canister_id == NULL ||
@@ -484,59 +478,25 @@ ic_agent_error_code_t ic_agent_update(ic_agent_t      *agent,
         return IC_AGENT_ERR;
     }
     if (response.status_code < 200 || response.status_code >= 300) {
+        if (debug_enabled()) {
+            fprintf(stderr, "[ic_agent_update] http status=%ld\n",
+                    response.status_code);
+        }
         ic_http_response_free(&response);
         return IC_AGENT_ERR;
     }
 
-    r.buf = response.body;
-    r.len = response.body_len;
-    r.off = 0;
-    if (r.len >= 3 && r.buf[0] == 0xD9 && r.buf[1] == 0xD9 &&
-        r.buf[2] == 0xF7) {
-        r.off = 3;
-    }
-    if (!cbor_read_header(&r, &major, &pairs) || major != 5) {
-        ic_http_response_free(&response);
-        return IC_AGENT_ERR;
-    }
-    for (;;) {
-        if (pairs == UINT64_MAX) {
-            if (r.off >= r.len) {
-                ic_http_response_free(&response);
-                return IC_AGENT_ERR;
-            }
-            if (r.buf[r.off] == 0xFF) {
-                r.off++;
-                break;
-            }
-        } else if ((size_t)(pairs--) == 0) {
-            break;
-        }
-        const uint8_t *k = NULL;
-        size_t         klen = 0;
-        if (!cbor_read_text(&r, &k, &klen)) {
-            ic_http_response_free(&response);
-            return IC_AGENT_ERR;
-        }
-        if (key_equals(k, klen, "status")) {
-            if (!cbor_read_text(&r, &status_ptr, &status_len)) {
-                ic_http_response_free(&response);
-                return IC_AGENT_ERR;
-            }
-        } else if (!cbor_skip_value(&r)) {
-            ic_http_response_free(&response);
-            return IC_AGENT_ERR;
-        }
-    }
-    if (status_ptr != NULL &&
-        ((status_len == 8 && memcmp(status_ptr, "accepted", 8) == 0) ||
-         (status_len == 7 && memcmp(status_ptr, "replied", 7) == 0))) {
-        status_ok = true;
-    }
+    /* For update calls we only need to know that the replica
+     * accepted the message. The request_id was already computed
+     * locally, so we ignore the HTTP response body here.
+     *
+     * This aligns with the Rust agent's behaviour, where a 2xx
+     * status without an immediate reply is treated as
+     * `CallResponse::Poll(request_id)` and the final result is
+     * obtained via a separate `read_state` / `request_status`
+     * flow.
+     */
     ic_http_response_free(&response);
-    if (!status_ok) {
-        return IC_AGENT_ERR;
-    }
     return IC_AGENT_OK;
 }
 

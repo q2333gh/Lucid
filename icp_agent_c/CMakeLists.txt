@@ -71,3 +71,8 @@ add_executable(icp_agent_c_e2e_local
 target_link_libraries(icp_agent_c_e2e_local PRIVATE icp_agent_c)
 
 add_test(NAME icp_agent_c_e2e_local COMMAND icp_agent_c_e2e_local)
+
+add_executable(icp_agent_c_adder_example
+    tests/example_adder_client.c
+)
+target_link_libraries(icp_agent_c_adder_example PRIVATE icp_agent_c)

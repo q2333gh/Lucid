@@ -21,6 +21,7 @@ cdk-c/compile_commands.json
 build_lib
 build-wasi/
 build-host/
+build-main/
 ## compile commands for IDEs
 compile_commands.json
 ## tests

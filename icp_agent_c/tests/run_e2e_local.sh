@@ -14,6 +14,11 @@ fi
 unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
 export NO_PROXY="127.0.0.1,localhost"
 export no_proxy="${NO_PROXY}"
+# Avoid dfx color-output panics in non-interactive shells.
+export NO_COLOR=1
+export CLICOLOR=0
+export CLICOLOR_FORCE=0
+export FORCE_COLOR=0
 
 pushd "${ADDER_DIR}" >/dev/null
 dfx stop >/dev/null 2>&1 || true
